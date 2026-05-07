@@ -78,7 +78,7 @@ This project should use Git for source code and documentation. Normal developmen
 
 Recommended GitHub repository settings:
 
-- Repository name: `phd-workspace` or `phd-ddl`.
+- Repository name: `phd-workspace`.
 - Visibility: private, unless you intentionally want the code to be public.
 - Do not commit runtime JSON data or real environment files.
 

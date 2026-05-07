@@ -5,7 +5,7 @@ This document defines the intended project layout and file placement rules for å
 ## Planned File Tree
 
 ```text
-phd-ddl/
+phd-workspace/
   AGENT.md
   Readme.md
   architecture.md
