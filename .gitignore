@@ -9,6 +9,7 @@ out/
 dist/
 build/
 coverage/
+tsconfig.tsbuildinfo
 
 # Environment secrets
 .env
@@ -16,12 +17,15 @@ coverage/
 !.env.example
 
 # Runtime data must live outside the repo.
-data/
-runtime-data/
+/data/
+/runtime-data/
 *.local.json
 
 # Non-standard Git metadata workaround directories, if ever used in restricted environments.
 .gitdir/
+
+# Local brainstorming/mockup artifacts.
+.superpowers/
 
 # Logs
 npm-debug.log*
