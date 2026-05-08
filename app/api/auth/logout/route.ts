@@ -1,6 +1,8 @@
 import { SESSION_COOKIE_NAME } from "@/lib/auth/session";
 
-export function POST(_request?: Request): Response {
+export function POST(request: Request): Response {
+  void request;
+
   return Response.json(
     { authenticated: false },
     {
