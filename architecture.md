@@ -52,6 +52,7 @@ phd-workspace/
       HabitItem.tsx
       HabitForm.tsx
     tasks/
+      TaskManager.tsx
       TaskList.tsx
       TaskItem.tsx
       TaskForm.tsx
@@ -148,14 +149,17 @@ Stage A implemented the first tested backend-only modules, and the current found
 
 `lib/data/repositories.ts` can later split into `lib/data/repositories/*` files when each feature repository grows. For now it remains a single facade for the foundation slice.
 
-Stage B implemented the first runnable App Router shell:
+Stage B implemented the first runnable App Router shell and the current task slice connects it to task data:
 
 - `app/layout.tsx`: root document shell, metadata, and global CSS import.
-- `app/page.tsx`: static MVP workspace layout with task, habit, care, and AI assistant regions.
+- `app/page.tsx`: MVP workspace page entry point.
+- `app/workspace-page-content.tsx`: authenticated workspace layout that composes care, habit, task, and AI assistant regions.
 - `app/globals.css`: Tailwind directives and base page styling.
+- `components/tasks/TaskManager.tsx`: client task management UI backed by `/api/tasks`, including top-level task CRUD, one-layer subtask CRUD, status/priority/due-date editing, readable English labels, completed top-level task hiding, and due-state highlighting.
 - `tests/unit/app/page.test.tsx`: verifies that the workspace regions render.
+- `tests/unit/tasks/task-manager.test.tsx`: verifies task manager loading, creation, editing, completed hiding, subtask CRUD, and deletion behavior.
 
-Current development also includes the versioned data foundation, auth routes, login shell, and protected task APIs. Task UI, habit APIs, care APIs, and real AI workflows should be added in later stages.
+Current development also includes the versioned data foundation, auth routes, login shell, protected task APIs, and task UI. Habit APIs, care APIs, and real AI workflows should be added in later stages.
 
 ## Layer Responsibilities
 

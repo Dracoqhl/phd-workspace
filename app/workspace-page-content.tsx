@@ -1,4 +1,5 @@
 import { LoginForm } from "@/app/login-form";
+import { TaskManager } from "@/components/tasks/TaskManager";
 
 const workspaceSections = [
   {
@@ -11,7 +12,7 @@ const workspaceSections = [
   },
   {
     title: "任务管理",
-    description: "阶段 B 暂未接入数据。下一阶段会连接本地 JSON 任务仓库。"
+    description: "任务管理模块已连接本地 JSON 任务仓库。"
   }
 ];
 
@@ -43,17 +44,20 @@ export function WorkspacePageContent({ authenticated }: WorkspacePageContentProp
 
 function WorkspaceSections() {
   return (
-    <div className="grid gap-4 xl:grid-cols-3">
-      {workspaceSections.map((section) => (
-        <section
-          aria-label={section.title}
-          className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm"
-          key={section.title}
-        >
-          <h2 className="text-base font-semibold text-ink">{section.title}</h2>
-          <p className="mt-3 text-sm leading-6 text-slate-600">{section.description}</p>
-        </section>
-      ))}
+    <div className="grid gap-4">
+      <div className="grid gap-4 xl:grid-cols-2">
+        {workspaceSections.slice(0, 2).map((section) => (
+          <section
+            aria-label={section.title}
+            className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm"
+            key={section.title}
+          >
+            <h2 className="text-base font-semibold text-ink">{section.title}</h2>
+            <p className="mt-3 text-sm leading-6 text-slate-600">{section.description}</p>
+          </section>
+        ))}
+      </div>
+      <TaskManager />
     </div>
   );
 }

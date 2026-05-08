@@ -20,6 +20,10 @@ vi.mock("@/lib/auth/session", () => ({
   verifySessionToken: vi.fn()
 }));
 
+vi.mock("@/components/tasks/TaskManager", () => ({
+  TaskManager: () => <section aria-label="任务管理">Task manager</section>
+}));
+
 const mockedCookies = vi.mocked(cookies);
 const mockedGetSessionSecret = vi.mocked(getSessionSecret);
 const mockedVerifySessionToken = vi.mocked(verifySessionToken);

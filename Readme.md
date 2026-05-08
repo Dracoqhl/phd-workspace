@@ -2,7 +2,7 @@
 
 博士工作台是一个轻量级个人博士工作台，用于管理科研任务、每日健康习惯、心灵关怀打卡，并通过页面内 AI 助手辅助梳理和维护任务体系。
 
-当前项目处于 MVP 规划和初始搭建阶段，已包含 versioned data foundation、auth routes 和 login shell。
+当前项目处于 MVP 增量开发阶段，已包含 versioned data foundation、auth routes、login shell、protected task API 和任务管理 UI MVP。
 
 ## MVP Scope
 
@@ -171,7 +171,7 @@ git remote add origin https://github.com/<your-user>/<your-repo>.git
 
 ## Development Status
 
-The project is in initial scaffolding. Current dev status includes a versioned data foundation, auth routes, and a login shell. Stage A added the first tested server-side modules, and Stage B added the first runnable Next.js app shell:
+The project is in MVP implementation. Current dev status includes a versioned data foundation, auth routes, a login shell, protected task APIs, and the first task management UI. Stage A added the first tested server-side modules, Stage B added the first runnable Next.js app shell, and the current task slice connects the shell to local JSON task data:
 
 - `AGENT.md`: maintainer context and confirmed decisions.
 - `architecture.md`: planned directory layout and file placement rules.
@@ -181,7 +181,8 @@ The project is in initial scaffolding. Current dev status includes a versioned d
 - `data.example/`: versioned empty collection JSON examples for all runtime data files.
 - `.eslintrc.cjs`: ESLint configuration for the current TypeScript-only scaffolding stage.
 - `app/layout.tsx`: root App Router layout and metadata.
-- `app/page.tsx`: minimal single-page workspace shell with task, habit, care, and AI assistant regions.
+- `app/page.tsx`: single-page workspace shell with care, habit, task, and AI assistant regions.
+- `components/tasks/TaskManager.tsx`: client task manager connected to `/api/tasks`, including top-level task create/edit/delete, one-layer subtask create/edit/delete, status/priority/due-date editing, readable English status and priority labels, completed top-level task hiding, and due-date highlighting.
 - `app/globals.css`: Tailwind entry point and base page styles.
 - `types/task.ts`: task entity and task input types.
 - `types/trash.ts`: trash entry type.
@@ -189,9 +190,9 @@ The project is in initial scaffolding. Current dev status includes a versioned d
 - `lib/data/json-store.ts`: JSON file initialization, read, update, and atomic write helper.
 - `lib/data/repositories.ts`: versioned repository factory for tasks, trash, habits, habit check-ins, care records, and AI logs.
 - `app/api/tasks/**/route.ts`: protected task list, create, detail, update, delete, and subtask creation endpoints.
-- `tests/`: unit tests for task domain rules, JSON data layer, auth, task routes, and the workspace page shell.
+- `tests/`: unit tests for task domain rules, JSON data layer, auth, task routes, workspace page shell, and task manager UI behavior.
 
-The app has the first login/session shell and protected task APIs. Task UI, habit APIs, care APIs, and real AI workflows are still being added.
+The app has the first login/session shell, protected task APIs, and task management UI. Habit APIs, care APIs, and real AI workflows are still being added.
 
 ## Documentation Maintenance
 
