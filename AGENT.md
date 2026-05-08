@@ -37,7 +37,11 @@ This file stores maintainer context for future development sessions.
 
 - Mental care: one AI-generated gentle care message per day, refresh, daily check-in, optional mood note.
 - Habits: create/edit/deactivate habits, daily complete/uncomplete check-ins.
+- Habit UI should stay compact and avoid decorative icon columns unless the user explicitly asks for them.
+- Habit completion controls should be small circles: incomplete is an empty outlined circle; complete is a solid green circle with a white checkmark.
 - Completed habit rows should be greyed out, struck through, and sorted after incomplete habits. Cancelling a check-in should restore the habit near the front of the active list.
+- Habit deactivation should use a small trash icon, matching the task module's delete affordance. Avoid power-button style icons for this action.
+- Habit editing should follow the task module pattern: click the displayed text, edit inline, press Enter to save. Avoid a separate edit icon for routine text editing.
 - Tasks: parent tasks plus one level of subtasks, status, priority, due date, filters, completed visibility.
 - AI assistant: persistent right panel, chat, API test, structured operation proposals, user confirmation cards, operation logs.
 - Local persistence: JSON files with safe write behavior.
@@ -55,6 +59,7 @@ This file stores maintainer context for future development sessions.
 - Keep `Readme.md` current when setup, scripts, environment variables, deployment, or user-facing scope changes.
 - Keep `architecture.md` current when directories, file placement rules, module boundaries, or dependency rules change.
 - Keep product decisions in this file current when a later conversation settles an important implementation or scope choice.
+- After receiving user feedback, explicitly check whether `AGENT.md`, `Readme.md`, and `architecture.md` need updates for newly confirmed preferences or behavior.
 - Keep `.gitignore` aligned with runtime data and generated files.
 - Push completed, verified versions to GitHub before considering the version closed.
 - Prefer small, well-bounded modules over large mixed-responsibility files.

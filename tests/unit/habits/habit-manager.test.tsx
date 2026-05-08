@@ -105,15 +105,18 @@ describe("HabitManager", () => {
     expect(within(rows[1]).getByText("Done habit")).toBeInTheDocument();
     expect(rows[1]).toHaveClass("text-slate-400");
     expect(within(rows[1]).getByText("Done habit")).toHaveClass("line-through");
+    expect(screen.getByText("1/2 checked")).toBeInTheDocument();
+    expect(screen.getByRole("progressbar", { name: "Habit check-in progress" })).toHaveAttribute("aria-valuenow", "1");
   });
 
-  it("creates a habit from the compact form", async () => {
+  it("creates a habit from the compact form without showing an icon column", async () => {
     const fetchMock = mockFetch([]);
 
     render(<HabitManager />);
 
-    fireEvent.change(await screen.findByLabelText("Habit icon"), { target: { value: "run" } });
-    fireEvent.change(screen.getByLabelText("Habit name"), { target: { value: "Morning run" } });
+    expect(screen.queryByLabelText("Habit icon")).not.toBeInTheDocument();
+
+    fireEvent.change(await screen.findByLabelText("Habit name"), { target: { value: "Morning run" } });
     fireEvent.change(screen.getByLabelText("Habit description"), { target: { value: "20 minutes" } });
     fireEvent.click(screen.getByRole("button", { name: "Add Habit" }));
 
@@ -122,7 +125,7 @@ describe("HabitManager", () => {
       "/api/habits",
       expect.objectContaining({
         method: "POST",
-        body: JSON.stringify({ name: "Morning run", description: "20 minutes", icon: "run" })
+        body: JSON.stringify({ name: "Morning run", description: "20 minutes", icon: "" })
       })
     );
   });
@@ -135,13 +138,21 @@ describe("HabitManager", () => {
 
     render(<HabitManager />);
 
-    fireEvent.click(await screen.findByRole("button", { name: "Mark Walk complete" }));
+    const incompleteButton = await screen.findByRole("button", { name: "Mark Walk complete" });
+    expect(incompleteButton).toHaveClass("rounded-full");
+    expect(incompleteButton).toHaveClass("border-slate-300");
+
+    fireEvent.click(incompleteButton);
 
     await waitFor(() => {
       const rows = screen.getAllByRole("listitem");
       expect(within(rows[0]).getByText("Read")).toBeInTheDocument();
       expect(within(rows[1]).getByText("Walk")).toHaveClass("line-through");
     });
+
+    const completedButton = screen.getByRole("button", { name: "Cancel check-in for Walk" });
+    expect(completedButton).toHaveClass("bg-emerald-600");
+    expect(within(completedButton).getByTestId("habit-checkmark")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Cancel check-in for Walk" }));
 
@@ -157,12 +168,14 @@ describe("HabitManager", () => {
     );
   });
 
-  it("edits and deactivates a habit inline", async () => {
+  it("edits by clicking text and deactivates with a trash button", async () => {
     const fetchMock = mockFetch([{ habit: habit({ id: "habit_1", name: "Walk" }), checkin: null, isCompleted: false }]);
 
     render(<HabitManager />);
 
-    fireEvent.click(await screen.findByRole("button", { name: "Edit Walk" }));
+    expect(screen.queryByRole("button", { name: "Edit Walk" })).not.toBeInTheDocument();
+
+    fireEvent.click(await screen.findByText("Walk"));
     fireEvent.change(screen.getByLabelText("Edit habit name for Walk"), { target: { value: "Evening walk" } });
     fireEvent.keyDown(screen.getByLabelText("Edit habit name for Walk"), { key: "Enter" });
 
@@ -172,7 +185,9 @@ describe("HabitManager", () => {
       expect.objectContaining({ method: "PATCH", body: expect.stringContaining("Evening walk") })
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Deactivate Evening walk" }));
+    const deactivateButton = screen.getByRole("button", { name: "Deactivate Evening walk" });
+    expect(within(deactivateButton).getByTestId("habit-trash-icon")).toBeInTheDocument();
+    fireEvent.click(deactivateButton);
     await waitFor(() => expect(screen.queryByText("Evening walk")).not.toBeInTheDocument());
 
     expect(fetchMock).toHaveBeenCalledWith("/api/habits/habit_1/deactivate", expect.objectContaining({ method: "PATCH" }));
