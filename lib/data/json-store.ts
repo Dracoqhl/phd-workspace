@@ -1,24 +1,52 @@
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
-import { basename, dirname, join } from "node:path";
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 
 import { SCHEMA_VERSION, type VersionedCollection } from "@/types/data";
 
+const updateQueuesByFilePath = new Map<string, Promise<unknown>>();
+
+interface JsonStoreOptions<T> {
+  validateItem?: (item: unknown) => item is T;
+}
+
 export class JsonStore<T> {
   private readonly filePath: string;
-  private updateQueue: Promise<unknown> = Promise.resolve();
+  private readonly validateItem?: (item: unknown) => item is T;
 
   constructor(
     private readonly dataDir: string,
-    private readonly fileName: string
+    private readonly fileName: string,
+    options: JsonStoreOptions<T> = {}
   ) {
-    this.filePath = join(dataDir, fileName);
+    if (!isAbsolute(dataDir)) {
+      throw new Error("JsonStore dataDir must be an absolute path");
+    }
+
+    if (isAbsolute(fileName)) {
+      throw new Error("JsonStore fileName must be a relative path");
+    }
+
+    const resolvedDataDir = resolve(dataDir);
+    const resolvedFilePath = resolve(resolvedDataDir, fileName);
+    const relativeFilePath = relative(resolvedDataDir, resolvedFilePath);
+
+    if (relativeFilePath === ".." || relativeFilePath.startsWith(`..${sep}`) || isAbsolute(relativeFilePath)) {
+      throw new Error("JsonStore fileName must stay inside dataDir");
+    }
+
+    if (fileName === "" || fileName.includes("/") || fileName.includes("\\")) {
+      throw new Error("JsonStore fileName must be a flat relative filename");
+    }
+
+    this.filePath = resolvedFilePath;
+    this.validateItem = options.validateItem;
   }
 
   async read(): Promise<VersionedCollection<T>> {
     await this.ensureFile();
     const content = await readFile(this.filePath, "utf8");
-    return parseVersionedCollection<T>(JSON.parse(content));
+    return parseVersionedCollection<T>(JSON.parse(content), this.validateItem);
   }
 
   async write(data: VersionedCollection<T>): Promise<void> {
@@ -27,8 +55,13 @@ export class JsonStore<T> {
     const tempPath = join(directory, `.${basename(this.filePath)}.${randomUUID()}.tmp`);
     const content = `${JSON.stringify(data, null, 2)}\n`;
 
-    await writeFile(tempPath, content, "utf8");
-    await rename(tempPath, this.filePath);
+    try {
+      await writeFile(tempPath, content, "utf8");
+      await rename(tempPath, this.filePath);
+    } catch (error) {
+      await unlinkIfExists(tempPath);
+      throw error;
+    }
   }
 
   async update(
@@ -36,19 +69,12 @@ export class JsonStore<T> {
       data: VersionedCollection<T>
     ) => VersionedCollection<T> | Promise<VersionedCollection<T>>
   ): Promise<VersionedCollection<T>> {
-    const operation = this.updateQueue.then(async () => {
+    return enqueueFileUpdate(this.filePath, async () => {
       const current = await this.read();
       const next = await updater(current);
       await this.write(next);
       return next;
     });
-
-    this.updateQueue = operation.then(
-      () => undefined,
-      () => undefined
-    );
-
-    return operation;
   }
 
   async updateItems(updater: (items: T[]) => T[] | Promise<T[]>): Promise<T[]> {
@@ -64,7 +90,19 @@ export class JsonStore<T> {
       await readFile(this.filePath, "utf8");
     } catch (error) {
       if (isMissingFileError(error)) {
-        await this.write({ schemaVersion: SCHEMA_VERSION, items: [] });
+        const directory = dirname(this.filePath);
+        const content = `${JSON.stringify({ schemaVersion: SCHEMA_VERSION, items: [] }, null, 2)}\n`;
+
+        await mkdir(directory, { recursive: true });
+
+        try {
+          await writeFile(this.filePath, content, { encoding: "utf8", flag: "wx" });
+        } catch (writeError) {
+          if (!isExistingFileError(writeError)) {
+            throw writeError;
+          }
+        }
+
         return;
       }
 
@@ -77,7 +115,24 @@ function isMissingFileError(error: unknown): boolean {
   return error instanceof Error && "code" in error && error.code === "ENOENT";
 }
 
-function parseVersionedCollection<T>(value: unknown): VersionedCollection<T> {
+function isExistingFileError(error: unknown): boolean {
+  return error instanceof Error && "code" in error && error.code === "EEXIST";
+}
+
+async function unlinkIfExists(filePath: string): Promise<void> {
+  try {
+    await unlink(filePath);
+  } catch (error) {
+    if (!isMissingFileError(error)) {
+      throw error;
+    }
+  }
+}
+
+function parseVersionedCollection<T>(
+  value: unknown,
+  validateItem?: (item: unknown) => item is T
+): VersionedCollection<T> {
   if (!isRecord(value)) {
     throw new Error("Invalid versioned collection: expected an object");
   }
@@ -90,9 +145,35 @@ function parseVersionedCollection<T>(value: unknown): VersionedCollection<T> {
     throw new Error("Invalid versioned collection: expected items array");
   }
 
-  return value as VersionedCollection<T>;
+  if (validateItem) {
+    value.items.forEach((item, index) => {
+      if (!validateItem(item)) {
+        throw new Error(`Invalid versioned collection item at index ${index}`);
+      }
+    });
+  }
+
+  return { schemaVersion: SCHEMA_VERSION, items: value.items as T[] };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function enqueueFileUpdate<T>(filePath: string, operation: () => Promise<T>): Promise<T> {
+  const currentQueue = updateQueuesByFilePath.get(filePath) ?? Promise.resolve();
+  const next = currentQueue.then(operation, operation);
+  const queued = next.then(
+    () => undefined,
+    () => undefined
+  );
+
+  updateQueuesByFilePath.set(filePath, queued);
+  queued.finally(() => {
+    if (updateQueuesByFilePath.get(filePath) === queued) {
+      updateQueuesByFilePath.delete(filePath);
+    }
+  });
+
+  return next;
 }
