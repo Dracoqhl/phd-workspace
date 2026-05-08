@@ -10,10 +10,11 @@ phd-workspace/
   Readme.md
   architecture.md
   package.json
-  next.config.ts
+  next.config.mjs
   tsconfig.json
   tailwind.config.ts
   postcss.config.mjs
+  .eslintrc.cjs
   .env.example
   .gitignore
 
@@ -82,6 +83,7 @@ phd-workspace/
     data/
       data-dir.ts
       json-store.ts
+      repositories.ts
       repositories/
         tasks.ts
         habits.ts
@@ -130,6 +132,30 @@ phd-workspace/
 
 The tree is a target structure. Create folders as they become necessary; do not add empty directories just to match the plan.
 
+## Current Implemented Structure
+
+Stage A implemented the first tested backend-only modules, and the current foundation slice extends them into the shared data/auth base:
+
+- `types/task.ts`: task entity, status, priority, due-state, and creation input types.
+- `types/trash.ts`: generic trash entry type.
+- `lib/domain/tasks.ts`: task completion, subtask progress, and due-date state helpers.
+- `lib/data/json-store.ts`: generic versioned JSON store with missing-file initialization, atomic replace writes, flat filename safety, in-process per-file update serialization, and optional item validation.
+- `lib/data/repositories.ts`: versioned repository factory exposing tasks, trash, habits, habit check-ins, care records, and AI logs through narrow repository APIs.
+- `lib/data/data-dir.ts`: `DATA_DIR` resolver and MVP runtime JSON file list.
+- `lib/auth/password.ts` and `lib/auth/session.ts`: password and 30-day session helpers using `APP_PASSWORD` and `SESSION_SECRET`.
+- `app/api/auth/*/route.ts`: login, logout, and session route handlers.
+
+`lib/data/repositories.ts` can later split into `lib/data/repositories/*` files when each feature repository grows. For now it remains a single facade for the foundation slice.
+
+Stage B implemented the first runnable App Router shell:
+
+- `app/layout.tsx`: root document shell, metadata, and global CSS import.
+- `app/page.tsx`: static MVP workspace layout with task, habit, care, and AI assistant regions.
+- `app/globals.css`: Tailwind directives and base page styling.
+- `tests/unit/app/page.test.tsx`: verifies that the workspace regions render.
+
+Current development also includes the versioned data foundation, auth routes, and login shell. Feature data APIs and real AI workflows should be added in later stages.
+
 ## Layer Responsibilities
 
 ### `app/`
@@ -154,8 +180,10 @@ Owns React UI components.
 
 Owns password access and session helpers.
 
-- Password comparison and session cookie logic live here.
-- Auth helpers may read `APP_PASSWORD`.
+- Password comparison and session cookie signing logic live here.
+- Auth uses `APP_PASSWORD` for login and `SESSION_SECRET` for 30-day HTTP-only cookie sessions.
+- The session cookie protects the shell and should protect future API routes.
+- Auth helpers may read `APP_PASSWORD` and `SESSION_SECRET`.
 - UI components should interact with auth only through API routes or lightweight client state.
 
 ### `lib/data/`
@@ -164,6 +192,7 @@ Owns server-local JSON persistence.
 
 - `data-dir.ts` resolves and validates `DATA_DIR`.
 - `json-store.ts` implements safe JSON reads/writes, including temporary-file writes and atomic replace.
+- `JsonStore` is in-process concurrency safe for a single Node.js process. It is not a multi-process file lock.
 - `repositories/*` expose typed data operations for each JSON file.
 - This layer must not import React components or browser-only APIs.
 
@@ -210,6 +239,7 @@ Owns shared TypeScript types.
 
 Contains example JSON file shapes only.
 
+- Each example file is a versioned collection with `{ "schemaVersion": 1, "items": [] }`.
 - Real runtime data must live outside the repo in `DATA_DIR`.
 - Do not commit real personal data.
 
@@ -239,6 +269,15 @@ DATA_DIR/
   care-records.json
   ai-logs.json
   trash.json
+```
+
+All JSON files are versioned collections:
+
+```json
+{
+  "schemaVersion": 1,
+  "items": []
+}
 ```
 
 Recommended responsibilities:

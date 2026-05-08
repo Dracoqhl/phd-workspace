@@ -2,7 +2,7 @@
 
 博士工作台是一个轻量级个人博士工作台，用于管理科研任务、每日健康习惯、心灵关怀打卡，并通过页面内 AI 助手辅助梳理和维护任务体系。
 
-当前项目处于 MVP 规划和初始搭建阶段。
+当前项目处于 MVP 规划和初始搭建阶段，已包含 versioned data foundation、auth routes 和 login shell。
 
 ## MVP Scope
 
@@ -38,21 +38,65 @@ P0 功能：
 
 最终技术栈以后续实际初始化项目为准。若技术栈变化，需要同步更新本文件和 `architecture.md`。
 
-## Environment Variables
+## Local Setup
 
-Planned variables:
+Install dependencies:
+
+```bash
+pnpm install
+```
+
+Create local environment configuration:
+
+```bash
+cp .env.example .env.local
+```
+
+Required variables:
 
 ```bash
 APP_PASSWORD=change-me
+SESSION_SECRET=replace-with-a-long-random-secret
 DATA_DIR=/absolute/path/to/phd-workspace-data
 AI_API_KEY=your-model-api-key
 AI_MODEL=your-model-name
+AI_BASE_URL=https://api.openai.com/v1
+```
+
+- `APP_PASSWORD` is the single access password entered on the login screen.
+- `SESSION_SECRET` signs the 30-day HTTP-only session cookie. Use a long random value.
+- `DATA_DIR` points to runtime JSON data outside the repository.
+- `AI_API_KEY` is the server-side model API key for later AI features.
+- `AI_MODEL` is the model name for later AI features.
+- `AI_BASE_URL` is the OpenAI-compatible model API base URL. It is part of the required AI configuration, but the current foundation slice does not call the model API yet.
+
+Run the app:
+
+```bash
+pnpm dev
+```
+
+Open `http://localhost:3000`, enter `APP_PASSWORD`, and the app sets a 30-day HTTP-only session cookie.
+
+## Environment Variables
+
+Example variables:
+
+```bash
+APP_PASSWORD=change-me
+SESSION_SECRET=replace-with-a-long-random-secret
+DATA_DIR=/absolute/path/to/phd-workspace-data
+AI_API_KEY=your-model-api-key
+AI_MODEL=your-model-name
+AI_BASE_URL=https://api.openai.com/v1
 ```
 
 Rules:
 
 - `APP_PASSWORD` is the single access password.
+- `SESSION_SECRET` signs session cookies and must be a long random value.
 - `DATA_DIR` points to runtime JSON data outside the repository.
+- `AI_BASE_URL` is required for the upcoming server-side AI client configuration.
 - AI keys must only be used server-side.
 - Real `.env` files should not be committed.
 
@@ -70,7 +114,16 @@ $DATA_DIR/
   trash.json
 ```
 
-Example data shapes may be stored in `data.example/` after project scaffolding.
+Each runtime JSON file is a versioned collection:
+
+```json
+{
+  "schemaVersion": 1,
+  "items": []
+}
+```
+
+The same empty example shapes are stored in `data.example/`.
 
 ## Git And GitHub Sync
 
@@ -118,13 +171,26 @@ git remote add origin https://github.com/<your-user>/<your-repo>.git
 
 ## Development Status
 
-No application code has been scaffolded yet. The current project contains project-maintenance documentation:
+The project is in initial scaffolding. Current dev status includes a versioned data foundation, auth routes, and a login shell. Stage A added the first tested server-side modules, and Stage B added the first runnable Next.js app shell:
 
 - `AGENT.md`: maintainer context and confirmed decisions.
 - `architecture.md`: planned directory layout and file placement rules.
 - `Readme.md`: project overview, MVP scope, and setup expectations.
 - `.gitignore`: Git ignore rules for dependencies, secrets, build output, logs, and runtime data.
 - `.env.example`: example environment variable names without real secrets.
+- `data.example/`: versioned empty collection JSON examples for all runtime data files.
+- `.eslintrc.cjs`: ESLint configuration for the current TypeScript-only scaffolding stage.
+- `app/layout.tsx`: root App Router layout and metadata.
+- `app/page.tsx`: minimal single-page workspace shell with task, habit, care, and AI assistant regions.
+- `app/globals.css`: Tailwind entry point and base page styles.
+- `types/task.ts`: task entity and task input types.
+- `types/trash.ts`: trash entry type.
+- `lib/domain/tasks.ts`: task completion, subtask progress, and due-state business rules.
+- `lib/data/json-store.ts`: JSON file initialization, read, update, and atomic write helper.
+- `lib/data/repositories.ts`: versioned repository factory for tasks, trash, habits, habit check-ins, care records, and AI logs.
+- `tests/`: unit tests for task domain rules, the initial JSON data layer, and the workspace page shell.
+
+The app has the first login/session shell. Feature data APIs and real AI workflows are still being added.
 
 ## Documentation Maintenance
 
