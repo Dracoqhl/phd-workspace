@@ -191,9 +191,9 @@ The project is in MVP implementation. Current dev status includes a versioned da
 - `data.example/`: versioned empty collection JSON examples for all runtime data files.
 - `.eslintrc.cjs`: ESLint configuration for the current TypeScript-only scaffolding stage.
 - `app/layout.tsx`: root App Router layout and metadata.
-- `app/page.tsx`: single-page workspace shell with care, habit, task, and AI assistant regions.
+- `app/page.tsx`: single-page workspace shell with care, habit, task, AI assistant regions, and the current habit business date in the page header.
 - `components/tasks/TaskManager.tsx`: compact hierarchical task table connected to `/api/tasks`, including top-level task create/delete, one-layer subtask create/delete, expandable subtasks, two-step select-then-edit title editing with blur save, priority color-dot editing, due-date calendar editing, readable English status labels, completed top-level task hiding, and due-date highlighting.
-- `components/habits/HabitManager.tsx`: compact daily habit list connected to `/api/habits`, including create with daily target 1-5, two-step select-then-edit habit names with blur save, trash-icon deactivation, circular complete/cancel controls, header progress, and multi-check cancellation behavior. Completed habits are greyed out, struck through, and sorted after incomplete habits.
+- `components/habits/HabitManager.tsx`: compact daily habit list connected to `/api/habits`, including a panel-level edit mode, bottom-only new-habit form, row-wide name/target maintenance in edit mode, clickable progress fractions for target changes in normal mode, trash-icon deactivation, circular complete/cancel controls, header progress, and multi-check cancellation behavior. Completed habits are greyed out, struck through, and sorted after incomplete habits.
 - `app/globals.css`: Tailwind entry point and base page styles.
 - `types/task.ts`: task entity and task input types.
 - `types/habit.ts`: habit, habit check-in, habit input, and API list item types.

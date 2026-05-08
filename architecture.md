@@ -154,10 +154,10 @@ Stage B implemented the first runnable App Router shell and the current task sli
 
 - `app/layout.tsx`: root document shell, metadata, and global CSS import.
 - `app/page.tsx`: MVP workspace page entry point.
-- `app/workspace-page-content.tsx`: authenticated workspace layout that composes care, habit, task, and AI assistant regions.
+- `app/workspace-page-content.tsx`: authenticated workspace layout that composes care, habit, task, and AI assistant regions, with the current habit business date shown in the page header.
 - `app/globals.css`: Tailwind directives and base page styling.
 - `components/tasks/TaskManager.tsx`: compact hierarchical task table backed by `/api/tasks`, including top-level task create/delete, one-layer subtask create/delete, expandable subtasks, two-step select-then-edit title editing with blur save, priority swatch editing, due-date calendar editing, readable English status labels, completed top-level task hiding, and due-state highlighting.
-- `components/habits/HabitManager.tsx`: compact habit list backed by `/api/habits`, including habit create with daily target 1-5, two-step select-then-edit names with blur save, trash-icon deactivate, circular check-in/cancel controls, header progress, completed-row grey/strikethrough styling, and completed-row sorting.
+- `components/habits/HabitManager.tsx`: compact habit list backed by `/api/habits`, including panel-level edit mode, bottom-only habit creation with daily target 1-5, editable name and target fields in edit mode, clickable progress fractions for target edits in normal mode, trash-icon deactivate, circular check-in/cancel controls, header progress, completed-row grey/strikethrough styling, and completed-row sorting.
 - `tests/unit/app/page.test.tsx`: verifies that the workspace regions render.
 - `tests/unit/tasks/task-manager.test.tsx`: verifies compact task table loading, expand/collapse, inline title editing, priority and due-date editing, completed hiding, subtask creation, and deletion behavior.
 

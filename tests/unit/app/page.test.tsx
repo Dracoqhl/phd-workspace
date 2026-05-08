@@ -10,6 +10,10 @@ import {
 } from "@/lib/auth/session";
 import { cookies } from "next/headers";
 
+vi.mock("@/lib/domain/habits", () => ({
+  getHabitBusinessDate: () => "2026-05-08"
+}));
+
 vi.mock("next/headers", () => ({
   cookies: vi.fn()
 }));
@@ -49,6 +53,7 @@ describe("workspace page shell", () => {
     render(<WorkspacePageContent authenticated={true} />);
 
     expect(screen.getByRole("heading", { name: "博士工作台" })).toBeInTheDocument();
+    expect(screen.getByText("2026-05-08")).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "任务管理" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "每日健康习惯" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "心灵关怀" })).toBeInTheDocument();

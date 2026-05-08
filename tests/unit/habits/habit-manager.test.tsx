@@ -67,9 +67,17 @@ function mockFetch(items: HabitListItem[]) {
       }, { status: 201 });
     }
 
-    if (url === "/api/habits/habit_1" && method === "PATCH") {
+    if (url.startsWith("/api/habits/") && method === "PATCH" && !url.includes("deactivate")) {
+      const id = url.split("/").at(-1) ?? "habit_1";
       const body = parseBody(init);
-      return Response.json({ habit: habit({ ...body, id: "habit_1" } as Partial<Habit>) });
+      const original = items.find((item) => item.habit.id === id)?.habit;
+      return Response.json({
+        habit: habit({
+          ...original,
+          ...body,
+          id
+        } as Partial<Habit>)
+      });
     }
 
     if (url === "/api/habits/habit_1/deactivate" && method === "PATCH") {
@@ -119,25 +127,68 @@ describe("HabitManager", () => {
     expect(screen.getByRole("progressbar", { name: "Habit check-in progress" })).toHaveAttribute("aria-valuenow", "1");
   });
 
-  it("creates a habit from the compact form with a daily target and no description field", async () => {
+  it("keeps the create form hidden until the panel enters edit mode", async () => {
     const fetchMock = mockFetch([]);
 
     render(<HabitManager />);
 
+    expect(screen.queryByLabelText("Habit name")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Daily target")).not.toBeInTheDocument();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Edit habits" }));
+
     expect(screen.queryByLabelText("Habit icon")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Habit description")).not.toBeInTheDocument();
 
-    fireEvent.change(await screen.findByLabelText("Habit name"), { target: { value: "Morning run" } });
-    fireEvent.change(screen.getByLabelText("Daily target"), { target: { value: "3" } });
+    fireEvent.change(screen.getByLabelText("New habit name"), { target: { value: "Morning run" } });
+    fireEvent.change(screen.getByLabelText("New habit daily target"), { target: { value: "3" } });
     fireEvent.click(screen.getByRole("button", { name: "Add Habit" }));
 
-    expect(await screen.findByText("Morning run")).toBeInTheDocument();
+    expect(await screen.findByDisplayValue("Morning run")).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/habits",
       expect.objectContaining({
         method: "POST",
         body: JSON.stringify({ name: "Morning run", description: "", icon: "", targetCount: 3 })
       })
+    );
+  });
+
+  it("edits all habit rows in panel edit mode and saves changed targets", async () => {
+    const fetchMock = mockFetch([{ habit: habit({ id: "habit_1", name: "Walk", targetCount: 2 }), checkin: null, isCompleted: false }]);
+
+    render(<HabitManager />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Edit habits" }));
+
+    fireEvent.change(screen.getByLabelText("Habit name for Walk"), { target: { value: "Drink water" } });
+    fireEvent.blur(screen.getByLabelText("Habit name for Walk"));
+
+    expect(await screen.findByDisplayValue("Drink water")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/habits/habit_1",
+      expect.objectContaining({ method: "PATCH", body: expect.stringContaining("Drink water") })
+    );
+
+    fireEvent.change(screen.getByLabelText("Daily target for Drink water"), { target: { value: "5" } });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/habits/habit_1",
+      expect.objectContaining({ method: "PATCH", body: expect.stringContaining('"targetCount":5') })
+    );
+  });
+
+  it("updates a habit target from the progress fraction in normal mode", async () => {
+    const fetchMock = mockFetch([{ habit: habit({ id: "habit_1", name: "Walk", targetCount: 3 }), checkin: checkin({ completedCount: 1, isCompleted: false }), isCompleted: false }]);
+
+    render(<HabitManager />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Edit daily target for Walk" }));
+    fireEvent.change(screen.getByLabelText("Daily target for Walk"), { target: { value: "4" } });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/habits/habit_1",
+      expect.objectContaining({ method: "PATCH", body: expect.stringContaining('"targetCount":4') })
     );
   });
 
@@ -193,17 +244,11 @@ describe("HabitManager", () => {
 
     render(<HabitManager />);
 
-    expect(screen.queryByRole("button", { name: "Edit Walk" })).not.toBeInTheDocument();
+    fireEvent.click(await screen.findByRole("button", { name: "Edit habits" }));
+    fireEvent.change(screen.getByLabelText("Habit name for Walk"), { target: { value: "Evening walk" } });
+    fireEvent.blur(screen.getByLabelText("Habit name for Walk"));
 
-    fireEvent.click(await screen.findByText("Walk"));
-    expect(screen.getByRole("listitem")).toHaveAttribute("aria-selected", "true");
-    expect(screen.queryByLabelText("Edit habit name for Walk")).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByText("Walk"));
-    fireEvent.change(screen.getByLabelText("Edit habit name for Walk"), { target: { value: "Evening walk" } });
-    fireEvent.blur(screen.getByLabelText("Edit habit name for Walk"));
-
-    expect(await screen.findByText("Evening walk")).toBeInTheDocument();
+    expect(await screen.findByDisplayValue("Evening walk")).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/habits/habit_1",
       expect.objectContaining({ method: "PATCH", body: expect.stringContaining("Evening walk") })
