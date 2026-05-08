@@ -182,7 +182,7 @@ The project is in MVP implementation. Current dev status includes a versioned da
 - `.eslintrc.cjs`: ESLint configuration for the current TypeScript-only scaffolding stage.
 - `app/layout.tsx`: root App Router layout and metadata.
 - `app/page.tsx`: single-page workspace shell with care, habit, task, and AI assistant regions.
-- `components/tasks/TaskManager.tsx`: client task manager connected to `/api/tasks`, including top-level task create/edit/delete, one-layer subtask create/edit/delete, status/priority/due-date editing, readable English status and priority labels, completed top-level task hiding, and due-date highlighting.
+- `components/tasks/TaskManager.tsx`: compact hierarchical task table connected to `/api/tasks`, including top-level task create/delete, one-layer subtask create/delete, expandable subtasks, inline title editing, priority color-dot editing, due-date calendar editing, readable English status labels, completed top-level task hiding, and due-date highlighting.
 - `app/globals.css`: Tailwind entry point and base page styles.
 - `types/task.ts`: task entity and task input types.
 - `types/trash.ts`: trash entry type.

@@ -155,9 +155,9 @@ Stage B implemented the first runnable App Router shell and the current task sli
 - `app/page.tsx`: MVP workspace page entry point.
 - `app/workspace-page-content.tsx`: authenticated workspace layout that composes care, habit, task, and AI assistant regions.
 - `app/globals.css`: Tailwind directives and base page styling.
-- `components/tasks/TaskManager.tsx`: client task management UI backed by `/api/tasks`, including top-level task CRUD, one-layer subtask CRUD, status/priority/due-date editing, readable English labels, completed top-level task hiding, and due-state highlighting.
+- `components/tasks/TaskManager.tsx`: compact hierarchical task table backed by `/api/tasks`, including top-level task create/delete, one-layer subtask create/delete, expandable subtasks, inline title editing, priority swatch editing, due-date calendar editing, readable English status labels, completed top-level task hiding, and due-state highlighting.
 - `tests/unit/app/page.test.tsx`: verifies that the workspace regions render.
-- `tests/unit/tasks/task-manager.test.tsx`: verifies task manager loading, creation, editing, completed hiding, subtask CRUD, and deletion behavior.
+- `tests/unit/tasks/task-manager.test.tsx`: verifies compact task table loading, expand/collapse, inline title editing, priority and due-date editing, completed hiding, subtask creation, and deletion behavior.
 
 Current development also includes the versioned data foundation, auth routes, login shell, protected task APIs, and task UI. Habit APIs, care APIs, and real AI workflows should be added in later stages.
 
