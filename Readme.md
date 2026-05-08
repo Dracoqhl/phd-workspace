@@ -188,9 +188,10 @@ The project is in initial scaffolding. Current dev status includes a versioned d
 - `lib/domain/tasks.ts`: task completion, subtask progress, and due-state business rules.
 - `lib/data/json-store.ts`: JSON file initialization, read, update, and atomic write helper.
 - `lib/data/repositories.ts`: versioned repository factory for tasks, trash, habits, habit check-ins, care records, and AI logs.
-- `tests/`: unit tests for task domain rules, the initial JSON data layer, and the workspace page shell.
+- `app/api/tasks/**/route.ts`: protected task list, create, detail, update, delete, and subtask creation endpoints.
+- `tests/`: unit tests for task domain rules, JSON data layer, auth, task routes, and the workspace page shell.
 
-The app has the first login/session shell. Feature data APIs and real AI workflows are still being added.
+The app has the first login/session shell and protected task APIs. Task UI, habit APIs, care APIs, and real AI workflows are still being added.
 
 ## Documentation Maintenance
 

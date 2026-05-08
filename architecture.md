@@ -144,6 +144,7 @@ Stage A implemented the first tested backend-only modules, and the current found
 - `lib/data/data-dir.ts`: `DATA_DIR` resolver and MVP runtime JSON file list.
 - `lib/auth/password.ts` and `lib/auth/session.ts`: password and 30-day session helpers using `APP_PASSWORD` and `SESSION_SECRET`.
 - `app/api/auth/*/route.ts`: login, logout, and session route handlers.
+- `app/api/tasks/**/route.ts`: protected task list, create, detail, update, delete, and subtask creation route handlers.
 
 `lib/data/repositories.ts` can later split into `lib/data/repositories/*` files when each feature repository grows. For now it remains a single facade for the foundation slice.
 
@@ -154,7 +155,7 @@ Stage B implemented the first runnable App Router shell:
 - `app/globals.css`: Tailwind directives and base page styling.
 - `tests/unit/app/page.test.tsx`: verifies that the workspace regions render.
 
-Current development also includes the versioned data foundation, auth routes, and login shell. Feature data APIs and real AI workflows should be added in later stages.
+Current development also includes the versioned data foundation, auth routes, login shell, and protected task APIs. Task UI, habit APIs, care APIs, and real AI workflows should be added in later stages.
 
 ## Layer Responsibilities
 

@@ -90,6 +90,89 @@ describe("repositories", () => {
     expect(trashFile.items).toHaveLength(1);
   });
 
+  it("gets and updates an existing task without changing child tasks", async () => {
+    tempDir = await mkdtemp(join(tmpdir(), "phd-repos-"));
+    const repos = createRepositories(tempDir);
+
+    const parent = await repos.tasks.create({
+      title: "Paper",
+      description: "Initial",
+      status: "not_started",
+      priority: "medium",
+      dueDate: null,
+      parentTaskId: null
+    });
+    const child = await repos.tasks.create({
+      title: "Outline",
+      description: "",
+      status: "not_started",
+      priority: "low",
+      dueDate: null,
+      parentTaskId: parent.id
+    });
+
+    await expect(repos.tasks.get(parent.id)).resolves.toEqual(parent);
+
+    const updated = await repos.tasks.update(parent.id, {
+      title: "Paper draft",
+      description: "Revised",
+      status: "completed",
+      priority: "high",
+      dueDate: "2026-05-20"
+    });
+
+    expect(updated).not.toBeNull();
+    if (!updated) {
+      throw new Error("Expected task to be updated");
+    }
+
+    expect(updated).toMatchObject({
+      id: parent.id,
+      title: "Paper draft",
+      description: "Revised",
+      status: "completed",
+      priority: "high",
+      dueDate: "2026-05-20",
+      parentTaskId: null
+    });
+    expect(updated.completedAt).toEqual(expect.any(String));
+
+    const tasks = await repos.tasks.list();
+    expect(tasks.find((task) => task.id === child.id)?.status).toBe("not_started");
+  });
+
+  it("clears completedAt when an updated task leaves completed status", async () => {
+    tempDir = await mkdtemp(join(tmpdir(), "phd-repos-"));
+    const repos = createRepositories(tempDir);
+
+    const task = await repos.tasks.create({
+      title: "Read",
+      description: "",
+      status: "completed",
+      priority: "medium",
+      dueDate: null,
+      parentTaskId: null
+    });
+
+    const updated = await repos.tasks.update(task.id, { status: "in_progress" });
+
+    expect(updated).not.toBeNull();
+    if (!updated) {
+      throw new Error("Expected task to be updated");
+    }
+
+    expect(updated.status).toBe("in_progress");
+    expect(updated.completedAt).toBeNull();
+  });
+
+  it("returns null when getting or updating a missing task", async () => {
+    tempDir = await mkdtemp(join(tmpdir(), "phd-repos-"));
+    const repos = createRepositories(tempDir);
+
+    await expect(repos.tasks.get("missing")).resolves.toBeNull();
+    await expect(repos.tasks.update("missing", { title: "Nope" })).resolves.toBeNull();
+  });
+
   it("deletes a parent task and its direct subtasks into trash", async () => {
     tempDir = await mkdtemp(join(tmpdir(), "phd-repos-"));
     const repos = createRepositories(tempDir);

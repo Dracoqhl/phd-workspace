@@ -5,7 +5,7 @@ import { JsonStore } from "@/lib/data/json-store";
 import type { AiActionLog, AiActionStatus } from "@/types/assistant";
 import type { CareRecord, CareSource } from "@/types/care";
 import type { Habit, HabitCheckin } from "@/types/habit";
-import type { CreateTaskInput, Task } from "@/types/task";
+import type { CreateTaskInput, Task, UpdateTaskInput } from "@/types/task";
 import type { TrashEntry } from "@/types/trash";
 
 export async function initializeDataFiles(dataDir: string): Promise<void> {
@@ -44,6 +44,11 @@ class TaskRepository {
 
   async list(): Promise<Task[]> {
     return (await this.store.read()).items;
+  }
+
+  async get(taskId: string): Promise<Task | null> {
+    const tasks = await this.list();
+    return tasks.find((task) => task.id === taskId) ?? null;
   }
 
   async create(input: CreateTaskInput): Promise<Task> {
@@ -101,6 +106,38 @@ class TaskRepository {
 
         return tasks.filter((item) => !deletedTasks.some((deletedTask) => deletedTask.id === item.id));
       });
+    });
+  }
+
+  async update(taskId: string, input: UpdateTaskInput): Promise<Task | null> {
+    return this.enqueueMutation(async () => {
+      let updatedTask: Task | null = null;
+
+      await this.store.updateItems((tasks) => {
+        const now = new Date().toISOString();
+
+        return tasks.map((task) => {
+          if (task.id !== taskId) {
+            return task;
+          }
+
+          const nextStatus = input.status ?? task.status;
+          const wasCompleted = task.status === "completed";
+          const isCompleted = nextStatus === "completed";
+          const nextTask: Task = {
+            ...task,
+            ...input,
+            status: nextStatus,
+            updatedAt: now,
+            completedAt: isCompleted ? (wasCompleted ? task.completedAt ?? now : now) : null
+          };
+
+          updatedTask = nextTask;
+          return nextTask;
+        });
+      });
+
+      return updatedTask;
     });
   }
 
