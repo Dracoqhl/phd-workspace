@@ -146,6 +146,7 @@ Stage A implemented the first tested backend-only modules, and the current found
 - `lib/auth/password.ts` and `lib/auth/session.ts`: password and 30-day session helpers using `APP_PASSWORD` and `SESSION_SECRET`.
 - `app/api/auth/*/route.ts`: login, logout, and session route handlers.
 - `app/api/tasks/**/route.ts`: protected task list, create, detail, update, delete, and subtask creation route handlers.
+- `app/api/habits/**/route.ts`: protected habit list, create, update, deactivate, daily check-in, and daily check-in cancellation route handlers.
 
 `lib/data/repositories.ts` can later split into `lib/data/repositories/*` files when each feature repository grows. For now it remains a single facade for the foundation slice.
 
@@ -156,10 +157,11 @@ Stage B implemented the first runnable App Router shell and the current task sli
 - `app/workspace-page-content.tsx`: authenticated workspace layout that composes care, habit, task, and AI assistant regions.
 - `app/globals.css`: Tailwind directives and base page styling.
 - `components/tasks/TaskManager.tsx`: compact hierarchical task table backed by `/api/tasks`, including top-level task create/delete, one-layer subtask create/delete, expandable subtasks, inline title editing, priority swatch editing, due-date calendar editing, readable English status labels, completed top-level task hiding, and due-state highlighting.
+- `components/habits/HabitManager.tsx`: compact habit list backed by `/api/habits`, including habit create, inline edit, deactivate, check-in, cancel check-in, completed-row grey/strikethrough styling, and completed-row sorting.
 - `tests/unit/app/page.test.tsx`: verifies that the workspace regions render.
 - `tests/unit/tasks/task-manager.test.tsx`: verifies compact task table loading, expand/collapse, inline title editing, priority and due-date editing, completed hiding, subtask creation, and deletion behavior.
 
-Current development also includes the versioned data foundation, auth routes, login shell, protected task APIs, and task UI. Habit APIs, care APIs, and real AI workflows should be added in later stages.
+Current development also includes the versioned data foundation, auth routes, login shell, protected task APIs, task UI, protected habit APIs, and habit UI. Care APIs and real AI workflows should be added in later stages.
 
 ## Layer Responsibilities
 
@@ -208,6 +210,7 @@ Owns business rules that are not tied to HTTP or React.
 - Task rules, habit rules, check-in rules, and care-record rules live here.
 - Parent and subtask completion must remain independent.
 - Due-date highlighting rules belong here or in a small shared helper.
+- Daily habit check-ins use a 02:00 server-time day boundary, so 00:00-01:59 belongs to the previous habit business date.
 
 ### `lib/ai/`
 

@@ -24,6 +24,10 @@ vi.mock("@/components/tasks/TaskManager", () => ({
   TaskManager: () => <section aria-label="任务管理">Task manager</section>
 }));
 
+vi.mock("@/components/habits/HabitManager", () => ({
+  HabitManager: () => <section aria-label="每日健康习惯">Habit manager</section>
+}));
+
 const mockedCookies = vi.mocked(cookies);
 const mockedGetSessionSecret = vi.mocked(getSessionSecret);
 const mockedVerifySessionToken = vi.mocked(verifySessionToken);

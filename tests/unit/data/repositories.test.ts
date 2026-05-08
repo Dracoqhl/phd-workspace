@@ -340,18 +340,14 @@ describe("repositories", () => {
     const repos = createRepositories(tempDir);
 
     const habit = {
-      id: "habit-1",
       name: "Write",
       description: "",
       icon: "pen",
-      isActive: true,
-      createdAt: "now",
-      updatedAt: "now"
     };
 
     expect("read" in repos.habits).toBe(false);
-    await expect(repos.habits.add(habit)).resolves.toEqual(habit);
-    await expect(repos.habits.list()).resolves.toEqual([habit]);
+    await expect(repos.habits.create(habit)).resolves.toMatchObject({ ...habit, isActive: true });
+    await expect(repos.habits.list()).resolves.toEqual([expect.objectContaining({ ...habit, isActive: true })]);
   });
 
   it("rejects malformed persisted task items", async () => {

@@ -22,6 +22,7 @@ This file stores maintainer context for future development sessions.
 - Store the access password on the server, preferably through `APP_PASSWORD`.
 - Store data in multiple local JSON files, configured by `DATA_DIR`.
 - Use server timezone for all "today" behavior and daily check-ins.
+- Daily habit check-ins refresh at 02:00 server time; 00:00-01:59 belongs to the previous habit business date.
 - Use `YYYY-MM-DD` for date-only fields.
 - AI may propose operations for all app content, but every create/update/delete/check-in operation must be explicitly confirmed by the user before data is written.
 - Parent task completion and child task completion are independent.
@@ -36,6 +37,7 @@ This file stores maintainer context for future development sessions.
 
 - Mental care: one AI-generated gentle care message per day, refresh, daily check-in, optional mood note.
 - Habits: create/edit/deactivate habits, daily complete/uncomplete check-ins.
+- Completed habit rows should be greyed out, struck through, and sorted after incomplete habits. Cancelling a check-in should restore the habit near the front of the active list.
 - Tasks: parent tasks plus one level of subtasks, status, priority, due date, filters, completed visibility.
 - AI assistant: persistent right panel, chat, API test, structured operation proposals, user confirmation cards, operation logs.
 - Local persistence: JSON files with safe write behavior.

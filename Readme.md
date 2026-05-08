@@ -2,7 +2,7 @@
 
 博士工作台是一个轻量级个人博士工作台，用于管理科研任务、每日健康习惯、心灵关怀打卡，并通过页面内 AI 助手辅助梳理和维护任务体系。
 
-当前项目处于 MVP 增量开发阶段，已包含 versioned data foundation、auth routes、login shell、protected task API 和任务管理 UI MVP。
+当前项目处于 MVP 增量开发阶段，已包含 versioned data foundation、auth routes、login shell、protected task API、任务管理 UI MVP 和每日健康习惯 MVP。
 
 ## MVP Scope
 
@@ -181,7 +181,7 @@ git remote add origin https://github.com/<your-user>/<your-repo>.git
 
 ## Development Status
 
-The project is in MVP implementation. Current dev status includes a versioned data foundation, auth routes, a login shell, protected task APIs, and the first task management UI. Stage A added the first tested server-side modules, Stage B added the first runnable Next.js app shell, and the current task slice connects the shell to local JSON task data:
+The project is in MVP implementation. Current dev status includes a versioned data foundation, auth routes, a login shell, protected task APIs, task management UI, and daily habit management UI. Stage A added the first tested server-side modules, Stage B added the first runnable Next.js app shell, the task slice connects the shell to local JSON task data, and Stage C adds daily health habits:
 
 - `AGENT.md`: maintainer context and confirmed decisions.
 - `architecture.md`: planned directory layout and file placement rules.
@@ -193,16 +193,20 @@ The project is in MVP implementation. Current dev status includes a versioned da
 - `app/layout.tsx`: root App Router layout and metadata.
 - `app/page.tsx`: single-page workspace shell with care, habit, task, and AI assistant regions.
 - `components/tasks/TaskManager.tsx`: compact hierarchical task table connected to `/api/tasks`, including top-level task create/delete, one-layer subtask create/delete, expandable subtasks, inline title editing, priority color-dot editing, due-date calendar editing, readable English status labels, completed top-level task hiding, and due-date highlighting.
+- `components/habits/HabitManager.tsx`: compact daily habit list connected to `/api/habits`, including create, inline edit, deactivate, complete, and cancel check-in behavior. Completed habits are greyed out, struck through, and sorted after incomplete habits.
 - `app/globals.css`: Tailwind entry point and base page styles.
 - `types/task.ts`: task entity and task input types.
+- `types/habit.ts`: habit, habit check-in, habit input, and API list item types.
 - `types/trash.ts`: trash entry type.
 - `lib/domain/tasks.ts`: task completion, subtask progress, and due-state business rules.
+- `lib/domain/habits.ts`: habit business-date helper using a 02:00 server-time day boundary and habit list sorting rules.
 - `lib/data/json-store.ts`: JSON file initialization, read, update, and atomic write helper.
 - `lib/data/repositories.ts`: versioned repository factory for tasks, trash, habits, habit check-ins, care records, and AI logs.
 - `app/api/tasks/**/route.ts`: protected task list, create, detail, update, delete, and subtask creation endpoints.
-- `tests/`: unit tests for task domain rules, JSON data layer, auth, task routes, workspace page shell, and task manager UI behavior.
+- `app/api/habits/**/route.ts`: protected habit list, create, update, deactivate, check-in, and check-in cancellation endpoints.
+- `tests/`: unit tests for task and habit domain rules, JSON data layer, auth, task and habit routes, workspace page shell, and task/habit manager UI behavior.
 
-The app has the first login/session shell, protected task APIs, and task management UI. Habit APIs, care APIs, and real AI workflows are still being added.
+The app has the first login/session shell, protected task APIs, task management UI, protected habit APIs, and daily habit UI. Care APIs and real AI workflows are still being added.
 
 ## Documentation Maintenance
 

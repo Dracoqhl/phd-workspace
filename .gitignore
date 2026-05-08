@@ -19,6 +19,7 @@ tsconfig.tsbuildinfo
 # Runtime data must live outside the repo.
 /data/
 /runtime-data/
+/.runtime-data/
 *.local.json
 
 # Non-standard Git metadata workaround directories, if ever used in restricted environments.

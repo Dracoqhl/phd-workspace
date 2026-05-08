@@ -1,14 +1,11 @@
 import { LoginForm } from "@/app/login-form";
+import { HabitManager } from "@/components/habits/HabitManager";
 import { TaskManager } from "@/components/tasks/TaskManager";
 
 const workspaceSections = [
   {
     title: "心灵关怀",
     description: "这里将显示每日关怀内容、刷新按钮、打卡和心情备注。"
-  },
-  {
-    title: "每日健康习惯",
-    description: "这里将显示每日习惯、今日打卡状态和停用入口。"
   },
   {
     title: "任务管理",
@@ -46,7 +43,7 @@ function WorkspaceSections() {
   return (
     <div className="grid gap-4">
       <div className="grid gap-4 xl:grid-cols-2">
-        {workspaceSections.slice(0, 2).map((section) => (
+        {workspaceSections.slice(0, 1).map((section) => (
           <section
             aria-label={section.title}
             className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm"
@@ -56,6 +53,7 @@ function WorkspaceSections() {
             <p className="mt-3 text-sm leading-6 text-slate-600">{section.description}</p>
           </section>
         ))}
+        <HabitManager />
       </div>
       <TaskManager />
     </div>

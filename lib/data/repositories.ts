@@ -4,7 +4,7 @@ import { MVP_DATA_FILES } from "@/lib/data/data-dir";
 import { JsonStore } from "@/lib/data/json-store";
 import type { AiActionLog, AiActionStatus } from "@/types/assistant";
 import type { CareRecord, CareSource } from "@/types/care";
-import type { Habit, HabitCheckin } from "@/types/habit";
+import type { CreateHabitInput, Habit, HabitCheckin, UpdateHabitInput } from "@/types/habit";
 import type { CreateTaskInput, Task, UpdateTaskInput } from "@/types/task";
 import type { TrashEntry } from "@/types/trash";
 
@@ -18,13 +18,15 @@ export function createRepositories(dataDir: string) {
   );
   const tasks = new TaskRepository(new JsonStore<Task>(dataDir, "tasks.json", { validateItem: isTask }), trash);
 
+  const habitCheckins = new HabitCheckinRepository(
+    new JsonStore<HabitCheckin>(dataDir, "habit-checkins.json", { validateItem: isHabitCheckin })
+  );
+
   return {
     tasks,
     trash,
-    habits: new CollectionRepository(new JsonStore<Habit>(dataDir, "habits.json", { validateItem: isHabit })),
-    habitCheckins: new CollectionRepository(
-      new JsonStore<HabitCheckin>(dataDir, "habit-checkins.json", { validateItem: isHabitCheckin })
-    ),
+    habits: new HabitRepository(new JsonStore<Habit>(dataDir, "habits.json", { validateItem: isHabit })),
+    habitCheckins,
     careRecords: new CollectionRepository(
       new JsonStore<CareRecord>(dataDir, "care-records.json", { validateItem: isCareRecord })
     ),
@@ -168,6 +170,157 @@ class TrashRepository {
   async addMany(entries: TrashEntry[]): Promise<TrashEntry[]> {
     await this.store.updateItems((existingEntries) => [...existingEntries, ...entries]);
     return entries;
+  }
+}
+
+class HabitRepository {
+  private mutationQueue: Promise<unknown> = Promise.resolve();
+
+  constructor(private readonly store: JsonStore<Habit>) {}
+
+  async list(): Promise<Habit[]> {
+    return (await this.store.read()).items;
+  }
+
+  async get(habitId: string): Promise<Habit | null> {
+    const habits = await this.list();
+    return habits.find((habit) => habit.id === habitId) ?? null;
+  }
+
+  async create(input: CreateHabitInput): Promise<Habit> {
+    return this.enqueueMutation(async () => {
+      const now = new Date().toISOString();
+      const habit: Habit = {
+        id: randomUUID(),
+        name: input.name,
+        description: input.description,
+        icon: input.icon,
+        isActive: true,
+        createdAt: now,
+        updatedAt: now
+      };
+
+      await this.store.updateItems((habits) => [...habits, habit]);
+      return habit;
+    });
+  }
+
+  async update(habitId: string, input: UpdateHabitInput): Promise<Habit | null> {
+    return this.enqueueMutation(async () => {
+      let updatedHabit: Habit | null = null;
+
+      await this.store.updateItems((habits) => {
+        const now = new Date().toISOString();
+
+        return habits.map((habit) => {
+          if (habit.id !== habitId) {
+            return habit;
+          }
+
+          updatedHabit = { ...habit, ...input, updatedAt: now };
+          return updatedHabit;
+        });
+      });
+
+      return updatedHabit;
+    });
+  }
+
+  async deactivate(habitId: string): Promise<Habit | null> {
+    return this.update(habitId, { isActive: false } as UpdateHabitInput & { isActive: boolean });
+  }
+
+  private enqueueMutation<T>(operation: () => Promise<T>): Promise<T> {
+    const next = this.mutationQueue.then(operation, operation);
+
+    this.mutationQueue = next.then(
+      () => undefined,
+      () => undefined
+    );
+
+    return next;
+  }
+}
+
+class HabitCheckinRepository {
+  private mutationQueue: Promise<unknown> = Promise.resolve();
+
+  constructor(private readonly store: JsonStore<HabitCheckin>) {}
+
+  async list(): Promise<HabitCheckin[]> {
+    return (await this.store.read()).items;
+  }
+
+  async get(habitId: string, date: string): Promise<HabitCheckin | null> {
+    const checkins = await this.list();
+    return checkins.find((checkin) => checkin.habitId === habitId && checkin.date === date) ?? null;
+  }
+
+  async complete(habitId: string, date: string): Promise<{ checkin: HabitCheckin; created: boolean }> {
+    return this.enqueueMutation(async () => {
+      let checkin: HabitCheckin | null = null;
+      let created = false;
+
+      await this.store.updateItems((checkins) => {
+        const now = new Date().toISOString();
+        const existing = checkins.find((item) => item.habitId === habitId && item.date === date);
+
+        if (existing) {
+          checkin = { ...existing, isCompleted: true, updatedAt: now };
+          return checkins.map((item) => (item.id === existing.id ? checkin! : item));
+        }
+
+        created = true;
+        checkin = {
+          id: randomUUID(),
+          habitId,
+          date,
+          isCompleted: true,
+          note: "",
+          createdAt: now,
+          updatedAt: now
+        };
+
+        return [...checkins, checkin];
+      });
+
+      if (!checkin) {
+        throw new Error("Habit check-in was not created");
+      }
+
+      return { checkin, created };
+    });
+  }
+
+  async delete(habitId: string, date: string): Promise<boolean> {
+    return this.enqueueMutation(async () => {
+      let deleted = false;
+
+      await this.store.updateItems((checkins) => {
+        const next = checkins.filter((checkin) => {
+          const matches = checkin.habitId === habitId && checkin.date === date;
+          if (matches) {
+            deleted = true;
+          }
+          return !matches;
+        });
+
+        return next;
+      });
+
+      return deleted;
+    });
+  }
+
+  private enqueueMutation<T>(operation: () => Promise<T>): Promise<T> {
+    const next = this.mutationQueue.then(operation, operation);
+
+    this.mutationQueue = next.then(
+      () => undefined,
+      () => undefined
+    );
+
+    return next;
   }
 }
 

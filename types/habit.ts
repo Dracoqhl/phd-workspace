@@ -8,6 +8,18 @@ export interface Habit {
   updatedAt: string;
 }
 
+export interface CreateHabitInput {
+  name: string;
+  description: string;
+  icon: string;
+}
+
+export interface UpdateHabitInput {
+  name?: string;
+  description?: string;
+  icon?: string;
+}
+
 export interface HabitCheckin {
   id: string;
   habitId: string;
@@ -16,4 +28,10 @@ export interface HabitCheckin {
   note: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface HabitListItem {
+  habit: Habit;
+  checkin: HabitCheckin | null;
+  isCompleted: boolean;
 }
