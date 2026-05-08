@@ -61,9 +61,9 @@ export function HabitManager() {
   }, []);
 
   const sortedHabits = useMemo(() => sortHabitListItems(habits, restoredHabitId), [habits, restoredHabitId]);
-  const completedCount = habits.filter((item) => item.isCompleted).length;
-  const totalCount = habits.length;
-  const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+  const checkedCount = habits.reduce((sum, item) => sum + (item.checkin?.completedCount ?? 0), 0);
+  const targetTotal = habits.reduce((sum, item) => sum + item.habit.targetCount, 0);
+  const progressPercent = targetTotal > 0 ? Math.round((checkedCount / targetTotal) * 100) : 0;
 
   async function createHabit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -217,10 +217,10 @@ export function HabitManager() {
         </div>
         <div className="grid gap-1.5">
           <div className="flex items-center justify-between text-xs text-slate-500">
-            <span>{completedCount}/{totalCount} checked</span>
+            <span>{checkedCount}/{targetTotal} checked</span>
             <span>{progressPercent}%</span>
           </div>
-          <div aria-label="Habit check-in progress" aria-valuemax={totalCount} aria-valuemin={0} aria-valuenow={completedCount} className="h-1.5 overflow-hidden rounded-full bg-slate-100" role="progressbar">
+          <div aria-label="Habit check-in progress" aria-valuemax={targetTotal} aria-valuemin={0} aria-valuenow={checkedCount} className="h-1.5 overflow-hidden rounded-full bg-slate-100" role="progressbar">
             <div className="h-full rounded-full bg-emerald-600 transition-all" style={{ width: `${progressPercent}%` }} />
           </div>
         </div>

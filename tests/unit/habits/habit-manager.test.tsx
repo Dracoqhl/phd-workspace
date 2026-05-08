@@ -183,8 +183,15 @@ describe("HabitManager", () => {
 
     render(<HabitManager />);
 
+    expect(await screen.findByText("1/3 checked")).toBeInTheDocument();
+    expect(screen.getByRole("progressbar", { name: "Habit check-in progress" })).toHaveAttribute("aria-valuemax", "3");
+
     fireEvent.click(await screen.findByRole("button", { name: "Edit daily target for Walk" }));
     fireEvent.change(screen.getByLabelText("Daily target for Walk"), { target: { value: "4" } });
+
+    expect(await screen.findByText("1/4 checked")).toBeInTheDocument();
+    expect(screen.getByRole("progressbar", { name: "Habit check-in progress" })).toHaveAttribute("aria-valuemax", "4");
+    expect(screen.getByRole("progressbar", { name: "Habit check-in progress" })).toHaveAttribute("aria-valuenow", "1");
 
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/habits/habit_1",
@@ -207,10 +214,14 @@ describe("HabitManager", () => {
     fireEvent.click(incompleteButton);
 
     expect(await screen.findByText("1/3")).toBeInTheDocument();
+    expect(screen.getByText("1/4 checked")).toBeInTheDocument();
+    expect(screen.getByRole("progressbar", { name: "Habit check-in progress" })).toHaveAttribute("aria-valuenow", "1");
     expect(fetchMock).toHaveBeenCalledWith("/api/habits/habit_1/checkins", expect.objectContaining({ method: "POST" }));
 
     fireEvent.click(screen.getByRole("button", { name: "Mark Walk progress" }));
     expect(await screen.findByText("2/3")).toBeInTheDocument();
+    expect(screen.getByText("2/4 checked")).toBeInTheDocument();
+    expect(screen.getByRole("progressbar", { name: "Habit check-in progress" })).toHaveAttribute("aria-valuenow", "2");
 
     fireEvent.click(screen.getByRole("button", { name: "Mark Walk progress" }));
 
@@ -219,6 +230,8 @@ describe("HabitManager", () => {
       expect(within(rows[0]).getByText("Read")).toBeInTheDocument();
       expect(within(rows[1]).getByText("Walk")).toHaveClass("line-through");
       expect(within(rows[1]).getByText("3/3")).toBeInTheDocument();
+      expect(screen.getByText("3/4 checked")).toBeInTheDocument();
+      expect(screen.getByRole("progressbar", { name: "Habit check-in progress" })).toHaveAttribute("aria-valuenow", "3");
     });
 
     const completedButton = screen.getByRole("button", { name: "Cancel check-in for Walk" });
@@ -231,6 +244,8 @@ describe("HabitManager", () => {
       const rows = screen.getAllByRole("listitem");
       expect(within(rows[0]).getByText("Walk")).not.toHaveClass("line-through");
       expect(within(rows[0]).getByText("2/3")).toBeInTheDocument();
+      expect(screen.getByText("2/4 checked")).toBeInTheDocument();
+      expect(screen.getByRole("progressbar", { name: "Habit check-in progress" })).toHaveAttribute("aria-valuenow", "2");
     });
 
     expect(fetchMock).toHaveBeenCalledWith(
