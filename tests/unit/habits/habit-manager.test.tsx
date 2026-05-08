@@ -18,6 +18,7 @@ function habit(overrides: Partial<Habit>): Habit {
     name: "Walk",
     description: "Ten minutes outside",
     icon: "shoe",
+    targetCount: 1,
     isActive: true,
     createdAt: now,
     updatedAt: now,
@@ -31,6 +32,7 @@ function checkin(overrides: Partial<HabitCheckin>): HabitCheckin {
     habitId: "habit_1",
     date: "2026-05-08",
     isCompleted: true,
+    completedCount: 1,
     note: "",
     createdAt: now,
     updatedAt: now,
@@ -43,6 +45,7 @@ function parseBody(init?: RequestInit): Record<string, unknown> {
 }
 
 function mockFetch(items: HabitListItem[]) {
+  const checkinCounts = new Map<string, number>();
   const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
     const method = init?.method ?? "GET";
@@ -58,7 +61,8 @@ function mockFetch(items: HabitListItem[]) {
           id: "habit_new",
           name: String(body.name),
           description: String(body.description ?? ""),
-          icon: String(body.icon ?? "")
+          icon: String(body.icon ?? ""),
+          targetCount: Number(body.targetCount ?? 1)
         })
       }, { status: 201 });
     }
@@ -73,11 +77,17 @@ function mockFetch(items: HabitListItem[]) {
     }
 
     if (url === "/api/habits/habit_1/checkins" && method === "POST") {
-      return Response.json({ checkin: checkin({ habitId: "habit_1" }) }, { status: 201 });
+      const targetCount = items.find((item) => item.habit.id === "habit_1")?.habit.targetCount ?? 1;
+      const nextCount = Math.min((checkinCounts.get("habit_1") ?? 0) + 1, targetCount);
+      checkinCounts.set("habit_1", nextCount);
+      return Response.json({ checkin: checkin({ habitId: "habit_1", completedCount: nextCount, isCompleted: nextCount >= targetCount }) }, { status: nextCount === 1 ? 201 : 200 });
     }
 
     if (url === "/api/habits/habit_1/checkins/2026-05-08" && method === "DELETE") {
-      return Response.json({ deleted: true });
+      const targetCount = items.find((item) => item.habit.id === "habit_1")?.habit.targetCount ?? 1;
+      const nextCount = Math.max((checkinCounts.get("habit_1") ?? targetCount) - 1, 0);
+      checkinCounts.set("habit_1", nextCount);
+      return Response.json({ checkin: nextCount > 0 ? checkin({ habitId: "habit_1", completedCount: nextCount, isCompleted: nextCount >= targetCount }) : null, deleted: nextCount === 0 });
     }
 
     throw new Error(`Unexpected request ${method} ${url}`);
@@ -109,15 +119,16 @@ describe("HabitManager", () => {
     expect(screen.getByRole("progressbar", { name: "Habit check-in progress" })).toHaveAttribute("aria-valuenow", "1");
   });
 
-  it("creates a habit from the compact form without showing an icon column", async () => {
+  it("creates a habit from the compact form with a daily target and no description field", async () => {
     const fetchMock = mockFetch([]);
 
     render(<HabitManager />);
 
     expect(screen.queryByLabelText("Habit icon")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Habit description")).not.toBeInTheDocument();
 
     fireEvent.change(await screen.findByLabelText("Habit name"), { target: { value: "Morning run" } });
-    fireEvent.change(screen.getByLabelText("Habit description"), { target: { value: "20 minutes" } });
+    fireEvent.change(screen.getByLabelText("Daily target"), { target: { value: "3" } });
     fireEvent.click(screen.getByRole("button", { name: "Add Habit" }));
 
     expect(await screen.findByText("Morning run")).toBeInTheDocument();
@@ -125,14 +136,14 @@ describe("HabitManager", () => {
       "/api/habits",
       expect.objectContaining({
         method: "POST",
-        body: JSON.stringify({ name: "Morning run", description: "20 minutes", icon: "" })
+        body: JSON.stringify({ name: "Morning run", description: "", icon: "", targetCount: 3 })
       })
     );
   });
 
-  it("checks in and moves the habit to the end, then cancels and restores it to the front", async () => {
+  it("increments a multi-check habit, completes at target, then decrements on cancel", async () => {
     const fetchMock = mockFetch([
-      { habit: habit({ id: "habit_1", name: "Walk" }), checkin: null, isCompleted: false },
+      { habit: habit({ id: "habit_1", name: "Walk", targetCount: 3 }), checkin: null, isCompleted: false },
       { habit: habit({ id: "habit_2", name: "Read" }), checkin: null, isCompleted: false }
     ]);
 
@@ -144,10 +155,19 @@ describe("HabitManager", () => {
 
     fireEvent.click(incompleteButton);
 
+    expect(await screen.findByText("1/3")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith("/api/habits/habit_1/checkins", expect.objectContaining({ method: "POST" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Mark Walk progress" }));
+    expect(await screen.findByText("2/3")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Mark Walk progress" }));
+
     await waitFor(() => {
       const rows = screen.getAllByRole("listitem");
       expect(within(rows[0]).getByText("Read")).toBeInTheDocument();
       expect(within(rows[1]).getByText("Walk")).toHaveClass("line-through");
+      expect(within(rows[1]).getByText("3/3")).toBeInTheDocument();
     });
 
     const completedButton = screen.getByRole("button", { name: "Cancel check-in for Walk" });
@@ -159,9 +179,9 @@ describe("HabitManager", () => {
     await waitFor(() => {
       const rows = screen.getAllByRole("listitem");
       expect(within(rows[0]).getByText("Walk")).not.toHaveClass("line-through");
+      expect(within(rows[0]).getByText("2/3")).toBeInTheDocument();
     });
 
-    expect(fetchMock).toHaveBeenCalledWith("/api/habits/habit_1/checkins", expect.objectContaining({ method: "POST" }));
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/habits/habit_1/checkins/2026-05-08",
       expect.objectContaining({ method: "DELETE" })
@@ -176,8 +196,12 @@ describe("HabitManager", () => {
     expect(screen.queryByRole("button", { name: "Edit Walk" })).not.toBeInTheDocument();
 
     fireEvent.click(await screen.findByText("Walk"));
+    expect(screen.getByRole("listitem")).toHaveAttribute("aria-selected", "true");
+    expect(screen.queryByLabelText("Edit habit name for Walk")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText("Walk"));
     fireEvent.change(screen.getByLabelText("Edit habit name for Walk"), { target: { value: "Evening walk" } });
-    fireEvent.keyDown(screen.getByLabelText("Edit habit name for Walk"), { key: "Enter" });
+    fireEvent.blur(screen.getByLabelText("Edit habit name for Walk"));
 
     expect(await screen.findByText("Evening walk")).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith(

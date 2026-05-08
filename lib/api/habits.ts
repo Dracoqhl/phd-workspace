@@ -29,7 +29,7 @@ export async function listActiveHabitsForToday(repos: ReturnType<typeof getHabit
   const activeHabits = habits.filter((habit) => habit.isActive);
   const items: HabitListItem[] = activeHabits.map((habit) => {
     const checkin = checkins.find((item) => item.habitId === habit.id && item.date === date) ?? null;
-    return { habit, checkin, isCompleted: checkin?.isCompleted ?? false };
+    return { habit, checkin, isCompleted: (checkin?.completedCount ?? 0) >= habit.targetCount };
   });
 
   return { date, habits: items };
@@ -41,10 +41,16 @@ export function parseCreateHabitInput(body: Record<string, unknown>): CreateHabi
     return null;
   }
 
+  const targetCount = parseTargetCount(body.targetCount, 1);
+  if (!targetCount) {
+    return null;
+  }
+
   return {
     name,
     description: typeof body.description === "string" ? body.description : "",
-    icon: typeof body.icon === "string" ? body.icon : ""
+    icon: typeof body.icon === "string" ? body.icon : "",
+    targetCount
   };
 }
 
@@ -73,7 +79,27 @@ export function parseUpdateHabitInput(body: Record<string, unknown>): UpdateHabi
     input.icon = body.icon;
   }
 
+  if ("targetCount" in body) {
+    const targetCount = parseTargetCount(body.targetCount);
+    if (!targetCount) {
+      return null;
+    }
+    input.targetCount = targetCount;
+  }
+
   return input;
+}
+
+function parseTargetCount(value: unknown, fallback?: number): number | null {
+  if (value === undefined) {
+    return fallback ?? null;
+  }
+
+  if (typeof value !== "number" || !Number.isInteger(value) || value < 1 || value > 5) {
+    return null;
+  }
+
+  return value;
 }
 
 function parseRequiredText(value: unknown): string | null {

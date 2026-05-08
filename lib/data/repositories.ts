@@ -179,7 +179,7 @@ class HabitRepository {
   constructor(private readonly store: JsonStore<Habit>) {}
 
   async list(): Promise<Habit[]> {
-    return (await this.store.read()).items;
+    return (await this.store.read()).items.map(normalizeHabit);
   }
 
   async get(habitId: string): Promise<Habit | null> {
@@ -195,6 +195,7 @@ class HabitRepository {
         name: input.name,
         description: input.description,
         icon: input.icon,
+        targetCount: input.targetCount,
         isActive: true,
         createdAt: now,
         updatedAt: now
@@ -212,7 +213,8 @@ class HabitRepository {
       await this.store.updateItems((habits) => {
         const now = new Date().toISOString();
 
-        return habits.map((habit) => {
+        return habits.map((storedHabit) => {
+          const habit = normalizeHabit(storedHabit);
           if (habit.id !== habitId) {
             return habit;
           }
@@ -248,7 +250,7 @@ class HabitCheckinRepository {
   constructor(private readonly store: JsonStore<HabitCheckin>) {}
 
   async list(): Promise<HabitCheckin[]> {
-    return (await this.store.read()).items;
+    return (await this.store.read()).items.map(normalizeHabitCheckin);
   }
 
   async get(habitId: string, date: string): Promise<HabitCheckin | null> {
@@ -256,18 +258,20 @@ class HabitCheckinRepository {
     return checkins.find((checkin) => checkin.habitId === habitId && checkin.date === date) ?? null;
   }
 
-  async complete(habitId: string, date: string): Promise<{ checkin: HabitCheckin; created: boolean }> {
+  async complete(habitId: string, date: string, targetCount: number): Promise<{ checkin: HabitCheckin; created: boolean }> {
     return this.enqueueMutation(async () => {
       let checkin: HabitCheckin | null = null;
       let created = false;
 
       await this.store.updateItems((checkins) => {
         const now = new Date().toISOString();
-        const existing = checkins.find((item) => item.habitId === habitId && item.date === date);
+        const normalizedCheckins = checkins.map(normalizeHabitCheckin);
+        const existing = normalizedCheckins.find((item) => item.habitId === habitId && item.date === date);
 
         if (existing) {
-          checkin = { ...existing, isCompleted: true, updatedAt: now };
-          return checkins.map((item) => (item.id === existing.id ? checkin! : item));
+          const completedCount = Math.min(existing.completedCount + 1, targetCount);
+          checkin = { ...existing, completedCount, isCompleted: completedCount >= targetCount, updatedAt: now };
+          return normalizedCheckins.map((item) => (item.id === existing.id ? checkin! : item));
         }
 
         created = true;
@@ -275,13 +279,14 @@ class HabitCheckinRepository {
           id: randomUUID(),
           habitId,
           date,
-          isCompleted: true,
+          isCompleted: targetCount <= 1,
+          completedCount: 1,
           note: "",
           createdAt: now,
           updatedAt: now
         };
 
-        return [...checkins, checkin];
+        return [...normalizedCheckins, checkin];
       });
 
       if (!checkin) {
@@ -292,23 +297,31 @@ class HabitCheckinRepository {
     });
   }
 
-  async delete(habitId: string, date: string): Promise<boolean> {
+  async decrement(habitId: string, date: string, targetCount: number): Promise<HabitCheckin | null> {
     return this.enqueueMutation(async () => {
-      let deleted = false;
+      let updated: HabitCheckin | null = null;
 
       await this.store.updateItems((checkins) => {
-        const next = checkins.filter((checkin) => {
-          const matches = checkin.habitId === habitId && checkin.date === date;
-          if (matches) {
-            deleted = true;
-          }
-          return !matches;
-        });
+        const now = new Date().toISOString();
+        const normalizedCheckins = checkins.map(normalizeHabitCheckin);
 
-        return next;
+        return normalizedCheckins.flatMap((checkin) => {
+          if (checkin.habitId !== habitId || checkin.date !== date) {
+            return [checkin];
+          }
+
+          const completedCount = Math.max(checkin.completedCount - 1, 0);
+          if (completedCount === 0) {
+            updated = null;
+            return [];
+          }
+
+          updated = { ...checkin, completedCount, isCompleted: completedCount >= targetCount, updatedAt: now };
+          return [updated];
+        });
       });
 
-      return deleted;
+      return updated;
     });
   }
 
@@ -391,6 +404,7 @@ function isHabit(value: unknown): value is Habit {
     typeof value.name === "string" &&
     typeof value.description === "string" &&
     typeof value.icon === "string" &&
+    (value.targetCount === undefined || typeof value.targetCount === "number") &&
     typeof value.isActive === "boolean" &&
     typeof value.createdAt === "string" &&
     typeof value.updatedAt === "string"
@@ -404,10 +418,32 @@ function isHabitCheckin(value: unknown): value is HabitCheckin {
     typeof value.habitId === "string" &&
     typeof value.date === "string" &&
     typeof value.isCompleted === "boolean" &&
+    (value.completedCount === undefined || typeof value.completedCount === "number") &&
     typeof value.note === "string" &&
     typeof value.createdAt === "string" &&
     typeof value.updatedAt === "string"
   );
+}
+
+function normalizeHabit(habit: Habit): Habit {
+  return {
+    ...habit,
+    targetCount: normalizeTargetCount(habit.targetCount)
+  };
+}
+
+function normalizeHabitCheckin(checkin: HabitCheckin): HabitCheckin {
+  const completedCount = typeof checkin.completedCount === "number" ? checkin.completedCount : checkin.isCompleted ? 1 : 0;
+
+  return {
+    ...checkin,
+    completedCount,
+    isCompleted: completedCount > 0 ? checkin.isCompleted : false
+  };
+}
+
+function normalizeTargetCount(value: number): number {
+  return Number.isInteger(value) && value >= 1 && value <= 5 ? value : 1;
 }
 
 function isCareRecord(value: unknown): value is CareRecord {

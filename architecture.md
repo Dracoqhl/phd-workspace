@@ -156,8 +156,8 @@ Stage B implemented the first runnable App Router shell and the current task sli
 - `app/page.tsx`: MVP workspace page entry point.
 - `app/workspace-page-content.tsx`: authenticated workspace layout that composes care, habit, task, and AI assistant regions.
 - `app/globals.css`: Tailwind directives and base page styling.
-- `components/tasks/TaskManager.tsx`: compact hierarchical task table backed by `/api/tasks`, including top-level task create/delete, one-layer subtask create/delete, expandable subtasks, inline title editing, priority swatch editing, due-date calendar editing, readable English status labels, completed top-level task hiding, and due-state highlighting.
-- `components/habits/HabitManager.tsx`: compact habit list backed by `/api/habits`, including habit create, click-to-edit text fields, trash-icon deactivate, circular check-in/cancel controls, header progress, completed-row grey/strikethrough styling, and completed-row sorting.
+- `components/tasks/TaskManager.tsx`: compact hierarchical task table backed by `/api/tasks`, including top-level task create/delete, one-layer subtask create/delete, expandable subtasks, two-step select-then-edit title editing with blur save, priority swatch editing, due-date calendar editing, readable English status labels, completed top-level task hiding, and due-state highlighting.
+- `components/habits/HabitManager.tsx`: compact habit list backed by `/api/habits`, including habit create with daily target 1-5, two-step select-then-edit names with blur save, trash-icon deactivate, circular check-in/cancel controls, header progress, completed-row grey/strikethrough styling, and completed-row sorting.
 - `tests/unit/app/page.test.tsx`: verifies that the workspace regions render.
 - `tests/unit/tasks/task-manager.test.tsx`: verifies compact task table loading, expand/collapse, inline title editing, priority and due-date editing, completed hiding, subtask creation, and deletion behavior.
 
@@ -211,6 +211,7 @@ Owns business rules that are not tied to HTTP or React.
 - Parent and subtask completion must remain independent.
 - Due-date highlighting rules belong here or in a small shared helper.
 - Daily habit check-ins use a 02:00 server-time day boundary, so 00:00-01:59 belongs to the previous habit business date.
+- Habit daily targets are capped at 5 for the current MVP. A habit is completed when `completedCount >= targetCount`.
 
 ### `lib/ai/`
 

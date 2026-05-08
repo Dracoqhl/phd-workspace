@@ -3,6 +3,7 @@ export interface Habit {
   name: string;
   description: string;
   icon: string;
+  targetCount: number;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -12,12 +13,14 @@ export interface CreateHabitInput {
   name: string;
   description: string;
   icon: string;
+  targetCount: number;
 }
 
 export interface UpdateHabitInput {
   name?: string;
   description?: string;
   icon?: string;
+  targetCount?: number;
 }
 
 export interface HabitCheckin {
@@ -25,6 +28,7 @@ export interface HabitCheckin {
   habitId: string;
   date: string;
   isCompleted: boolean;
+  completedCount: number;
   note: string;
   createdAt: string;
   updatedAt: string;

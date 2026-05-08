@@ -24,7 +24,7 @@ export async function POST(request: Request, context: HabitCheckinRouteContext):
     return Response.json({ error: "Habit not found" }, { status: 404 });
   }
 
-  const result = await repos.habitCheckins.complete(context.params.id, getHabitBusinessDate());
+  const result = await repos.habitCheckins.complete(context.params.id, getHabitBusinessDate(), habit.targetCount);
   return Response.json({ checkin: result.checkin }, { status: result.created ? 201 : 200 });
 }
 

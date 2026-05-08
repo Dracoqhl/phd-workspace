@@ -32,6 +32,7 @@ export function TaskManager() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedTaskIds, setExpandedTaskIds] = useState<Set<string>>(() => new Set());
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [addingSubtaskFor, setAddingSubtaskFor] = useState<string | null>(null);
   const [subtaskTitle, setSubtaskTitle] = useState("");
 
@@ -285,6 +286,9 @@ export function TaskManager() {
                   onToggleExpanded={toggleExpanded}
                   onDueDateChange={(taskId, dueDate) => updateTask(taskId, { dueDate })}
                   progress={getTaskProgress(task, tasks)}
+                  selected={selectedTaskId === task.id}
+                  selectedTaskId={selectedTaskId}
+                  onSelect={setSelectedTaskId}
                   task={task}
                 />
                 {addingSubtaskFor === task.id ? (
@@ -300,6 +304,9 @@ export function TaskManager() {
                     onPriorityChange={(taskId, priority) => updateTask(taskId, { priority })}
                     onTitleSave={(taskId, title) => updateTask(taskId, { title })}
                     onDueDateChange={(taskId, dueDate) => updateTask(taskId, { dueDate })}
+                    selected={selectedTaskId === child.id}
+                    selectedTaskId={selectedTaskId}
+                    onSelect={setSelectedTaskId}
                     task={child}
                   />
                 )) : null}
@@ -318,7 +325,10 @@ interface TaskRowProps {
   canExpand: boolean;
   expanded: boolean;
   progress?: { completed: number; total: number };
+  selected: boolean;
+  selectedTaskId: string | null;
   onToggleExpanded?: (taskId: string) => void;
+  onSelect: (taskId: string) => void;
   onAddSubtask?: (taskId: string) => void;
   onTitleSave: (taskId: string, title: string) => Promise<void>;
   onPriorityChange: (taskId: string, priority: TaskPriority) => Promise<void>;
@@ -326,12 +336,12 @@ interface TaskRowProps {
   onDelete: (task: Task) => Promise<void>;
 }
 
-function TaskRow({ task, isSubtask, canExpand, expanded, progress, onToggleExpanded, onAddSubtask, onTitleSave, onPriorityChange, onDueDateChange, onDelete }: TaskRowProps) {
+function TaskRow({ task, isSubtask, canExpand, expanded, progress, selected, selectedTaskId, onToggleExpanded, onSelect, onAddSubtask, onTitleSave, onPriorityChange, onDueDateChange, onDelete }: TaskRowProps) {
   const dueState = getTaskDueState(task);
   const rowClass = dueState === "overdue" ? "bg-red-50" : dueState === "near_due" ? "bg-amber-50" : isSubtask ? "bg-slate-50/60" : "bg-white";
 
   return (
-    <div className={`grid grid-cols-[2rem_minmax(0,1fr)_7rem_4rem_6.5rem_4.5rem] items-center gap-2 border-t border-slate-200 px-3 py-2 text-sm ${rowClass} ${task.status === "completed" ? "text-slate-400" : "text-slate-700"}`} role="row">
+    <div aria-selected={selected} className={`grid grid-cols-[2rem_minmax(0,1fr)_7rem_4rem_6.5rem_4.5rem] items-center gap-2 border-t border-slate-200 px-3 py-2 text-sm ${rowClass} ${selected ? "ring-1 ring-inset ring-moss" : ""} ${task.status === "completed" ? "text-slate-400" : "text-slate-700"}`} role="row">
       <div className="flex items-center" role="cell">
         {!isSubtask && canExpand ? (
           <button aria-label={`${expanded ? "Collapse" : "Expand"} subtasks for ${task.title}`} className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100" onClick={() => onToggleExpanded?.(task.id)} type="button">
@@ -341,7 +351,7 @@ function TaskRow({ task, isSubtask, canExpand, expanded, progress, onToggleExpan
       </div>
       <div className="min-w-0" role="cell">
         <div className="flex min-w-0 items-center gap-2">
-          <EditableTitle indent={isSubtask} onSave={onTitleSave} task={task} />
+          <EditableTitle indent={isSubtask} onSave={onTitleSave} onSelect={onSelect} selectedTaskId={selectedTaskId} task={task} />
           {!isSubtask && progress ? <span className="shrink-0 text-xs text-slate-500">{progress.completed}/{progress.total}</span> : null}
         </div>
       </div>
@@ -362,7 +372,7 @@ function TaskRow({ task, isSubtask, canExpand, expanded, progress, onToggleExpan
   );
 }
 
-function EditableTitle({ task, indent, onSave }: { task: Task; indent: boolean; onSave: (taskId: string, title: string) => Promise<void> }) {
+function EditableTitle({ task, indent, selectedTaskId, onSelect, onSave }: { task: Task; indent: boolean; selectedTaskId: string | null; onSelect: (taskId: string) => void; onSave: (taskId: string, title: string) => Promise<void> }) {
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(task.title);
 
@@ -370,13 +380,30 @@ function EditableTitle({ task, indent, onSave }: { task: Task; indent: boolean; 
     if (!editing) setValue(task.title);
   }, [editing, task.title]);
 
+  async function saveTitle() {
+    const title = value.trim();
+    if (title.length === 0) {
+      setValue(task.title);
+      setEditing(false);
+      return;
+    }
+
+    if (title === task.title) {
+      setEditing(false);
+      return;
+    }
+
+    await onSave(task.id, title);
+    setEditing(false);
+  }
+
   if (editing) {
     return (
       <input
         aria-label={`Edit title for ${task.title}`}
         autoFocus
         className="h-8 min-w-0 rounded-md border border-slate-300 px-2 text-sm text-ink outline-none focus:border-moss"
-        onBlur={() => { setValue(task.title); setEditing(false); }}
+        onBlur={() => { void saveTitle(); }}
         onChange={(event) => setValue(event.target.value)}
         onKeyDown={(event) => {
           if (event.key === "Escape") {
@@ -384,8 +411,7 @@ function EditableTitle({ task, indent, onSave }: { task: Task; indent: boolean; 
             setEditing(false);
           }
           if (event.key === "Enter") {
-            const title = value.trim();
-            if (title.length > 0) void onSave(task.id, title).then(() => setEditing(false));
+            void saveTitle();
           }
         }}
         value={value}
@@ -394,7 +420,14 @@ function EditableTitle({ task, indent, onSave }: { task: Task; indent: boolean; 
   }
 
   return (
-    <button className={`min-w-0 truncate text-left text-sm ${indent ? "pl-5 font-normal text-slate-700" : "font-semibold text-ink"}`} onClick={() => setEditing(true)} type="button">
+    <button className={`min-w-0 truncate text-left text-sm ${indent ? "pl-5 font-normal text-slate-700" : "font-semibold text-ink"}`} onClick={() => {
+      if (selectedTaskId === task.id) {
+        setEditing(true);
+        return;
+      }
+
+      onSelect(task.id);
+    }} type="button">
       {task.title}
     </button>
   );

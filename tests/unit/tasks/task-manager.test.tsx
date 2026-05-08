@@ -167,12 +167,18 @@ describe("TaskManager", () => {
     );
   });
 
-  it("saves a title edit with Enter", async () => {
+  it("selects a task row on first click, then edits title on second click", async () => {
     const fetchMock = mockFetch([task({ id: "task_1" })]);
 
     render(<TaskManager />);
 
-    fireEvent.click(await screen.findByText("Draft dissertation chapter"));
+    const title = await screen.findByText("Draft dissertation chapter");
+    fireEvent.click(title);
+
+    expect(screen.getByRole("row", { name: /Draft dissertation chapter/ })).toHaveAttribute("aria-selected", "true");
+    expect(screen.queryByLabelText("Edit title for Draft dissertation chapter")).not.toBeInTheDocument();
+
+    fireEvent.click(title);
     const input = screen.getByLabelText("Edit title for Draft dissertation chapter");
     fireEvent.change(input, { target: { value: "Draft final chapter" } });
     fireEvent.keyDown(input, { key: "Enter" });
@@ -184,12 +190,33 @@ describe("TaskManager", () => {
     );
   });
 
+  it("saves a title edit when focus leaves the input", async () => {
+    const fetchMock = mockFetch([task({ id: "task_1" })]);
+
+    render(<TaskManager />);
+
+    const title = await screen.findByText("Draft dissertation chapter");
+    fireEvent.click(title);
+    fireEvent.click(title);
+    const input = screen.getByLabelText("Edit title for Draft dissertation chapter");
+    fireEvent.change(input, { target: { value: "Blur saved chapter" } });
+    fireEvent.blur(input);
+
+    expect(await screen.findByText("Blur saved chapter")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/tasks/task_1",
+      expect.objectContaining({ method: "PATCH", body: JSON.stringify({ title: "Blur saved chapter" }) })
+    );
+  });
+
   it("cancels a title edit with Escape", async () => {
     const fetchMock = mockFetch([task({ id: "task_1" })]);
 
     render(<TaskManager />);
 
-    fireEvent.click(await screen.findByText("Draft dissertation chapter"));
+    const title = await screen.findByText("Draft dissertation chapter");
+    fireEvent.click(title);
+    fireEvent.click(title);
     const input = screen.getByLabelText("Edit title for Draft dissertation chapter");
     fireEvent.change(input, { target: { value: "Do not save" } });
     fireEvent.keyDown(input, { key: "Escape" });

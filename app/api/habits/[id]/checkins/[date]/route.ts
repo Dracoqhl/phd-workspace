@@ -23,8 +23,13 @@ export async function DELETE(request: Request, context: HabitCheckinDateRouteCon
     return repos;
   }
 
-  await repos.habitCheckins.delete(context.params.id, context.params.date);
-  return Response.json({ deleted: true });
+  const habit = await repos.habits.get(context.params.id);
+  if (!habit) {
+    return Response.json({ error: "Habit not found" }, { status: 404 });
+  }
+
+  const checkin = await repos.habitCheckins.decrement(context.params.id, context.params.date, habit.targetCount);
+  return Response.json({ checkin, deleted: checkin === null });
 }
 
 function getRepositoriesOrResponse(): ReturnType<typeof getHabitRepositories> | Response {

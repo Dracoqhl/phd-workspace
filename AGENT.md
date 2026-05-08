@@ -38,11 +38,14 @@ This file stores maintainer context for future development sessions.
 - Mental care: one AI-generated gentle care message per day, refresh, daily check-in, optional mood note.
 - Habits: create/edit/deactivate habits, daily complete/uncomplete check-ins.
 - Habit UI should stay compact and avoid decorative icon columns unless the user explicitly asks for them.
+- Habit creation UI should show habit name and daily target only. Keep `description` in data for future details UI, but do not show it in the current compact list.
+- Habit daily target is an integer from 1 to 5. Multi-check habits increment one count per click until target is reached; cancelling decrements one count.
 - Habit completion controls should be small circles: incomplete is an empty outlined circle; complete is a solid green circle with a white checkmark.
 - Completed habit rows should be greyed out, struck through, and sorted after incomplete habits. Cancelling a check-in should restore the habit near the front of the active list.
 - Habit deactivation should use a small trash icon, matching the task module's delete affordance. Avoid power-button style icons for this action.
 - Habit editing should follow the task module pattern: click the displayed text, edit inline, press Enter to save. Avoid a separate edit icon for routine text editing.
 - Tasks: parent tasks plus one level of subtasks, status, priority, due date, filters, completed visibility.
+- Task and habit rows should use a two-step text edit interaction: first click selects/highlights the row; a second click on the text enters inline edit. Enter and input blur both save; Escape cancels.
 - AI assistant: persistent right panel, chat, API test, structured operation proposals, user confirmation cards, operation logs.
 - Local persistence: JSON files with safe write behavior.
 

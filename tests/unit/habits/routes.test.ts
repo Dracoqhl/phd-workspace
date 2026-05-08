@@ -56,6 +56,7 @@ describe("habit routes", () => {
       name: "Walk",
       description: "Ten minutes",
       icon: "shoe",
+      targetCount: 1,
       isActive: true
     });
 
@@ -107,8 +108,8 @@ describe("habit routes", () => {
     await expect(repos.habitCheckins.list()).resolves.toHaveLength(1);
   });
 
-  it("creates at most one check-in per habit per business date and can cancel it", async () => {
-    const habit = await createHabitJson({ name: "Stretch" });
+  it("increments and decrements a multi-check habit up to its daily target", async () => {
+    const habit = await createHabitJson({ name: "Drink water", targetCount: 3 });
 
     const first = await createCheckin(authRequest(`${baseUrl}/api/habits/${habit.id}/checkins`, { method: "POST" }), {
       params: { id: habit.id }
@@ -116,12 +117,21 @@ describe("habit routes", () => {
     const second = await createCheckin(authRequest(`${baseUrl}/api/habits/${habit.id}/checkins`, { method: "POST" }), {
       params: { id: habit.id }
     });
+    const third = await createCheckin(authRequest(`${baseUrl}/api/habits/${habit.id}/checkins`, { method: "POST" }), {
+      params: { id: habit.id }
+    });
+    const fourth = await createCheckin(authRequest(`${baseUrl}/api/habits/${habit.id}/checkins`, { method: "POST" }), {
+      params: { id: habit.id }
+    });
 
     expect(first.status).toBe(201);
     expect(second.status).toBe(200);
-    await expect(second.json()).resolves.toMatchObject({
-      checkin: { habitId: habit.id, date: "2026-05-08", isCompleted: true }
-    });
+    expect(third.status).toBe(200);
+    expect(fourth.status).toBe(200);
+    await expect(first.json()).resolves.toMatchObject({ checkin: { completedCount: 1, isCompleted: false } });
+    await expect(second.json()).resolves.toMatchObject({ checkin: { completedCount: 2, isCompleted: false } });
+    await expect(third.json()).resolves.toMatchObject({ checkin: { completedCount: 3, isCompleted: true } });
+    await expect(fourth.json()).resolves.toMatchObject({ checkin: { completedCount: 3, isCompleted: true } });
 
     const repos = createRepositories(tempDir!);
     await expect(repos.habitCheckins.list()).resolves.toHaveLength(1);
@@ -131,8 +141,19 @@ describe("habit routes", () => {
       { params: { id: habit.id, date: "2026-05-08" } }
     );
     expect(deleteResponse.status).toBe(200);
-    await expect(deleteResponse.json()).resolves.toEqual({ deleted: true });
-    await expect(repos.habitCheckins.list()).resolves.toEqual([]);
+    await expect(deleteResponse.json()).resolves.toMatchObject({ checkin: { completedCount: 2, isCompleted: false } });
+  });
+
+  it("rejects a daily target greater than five", async () => {
+    const response = await createHabit(
+      authRequest(`${baseUrl}/api/habits`, {
+        method: "POST",
+        body: JSON.stringify({ name: "Too many", targetCount: 6 })
+      })
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({ error: "Invalid habit payload" });
   });
 
   it("uses the previous business date before 02:00 server time", async () => {

@@ -8,7 +8,7 @@ import type { Habit, HabitCheckin, HabitListItem } from "@/types/habit";
 
 const emptyForm = {
   name: "",
-  description: ""
+  targetCount: "1"
 };
 
 export function HabitManager() {
@@ -16,7 +16,8 @@ export function HabitManager() {
   const [habits, setHabits] = useState<HabitListItem[]>([]);
   const [form, setForm] = useState(emptyForm);
   const [editingHabitId, setEditingHabitId] = useState<string | null>(null);
-  const [editForm, setEditForm] = useState(emptyForm);
+  const [selectedHabitId, setSelectedHabitId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
   const [restoredHabitId, setRestoredHabitId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -74,7 +75,7 @@ export function HabitManager() {
 
     const created = await writeHabit("/api/habits", {
       method: "POST",
-      body: JSON.stringify({ name, description: form.description, icon: "" })
+      body: JSON.stringify({ name, description: "", icon: "", targetCount: Number(form.targetCount) })
     });
 
     if (created) {
@@ -85,11 +86,11 @@ export function HabitManager() {
 
   function startEdit(item: HabitListItem) {
     setEditingHabitId(item.habit.id);
-    setEditForm({ name: item.habit.name, description: item.habit.description });
+    setEditName(item.habit.name);
   }
 
   async function saveEdit(item: HabitListItem) {
-    const name = editForm.name.trim();
+    const name = editName.trim();
     if (!name) {
       setError("Habit name is required.");
       return;
@@ -97,7 +98,7 @@ export function HabitManager() {
 
     const updated = await writeHabit(`/api/habits/${item.habit.id}`, {
       method: "PATCH",
-      body: JSON.stringify({ name, description: editForm.description, icon: item.habit.icon })
+      body: JSON.stringify({ name, description: item.habit.description, icon: item.habit.icon, targetCount: item.habit.targetCount })
     });
 
     if (updated) {
@@ -115,6 +116,15 @@ export function HabitManager() {
     if (event.key === "Escape") {
       setEditingHabitId(null);
     }
+  }
+
+  function handleHabitTextClick(item: HabitListItem) {
+    if (selectedHabitId === item.habit.id) {
+      startEdit(item);
+      return;
+    }
+
+    setSelectedHabitId(item.habit.id);
   }
 
   async function deactivateHabit(item: HabitListItem) {
@@ -135,7 +145,7 @@ export function HabitManager() {
 
     if (item.isCompleted) {
       const response = await fetch(`/api/habits/${item.habit.id}/checkins/${date}`, { method: "DELETE" });
-      const payload = (await response.json()) as { error?: string };
+      const payload = (await response.json()) as { checkin?: HabitCheckin | null; error?: string };
 
       if (!response.ok) {
         setError(payload.error ?? "Unable to cancel habit check-in.");
@@ -145,7 +155,9 @@ export function HabitManager() {
       setRestoredHabitId(item.habit.id);
       setHabits((current) =>
         current.map((habit) =>
-          habit.habit.id === item.habit.id ? { ...habit, checkin: null, isCompleted: false } : habit
+          habit.habit.id === item.habit.id
+            ? { ...habit, checkin: payload.checkin ?? null, isCompleted: (payload.checkin?.completedCount ?? 0) >= habit.habit.targetCount }
+            : habit
         )
       );
       return;
@@ -162,7 +174,9 @@ export function HabitManager() {
     setRestoredHabitId(null);
     setHabits((current) =>
       current.map((habit) =>
-        habit.habit.id === item.habit.id ? { ...habit, checkin: payload.checkin!, isCompleted: true } : habit
+        habit.habit.id === item.habit.id
+          ? { ...habit, checkin: payload.checkin!, isCompleted: payload.checkin!.completedCount >= habit.habit.targetCount }
+          : habit
       )
     );
   }
@@ -204,11 +218,13 @@ export function HabitManager() {
         </div>
       </div>
 
-      <form className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]" onSubmit={createHabit}>
+      <form className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_6rem_auto]" onSubmit={createHabit}>
         <label className="sr-only" htmlFor="habit-name">Habit name</label>
         <input id="habit-name" aria-label="Habit name" className="h-9 rounded-md border border-slate-300 px-3 text-sm outline-none focus:border-moss" onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} placeholder="Habit" value={form.name} />
-        <label className="sr-only" htmlFor="habit-description">Habit description</label>
-        <input id="habit-description" aria-label="Habit description" className="h-9 rounded-md border border-slate-300 px-3 text-sm outline-none focus:border-moss" onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))} placeholder="Description" value={form.description} />
+        <label className="sr-only" htmlFor="habit-target">Daily target</label>
+        <select id="habit-target" aria-label="Daily target" className="h-9 rounded-md border border-slate-300 px-2 text-sm outline-none focus:border-moss" onChange={(event) => setForm((current) => ({ ...current, targetCount: event.target.value }))} value={form.targetCount}>
+          {[1, 2, 3, 4, 5].map((count) => <option key={count} value={count}>{count}</option>)}
+        </select>
         <button className="inline-flex h-9 items-center justify-center gap-1 rounded-md bg-ink px-3 text-sm font-semibold text-white hover:bg-slate-700" type="submit">
           <Plus aria-hidden="true" size={15} />
           Add Habit
@@ -226,25 +242,26 @@ export function HabitManager() {
         <ul className="mt-4 divide-y divide-slate-100 rounded-lg border border-slate-200">
           {sortedHabits.map((item) => {
             const isEditing = editingHabitId === item.habit.id;
+            const isSelected = selectedHabitId === item.habit.id;
             const rowClass = item.isCompleted ? "bg-slate-50 text-slate-400" : "bg-white text-slate-700";
+            const completedCount = item.checkin?.completedCount ?? 0;
+            const progressLabel = `${completedCount}/${item.habit.targetCount}`;
 
             return (
-              <li className={`grid gap-2 px-3 py-2 text-sm sm:grid-cols-[1.5rem_minmax(0,1fr)_2.5rem] sm:items-center ${rowClass}`} key={item.habit.id}>
-                <button aria-label={item.isCompleted ? `Cancel check-in for ${item.habit.name}` : `Mark ${item.habit.name} complete`} className={`inline-flex h-5 w-5 items-center justify-center rounded-full border transition-colors ${item.isCompleted ? "border-emerald-600 bg-emerald-600 text-white" : "border-slate-300 bg-white hover:border-emerald-500"}`} onClick={() => void toggleCheckin(item)} type="button">
+              <li aria-selected={isSelected} className={`grid gap-2 px-3 py-2 text-sm sm:grid-cols-[1.5rem_minmax(0,1fr)_3rem_2.5rem] sm:items-center ${rowClass} ${isSelected ? "ring-1 ring-inset ring-moss bg-emerald-50/50" : ""}`} key={item.habit.id}>
+                <button aria-label={item.isCompleted ? `Cancel check-in for ${item.habit.name}` : completedCount > 0 ? `Mark ${item.habit.name} progress` : `Mark ${item.habit.name} complete`} className={`inline-flex h-5 w-5 items-center justify-center rounded-full border transition-colors ${item.isCompleted ? "border-emerald-600 bg-emerald-600 text-white" : completedCount > 0 ? "border-emerald-500 bg-emerald-100 text-emerald-700" : "border-slate-300 bg-white hover:border-emerald-500"}`} onClick={() => void toggleCheckin(item)} type="button">
                   {item.isCompleted ? <Check aria-hidden="true" data-testid="habit-checkmark" size={13} strokeWidth={3} /> : null}
                 </button>
 
                 {isEditing ? (
-                  <div className="grid gap-1 sm:grid-cols-2">
-                    <input aria-label={`Edit habit name for ${item.habit.name}`} className="h-8 rounded-md border border-slate-300 px-2 text-sm outline-none focus:border-moss" onChange={(event) => setEditForm((current) => ({ ...current, name: event.target.value }))} onKeyDown={(event) => handleEditKeyDown(event, item)} value={editForm.name} />
-                    <input aria-label={`Edit habit description for ${item.habit.name}`} className="h-8 rounded-md border border-slate-300 px-2 text-sm outline-none focus:border-moss" onChange={(event) => setEditForm((current) => ({ ...current, description: event.target.value }))} onKeyDown={(event) => handleEditKeyDown(event, item)} value={editForm.description} />
-                  </div>
+                  <input aria-label={`Edit habit name for ${item.habit.name}`} autoFocus className="h-8 rounded-md border border-slate-300 px-2 text-sm outline-none focus:border-moss" onBlur={() => void saveEdit(item)} onChange={(event) => setEditName(event.target.value)} onKeyDown={(event) => handleEditKeyDown(event, item)} value={editName} />
                 ) : (
-                  <button className="min-w-0 text-left" onClick={() => startEdit(item)} type="button">
+                  <button className="min-w-0 text-left" onClick={() => handleHabitTextClick(item)} type="button">
                     <p className={`truncate font-medium ${item.isCompleted ? "line-through" : ""}`}>{item.habit.name}</p>
-                    {item.habit.description ? <p className={`truncate text-xs ${item.isCompleted ? "line-through" : "text-slate-500"}`}>{item.habit.description}</p> : null}
                   </button>
                 )}
+
+                <span className={`text-xs font-medium ${item.isCompleted ? "line-through" : "text-slate-500"}`}>{progressLabel}</span>
 
                 <div className="flex items-center gap-1 sm:justify-end">
                   <button aria-label={`Deactivate ${item.habit.name}`} className="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100" onClick={() => void deactivateHabit(item)} type="button">

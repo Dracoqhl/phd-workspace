@@ -343,6 +343,7 @@ describe("repositories", () => {
       name: "Write",
       description: "",
       icon: "pen",
+      targetCount: 1,
     };
 
     expect("read" in repos.habits).toBe(false);
