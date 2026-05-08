@@ -31,6 +31,27 @@ describe("auth routes", () => {
     expect(setCookie).toContain("Path=/");
   });
 
+  it("POST login from a native form redirects home and sets a session cookie", async () => {
+    vi.stubEnv("APP_PASSWORD", appPassword);
+    vi.stubEnv("SESSION_SECRET", sessionSecret);
+
+    const response = await login(
+      new Request(loginUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: new URLSearchParams({ password: appPassword })
+      })
+    );
+
+    expect(response.status).toBe(303);
+    expect(response.headers.get("location")).toBe("/");
+    const setCookie = response.headers.get("set-cookie");
+    expect(setCookie).toContain(`${SESSION_COOKIE_NAME}=`);
+    expect(setCookie).toContain("HttpOnly");
+  });
+
   it("POST login with the wrong password rejects without setting a session cookie", async () => {
     vi.stubEnv("APP_PASSWORD", appPassword);
     vi.stubEnv("SESSION_SECRET", sessionSecret);

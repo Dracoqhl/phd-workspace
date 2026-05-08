@@ -20,6 +20,7 @@ This file stores maintainer context for future development sessions.
 - Do not sync runtime JSON data, API keys, password config, logs, or build artifacts through Git.
 - Use one access password instead of an account system.
 - Store the access password on the server, preferably through `APP_PASSWORD`.
+- Login must work with both the React fetch flow and native HTML form submission, so mobile browsers can still set the session cookie if client-side JavaScript is delayed or unavailable.
 - Store data in multiple local JSON files, configured by `DATA_DIR`.
 - Use server timezone for all "today" behavior and daily check-ins.
 - Daily habit check-ins refresh at 02:00 server time; 00:00-01:59 belongs to the previous habit business date.

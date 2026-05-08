@@ -144,7 +144,7 @@ Stage A implemented the first tested backend-only modules, and the current found
 - `lib/data/repositories.ts`: versioned repository factory exposing tasks, trash, habits, habit check-ins, care records, and AI logs through narrow repository APIs.
 - `lib/data/data-dir.ts`: `DATA_DIR` resolver and MVP runtime JSON file list.
 - `lib/auth/password.ts` and `lib/auth/session.ts`: password and 30-day session helpers using `APP_PASSWORD` and `SESSION_SECRET`.
-- `app/api/auth/*/route.ts`: login, logout, and session route handlers.
+- `app/api/auth/*/route.ts`: login, logout, and session route handlers. Login accepts JSON requests from the React form flow and native `application/x-www-form-urlencoded` form posts for mobile/browser fallback.
 - `app/api/tasks/**/route.ts`: protected task list, create, detail, update, delete, and subtask creation route handlers.
 - `app/api/habits/**/route.ts`: protected habit list, create, update, deactivate, daily check-in, and daily check-in cancellation route handlers.
 

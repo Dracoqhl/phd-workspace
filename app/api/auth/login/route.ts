@@ -27,7 +27,7 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json(CONFIG_ERROR_RESPONSE, { status: 500 });
   }
 
-  const body = await parseJsonBody(request);
+  const body = await parseRequestBody(request);
   if (body === "malformed") {
     return Response.json(INVALID_REQUEST_RESPONSE, { status: 400 });
   }
@@ -45,22 +45,44 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   const token = createSessionToken(sessionSecret);
+  const cookie = serializeSessionCookie(token);
+
+  if (body?.source === "native_form") {
+    return new Response(null, {
+      status: 303,
+      headers: {
+        Location: "/",
+        "Set-Cookie": cookie
+      }
+    });
+  }
 
   return Response.json(
     { authenticated: true },
     {
       status: 200,
       headers: {
-        "Set-Cookie": serializeSessionCookie(token)
+        "Set-Cookie": cookie
       }
     }
   );
 }
 
-async function parseJsonBody(
+async function parseRequestBody(
   request: Request
 ): Promise<Record<string, unknown> | undefined | "malformed"> {
+  const contentType = request.headers.get("content-type") ?? "";
+
   try {
+    if (contentType.includes("application/x-www-form-urlencoded") || contentType.includes("multipart/form-data")) {
+      const formData = await request.formData();
+      const password = formData.get("password");
+      return {
+        password: typeof password === "string" ? password : "",
+        source: "native_form"
+      };
+    }
+
     const body = (await request.json()) as unknown;
     return isRecord(body) ? body : undefined;
   } catch {

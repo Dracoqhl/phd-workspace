@@ -47,6 +47,8 @@ describe("workspace page shell", () => {
     expect(screen.getByRole("heading", { name: "博士工作台" })).toBeInTheDocument();
     expect(screen.getByLabelText("Access password")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Log In" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Access password").closest("form")).toHaveAttribute("method", "post");
+    expect(screen.getByLabelText("Access password").closest("form")).toHaveAttribute("action", "/api/auth/login");
   });
 
   it("renders the workspace regions when authenticated", () => {

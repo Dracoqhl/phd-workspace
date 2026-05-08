@@ -38,7 +38,7 @@ export function LoginForm() {
   }
 
   return (
-    <form className="mt-6 flex w-full max-w-sm flex-col gap-4" onSubmit={handleSubmit}>
+    <form action="/api/auth/login" className="mt-6 flex w-full max-w-sm flex-col gap-4" method="post" onSubmit={handleSubmit}>
       <div className="flex flex-col gap-2">
         <label className="text-sm font-medium text-ink" htmlFor="access-password">
           Access password

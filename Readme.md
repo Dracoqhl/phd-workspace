@@ -84,7 +84,7 @@ You can also run the underlying dev command directly:
 pnpm dev
 ```
 
-Open `http://localhost:3000`, enter `APP_PASSWORD`, and the app sets a 30-day HTTP-only session cookie.
+Open `http://localhost:3000`, enter `APP_PASSWORD`, and the app sets a 30-day HTTP-only session cookie. The login form supports both the normal React login flow and native HTML form POST fallback for mobile browsers.
 
 ## Environment Variables
 
