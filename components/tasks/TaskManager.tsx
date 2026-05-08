@@ -1,15 +1,10 @@
 "use client";
 
-import { Plus, Trash2 } from "lucide-react";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { Calendar, ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
+import { FormEvent, KeyboardEvent, useEffect, useMemo, useState } from "react";
 
 import { getTaskDueState, getTaskProgress } from "@/lib/domain/tasks";
 import type { Task, TaskPriority, TaskStatus } from "@/types/task";
-
-interface TaskDraft {
-  title: string;
-  description: string;
-}
 
 const statusOptions: Array<{ value: TaskStatus; label: string }> = [
   { value: "not_started", label: "Not Started" },
@@ -26,7 +21,6 @@ const priorityOptions: Array<{ value: TaskPriority; label: string }> = [
 
 const emptyForm = {
   title: "",
-  description: "",
   priority: "medium" as TaskPriority,
   dueDate: ""
 };
@@ -37,8 +31,9 @@ export function TaskManager() {
   const [showCompleted, setShowCompleted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [subtaskTitles, setSubtaskTitles] = useState<Record<string, string>>({});
-  const [taskDrafts, setTaskDrafts] = useState<Record<string, TaskDraft>>({});
+  const [expandedTaskIds, setExpandedTaskIds] = useState<Set<string>>(() => new Set());
+  const [addingSubtaskFor, setAddingSubtaskFor] = useState<string | null>(null);
+  const [subtaskTitle, setSubtaskTitle] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -89,36 +84,38 @@ export function TaskManager() {
       return;
     }
 
-    const payload = {
-      title,
-      description: form.description.trim(),
-      status: "not_started" as TaskStatus,
-      priority: form.priority,
-      dueDate: form.dueDate || null,
-      parentTaskId: null
-    };
+    const created = await writeTask("/api/tasks", {
+      method: "POST",
+      body: JSON.stringify({
+        title,
+        description: "",
+        status: "not_started",
+        priority: form.priority,
+        dueDate: form.dueDate || null,
+        parentTaskId: null
+      })
+    });
 
-    const created = await writeTask("/api/tasks", { method: "POST", body: JSON.stringify(payload) });
     if (created) {
       setTasks((current) => [...current, created]);
       setForm(emptyForm);
     }
   }
 
-  async function updateTask(taskId: string, input: Partial<Pick<Task, "title" | "description" | "status" | "priority" | "dueDate">>) {
+  async function updateTask(taskId: string, input: Partial<Pick<Task, "title" | "status" | "priority" | "dueDate">>) {
+    if ("title" in input && input.title?.trim().length === 0) {
+      setError("Task title is required.");
+      return;
+    }
+
     const updated = await writeTask(`/api/tasks/${taskId}`, { method: "PATCH", body: JSON.stringify(input) });
     if (updated) {
       setTasks((current) => current.map((task) => (task.id === taskId ? updated : task)));
-      setTaskDrafts((current) => {
-        const next = { ...current };
-        delete next[taskId];
-        return next;
-      });
     }
   }
 
   async function createSubtask(parentTask: Task) {
-    const title = (subtaskTitles[parentTask.id] ?? "").trim();
+    const title = subtaskTitle.trim();
     if (!title) {
       setError("Subtask title is required.");
       return;
@@ -130,14 +127,16 @@ export function TaskManager() {
         title,
         description: "",
         status: "not_started",
-        priority: parentTask.priority,
+        priority: "medium",
         dueDate: null
       })
     });
 
     if (created) {
       setTasks((current) => [...current, created]);
-      setSubtaskTitles((current) => ({ ...current, [parentTask.id]: "" }));
+      setExpanded(parentTask.id, true);
+      setAddingSubtaskFor(null);
+      setSubtaskTitle("");
     }
   }
 
@@ -191,59 +190,61 @@ export function TaskManager() {
     return payload.task;
   }
 
+  function toggleExpanded(taskId: string) {
+    setExpandedTaskIds((current) => {
+      const next = new Set(current);
+      if (next.has(taskId)) {
+        next.delete(taskId);
+      } else {
+        next.add(taskId);
+      }
+      return next;
+    });
+  }
+
+  function setExpanded(taskId: string, expanded: boolean) {
+    setExpandedTaskIds((current) => {
+      const next = new Set(current);
+      if (expanded) {
+        next.add(taskId);
+      } else {
+        next.delete(taskId);
+      }
+      return next;
+    });
+  }
+
+  function startAddSubtask(taskId: string) {
+    setAddingSubtaskFor(taskId);
+    setSubtaskTitle("");
+  }
+
   return (
     <section aria-label="任务管理" className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex flex-col gap-3 border-b border-slate-200 pb-4 md:flex-row md:items-start md:justify-between">
         <div>
           <h2 className="text-base font-semibold text-ink">任务管理</h2>
-          <p className="mt-2 text-sm leading-6 text-slate-600">管理一级任务和一层子任务，已完成一级任务默认隐藏。</p>
+          <p className="mt-2 text-sm leading-6 text-slate-600">紧凑展示一级任务和子任务，点击标题、优先级或截止日期快速修改。</p>
         </div>
-        <button
-          className="h-9 rounded-md border border-slate-300 px-3 text-sm font-medium text-slate-700 hover:bg-slate-50"
-          onClick={() => setShowCompleted((value) => !value)}
-          type="button"
-        >
+        <button className="h-9 rounded-md border border-slate-300 px-3 text-sm font-medium text-slate-700 hover:bg-slate-50" onClick={() => setShowCompleted((value) => !value)} type="button">
           {showCompleted ? "Hide Completed" : "Show Completed"}
         </button>
       </div>
 
-      <form className="mt-4 grid gap-3 lg:grid-cols-[1.4fr_1fr_auto_auto_auto]" onSubmit={createTask}>
+      <form className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_9rem_10rem_auto]" onSubmit={createTask}>
         <label className="grid gap-1 text-sm font-medium text-slate-700">
           Task title
-          <input
-            className="h-10 rounded-md border border-slate-300 px-3 text-sm font-normal text-ink outline-none focus:border-moss"
-            onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))}
-            value={form.title}
-          />
-        </label>
-        <label className="grid gap-1 text-sm font-medium text-slate-700">
-          Task description
-          <input
-            className="h-10 rounded-md border border-slate-300 px-3 text-sm font-normal text-ink outline-none focus:border-moss"
-            onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))}
-            value={form.description}
-          />
+          <input className="h-10 rounded-md border border-slate-300 px-3 text-sm font-normal text-ink outline-none focus:border-moss" onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))} value={form.title} />
         </label>
         <label className="grid gap-1 text-sm font-medium text-slate-700">
           Task priority
-          <select
-            className="h-10 rounded-md border border-slate-300 px-3 text-sm font-normal text-ink outline-none focus:border-moss"
-            onChange={(event) => setForm((current) => ({ ...current, priority: event.target.value as TaskPriority }))}
-            value={form.priority}
-          >
-            {priorityOptions.map((option) => (
-              <option key={option.value} value={option.value}>{option.label}</option>
-            ))}
+          <select className="h-10 rounded-md border border-slate-300 px-3 text-sm font-normal text-ink outline-none focus:border-moss" onChange={(event) => setForm((current) => ({ ...current, priority: event.target.value as TaskPriority }))} value={form.priority}>
+            {priorityOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
           </select>
         </label>
         <label className="grid gap-1 text-sm font-medium text-slate-700">
           Due date
-          <input
-            className="h-10 rounded-md border border-slate-300 px-3 text-sm font-normal text-ink outline-none focus:border-moss"
-            onChange={(event) => setForm((current) => ({ ...current, dueDate: event.target.value }))}
-            type="date"
-            value={form.dueDate}
-          />
+          <input className="h-10 rounded-md border border-slate-300 px-3 text-sm font-normal text-ink outline-none focus:border-moss" onChange={(event) => setForm((current) => ({ ...current, dueDate: event.target.value }))} type="date" value={form.dueDate} />
         </label>
         <button className="mt-6 inline-flex h-10 items-center justify-center gap-2 rounded-md bg-ink px-4 text-sm font-semibold text-white hover:bg-slate-700" type="submit">
           <Plus aria-hidden="true" size={16} />
@@ -258,242 +259,221 @@ export function TaskManager() {
         <p className="mt-5 rounded-md border border-dashed border-slate-300 px-4 py-6 text-sm text-slate-600">No active tasks yet.</p>
       ) : null}
 
-      <div className="mt-5 grid gap-4">
-        {topLevelTasks.map((task) => (
-          <TaskCard
-            key={task.id}
-            onCreateSubtask={createSubtask}
-            onDelete={deleteTask}
-            onDeleteSubtask={deleteSubtask}
-            onDraftChange={(taskId, draft) => setTaskDrafts((current) => ({ ...current, [taskId]: draft }))}
-            onSubtaskTitleChange={(value) => setSubtaskTitles((current) => ({ ...current, [task.id]: value }))}
-            onUpdate={updateTask}
-            subtaskTitle={subtaskTitles[task.id] ?? ""}
-            task={task}
-            taskDrafts={taskDrafts}
-            tasks={tasks}
-          />
-        ))}
-      </div>
+      {!loading && topLevelTasks.length > 0 ? (
+        <div aria-label="Task list" className="mt-5 overflow-hidden rounded-lg border border-slate-200" role="table">
+          <div className="grid grid-cols-[2rem_minmax(0,1fr)_7rem_4rem_6.5rem_4.5rem] items-center gap-2 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-500" role="row">
+            <div aria-label="Expand" role="columnheader" />
+            <div role="columnheader">Task</div>
+            <div role="columnheader">Status</div>
+            <div role="columnheader">Priority</div>
+            <div role="columnheader">Due</div>
+            <div aria-label="Actions" role="columnheader" />
+          </div>
+          {topLevelTasks.map((task) => {
+            const children = tasks.filter((item) => item.parentTaskId === task.id);
+            const expanded = expandedTaskIds.has(task.id);
+            return (
+              <div key={task.id} role="rowgroup">
+                <TaskRow
+                  canExpand={children.length > 0}
+                  expanded={expanded}
+                  isSubtask={false}
+                  onAddSubtask={startAddSubtask}
+                  onDelete={deleteTask}
+                  onPriorityChange={(taskId, priority) => updateTask(taskId, { priority })}
+                  onTitleSave={(taskId, title) => updateTask(taskId, { title })}
+                  onToggleExpanded={toggleExpanded}
+                  onDueDateChange={(taskId, dueDate) => updateTask(taskId, { dueDate })}
+                  progress={getTaskProgress(task, tasks)}
+                  task={task}
+                />
+                {addingSubtaskFor === task.id ? (
+                  <SubtaskInput onCancel={() => setAddingSubtaskFor(null)} onCreate={() => createSubtask(task)} onTitleChange={setSubtaskTitle} parentTitle={task.title} title={subtaskTitle} />
+                ) : null}
+                {expanded ? children.map((child) => (
+                  <TaskRow
+                    canExpand={false}
+                    expanded={false}
+                    isSubtask={true}
+                    key={child.id}
+                    onDelete={deleteSubtask}
+                    onPriorityChange={(taskId, priority) => updateTask(taskId, { priority })}
+                    onTitleSave={(taskId, title) => updateTask(taskId, { title })}
+                    onDueDateChange={(taskId, dueDate) => updateTask(taskId, { dueDate })}
+                    task={child}
+                  />
+                )) : null}
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
     </section>
   );
 }
 
-interface TaskCardProps {
+interface TaskRowProps {
   task: Task;
-  tasks: Task[];
-  taskDrafts: Record<string, TaskDraft>;
-  subtaskTitle: string;
-  onUpdate: (taskId: string, input: Partial<Pick<Task, "title" | "description" | "status" | "priority" | "dueDate">>) => Promise<void>;
-  onCreateSubtask: (task: Task) => Promise<void>;
-  onSubtaskTitleChange: (value: string) => void;
-  onDraftChange: (taskId: string, draft: TaskDraft) => void;
+  isSubtask: boolean;
+  canExpand: boolean;
+  expanded: boolean;
+  progress?: { completed: number; total: number };
+  onToggleExpanded?: (taskId: string) => void;
+  onAddSubtask?: (taskId: string) => void;
+  onTitleSave: (taskId: string, title: string) => Promise<void>;
+  onPriorityChange: (taskId: string, priority: TaskPriority) => Promise<void>;
+  onDueDateChange: (taskId: string, dueDate: string | null) => Promise<void>;
   onDelete: (task: Task) => Promise<void>;
-  onDeleteSubtask: (task: Task) => Promise<void>;
 }
 
-function TaskCard({ task, tasks, taskDrafts, subtaskTitle, onUpdate, onCreateSubtask, onSubtaskTitleChange, onDraftChange, onDelete, onDeleteSubtask }: TaskCardProps) {
-  const children = tasks.filter((item) => item.parentTaskId === task.id);
-  const progress = getTaskProgress(task, tasks);
+function TaskRow({ task, isSubtask, canExpand, expanded, progress, onToggleExpanded, onAddSubtask, onTitleSave, onPriorityChange, onDueDateChange, onDelete }: TaskRowProps) {
   const dueState = getTaskDueState(task);
-  const dueClass = dueState === "overdue" ? "border-red-300 bg-red-50" : dueState === "near_due" ? "border-amber-300 bg-amber-50" : "border-slate-200 bg-white";
-  const taskDraft = taskDrafts[task.id] ?? { title: task.title, description: task.description };
+  const rowClass = dueState === "overdue" ? "bg-red-50" : dueState === "near_due" ? "bg-amber-50" : isSubtask ? "bg-slate-50/60" : "bg-white";
 
   return (
-    <article aria-label={task.title} className={`rounded-lg border p-4 ${dueClass} ${task.status === "completed" ? "opacity-60" : ""}`}>
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-        <div className="min-w-0">
-          <h3 className="break-words text-base font-semibold text-ink">{task.title}</h3>
-          {task.description ? <p className="mt-1 text-sm leading-6 text-slate-600">{task.description}</p> : null}
-          <div className="mt-3 flex flex-wrap gap-2 text-xs font-medium text-slate-600">
-            <span className="rounded border border-slate-200 bg-white px-2 py-1">{labelFor(statusOptions, task.status)}</span>
-            <span className="rounded border border-slate-200 bg-white px-2 py-1">{labelFor(priorityOptions, task.priority)}</span>
-            {task.dueDate ? <span className="rounded border border-slate-200 bg-white px-2 py-1">Due {task.dueDate}</span> : null}
-            <span className="rounded border border-slate-200 bg-white px-2 py-1">{progress.completed}/{progress.total} subtasks completed</span>
-          </div>
+    <div className={`grid grid-cols-[2rem_minmax(0,1fr)_7rem_4rem_6.5rem_4.5rem] items-center gap-2 border-t border-slate-200 px-3 py-2 text-sm ${rowClass} ${task.status === "completed" ? "text-slate-400" : "text-slate-700"}`} role="row">
+      <div className="flex items-center" role="cell">
+        {!isSubtask && canExpand ? (
+          <button aria-label={`${expanded ? "Collapse" : "Expand"} subtasks for ${task.title}`} className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100" onClick={() => onToggleExpanded?.(task.id)} type="button">
+            {expanded ? <ChevronDown aria-hidden="true" size={16} /> : <ChevronRight aria-hidden="true" size={16} />}
+          </button>
+        ) : null}
+      </div>
+      <div className="min-w-0" role="cell">
+        <div className="flex min-w-0 items-center gap-2">
+          <EditableTitle indent={isSubtask} onSave={onTitleSave} task={task} />
+          {!isSubtask && progress ? <span className="shrink-0 text-xs text-slate-500">{progress.completed}/{progress.total}</span> : null}
         </div>
-
-        <button
-          aria-label="Delete Task"
-          className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-red-200 px-3 text-sm font-medium text-red-700 hover:bg-red-50"
-          onClick={() => void onDelete(task)}
-          type="button"
-        >
-          <Trash2 aria-hidden="true" size={16} />
-          Delete Task
+      </div>
+      <div className="truncate text-xs font-medium" role="cell">{labelFor(statusOptions, task.status)}</div>
+      <div role="cell"><PrioritySelect onChange={onPriorityChange} task={task} /></div>
+      <div role="cell"><DueDateCell onChange={onDueDateChange} task={task} /></div>
+      <div className="flex justify-end gap-1" role="cell">
+        {!isSubtask ? (
+          <button aria-label={`Add subtask to ${task.title}`} className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100" onClick={() => onAddSubtask?.(task.id)} type="button">
+            <Plus aria-hidden="true" size={14} />
+          </button>
+        ) : null}
+        <button aria-label={`${isSubtask ? "Delete subtask" : "Delete task"} ${task.title}`} className="inline-flex h-7 w-7 items-center justify-center rounded-md text-red-600 hover:bg-red-50" onClick={() => void onDelete(task)} type="button">
+          <Trash2 aria-hidden="true" size={14} />
         </button>
       </div>
-
-      <div className="mt-4 grid gap-3 md:grid-cols-[1fr_1fr_auto]">
-        <label className="grid gap-1 text-sm font-medium text-slate-700">
-          Title for {task.title}
-          <input
-            className="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm font-normal text-ink outline-none focus:border-moss"
-            onChange={(event) => onDraftChange(task.id, { ...taskDraft, title: event.target.value })}
-            value={taskDraft.title}
-          />
-        </label>
-        <label className="grid gap-1 text-sm font-medium text-slate-700">
-          Description for {task.title}
-          <input
-            className="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm font-normal text-ink outline-none focus:border-moss"
-            onChange={(event) => onDraftChange(task.id, { ...taskDraft, description: event.target.value })}
-            value={taskDraft.description}
-          />
-        </label>
-        <button
-          className="mt-6 inline-flex h-10 items-center justify-center rounded-md border border-slate-300 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-          onClick={() => void onUpdate(task.id, { title: taskDraft.title, description: taskDraft.description })}
-          type="button"
-        >
-          Save Task
-        </button>
-      </div>
-
-      <div className="mt-4 grid gap-3 md:grid-cols-3">
-        <label className="grid gap-1 text-sm font-medium text-slate-700">
-          Status for {task.title}
-          <select
-            className="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm font-normal text-ink outline-none focus:border-moss"
-            onChange={(event) => void onUpdate(task.id, { status: event.target.value as TaskStatus })}
-            value={task.status}
-          >
-            {statusOptions.map((option) => (
-              <option key={option.value} value={option.value}>{option.label}</option>
-            ))}
-          </select>
-        </label>
-        <label className="grid gap-1 text-sm font-medium text-slate-700">
-          Priority for {task.title}
-          <select
-            className="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm font-normal text-ink outline-none focus:border-moss"
-            onChange={(event) => void onUpdate(task.id, { priority: event.target.value as TaskPriority })}
-            value={task.priority}
-          >
-            {priorityOptions.map((option) => (
-              <option key={option.value} value={option.value}>{option.label}</option>
-            ))}
-          </select>
-        </label>
-        <label className="grid gap-1 text-sm font-medium text-slate-700">
-          Due date for {task.title}
-          <input
-            className="h-10 rounded-md border border-slate-300 bg-white px-3 text-sm font-normal text-ink outline-none focus:border-moss"
-            onChange={(event) => void onUpdate(task.id, { dueDate: event.target.value || null })}
-            type="date"
-            value={task.dueDate ?? ""}
-          />
-        </label>
-      </div>
-
-      <div className="mt-4 grid gap-2">
-        {children.map((child) => (
-          <SubtaskRow
-            child={child}
-            draft={taskDrafts[child.id] ?? { title: child.title, description: child.description }}
-            key={child.id}
-            onDelete={onDeleteSubtask}
-            onDraftChange={onDraftChange}
-            onUpdate={onUpdate}
-          />
-        ))}
-      </div>
-
-      <div className="mt-4 flex flex-col gap-2 md:flex-row">
-        <label className="min-w-0 flex-1 text-sm font-medium text-slate-700">
-          New subtask for {task.title}
-          <input
-            className="mt-1 h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm font-normal text-ink outline-none focus:border-moss"
-            onChange={(event) => onSubtaskTitleChange(event.target.value)}
-            value={subtaskTitle}
-          />
-        </label>
-        <button className="mt-6 inline-flex h-10 items-center justify-center gap-2 rounded-md border border-slate-300 px-4 text-sm font-semibold text-slate-700 hover:bg-slate-50" onClick={() => void onCreateSubtask(task)} type="button">
-          <Plus aria-hidden="true" size={16} />
-          Add Subtask
-        </button>
-      </div>
-    </article>
+    </div>
   );
 }
 
-interface SubtaskRowProps {
-  child: Task;
-  draft: TaskDraft;
-  onDraftChange: (taskId: string, draft: TaskDraft) => void;
-  onUpdate: (taskId: string, input: Partial<Pick<Task, "title" | "description" | "status" | "priority" | "dueDate">>) => Promise<void>;
-  onDelete: (task: Task) => Promise<void>;
+function EditableTitle({ task, indent, onSave }: { task: Task; indent: boolean; onSave: (taskId: string, title: string) => Promise<void> }) {
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState(task.title);
+
+  useEffect(() => {
+    if (!editing) setValue(task.title);
+  }, [editing, task.title]);
+
+  if (editing) {
+    return (
+      <input
+        aria-label={`Edit title for ${task.title}`}
+        autoFocus
+        className="h-8 min-w-0 rounded-md border border-slate-300 px-2 text-sm text-ink outline-none focus:border-moss"
+        onBlur={() => { setValue(task.title); setEditing(false); }}
+        onChange={(event) => setValue(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") {
+            setValue(task.title);
+            setEditing(false);
+          }
+          if (event.key === "Enter") {
+            const title = value.trim();
+            if (title.length > 0) void onSave(task.id, title).then(() => setEditing(false));
+          }
+        }}
+        value={value}
+      />
+    );
+  }
+
+  return (
+    <button className={`min-w-0 truncate text-left text-sm ${indent ? "pl-5 font-normal text-slate-700" : "font-semibold text-ink"}`} onClick={() => setEditing(true)} type="button">
+      {task.title}
+    </button>
+  );
 }
 
-function SubtaskRow({ child, draft, onDraftChange, onUpdate, onDelete }: SubtaskRowProps) {
+function PrioritySelect({ task, onChange }: { task: Task; onChange: (taskId: string, priority: TaskPriority) => Promise<void> }) {
   return (
-    <div className="grid gap-2 rounded-md border border-slate-200 bg-white px-3 py-3 lg:grid-cols-[1fr_1fr_auto_auto_auto_auto] lg:items-end" key={child.id}>
-      <label className="grid gap-1 text-sm font-medium text-slate-700">
-        Title for {child.title}
-        <input
-          className="h-9 rounded-md border border-slate-300 bg-white px-2 text-sm font-normal text-ink outline-none focus:border-moss"
-          onChange={(event) => onDraftChange(child.id, { ...draft, title: event.target.value })}
-          value={draft.title}
-        />
-      </label>
-      <label className="grid gap-1 text-sm font-medium text-slate-700">
-        Description for {child.title}
-        <input
-          className="h-9 rounded-md border border-slate-300 bg-white px-2 text-sm font-normal text-ink outline-none focus:border-moss"
-          onChange={(event) => onDraftChange(child.id, { ...draft, description: event.target.value })}
-          value={draft.description}
-        />
-      </label>
-      <select
-        aria-label={`Status for ${child.title}`}
-        className="h-9 rounded-md border border-slate-300 bg-white px-2 text-sm text-ink"
-        onChange={(event) => void onUpdate(child.id, { status: event.target.value as TaskStatus })}
-        value={child.status}
-      >
-        {statusOptions.map((option) => (
-          <option key={option.value} value={option.value}>{option.label}</option>
-        ))}
+    <label className="relative inline-flex h-8 w-9 items-center justify-center rounded-md hover:bg-slate-100">
+      <span className={`pointer-events-none h-3 w-3 rounded-full ${priorityDotClass(task.priority)}`} />
+      <select aria-label={`Priority for ${task.title}: ${priorityLabel(task.priority)}`} className="absolute inset-0 cursor-pointer opacity-0" onChange={(event) => void onChange(task.id, event.target.value as TaskPriority)} value={task.priority}>
+        {priorityOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
       </select>
-      <label className="grid gap-1 text-sm font-medium text-slate-700">
-        Priority for {child.title}
-        <select
-          className="h-9 rounded-md border border-slate-300 bg-white px-2 text-sm font-normal text-ink outline-none focus:border-moss"
-          onChange={(event) => void onUpdate(child.id, { priority: event.target.value as TaskPriority })}
-          value={child.priority}
-        >
-          {priorityOptions.map((option) => (
-            <option key={option.value} value={option.value}>{option.label}</option>
-          ))}
-        </select>
-      </label>
-      <label className="grid gap-1 text-sm font-medium text-slate-700">
-        Due date for {child.title}
-        <input
-          className="h-9 rounded-md border border-slate-300 bg-white px-2 text-sm font-normal text-ink outline-none focus:border-moss"
-          onChange={(event) => void onUpdate(child.id, { dueDate: event.target.value || null })}
-          type="date"
-          value={child.dueDate ?? ""}
-        />
-      </label>
-      <button
-        className="inline-flex h-9 items-center justify-center rounded-md border border-slate-300 px-3 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-        onClick={() => void onUpdate(child.id, { title: draft.title, description: draft.description })}
-        type="button"
-      >
-        Save Subtask
+    </label>
+  );
+}
+
+function DueDateCell({ task, onChange }: { task: Task; onChange: (taskId: string, dueDate: string | null) => Promise<void> }) {
+  const [editing, setEditing] = useState(false);
+
+  if (editing) {
+    return (
+      <input
+        aria-label={`Due date for ${task.title}`}
+        autoFocus
+        className="h-8 w-32 rounded-md border border-slate-300 px-2 text-sm text-ink outline-none focus:border-moss"
+        onBlur={() => setEditing(false)}
+        onChange={(event) => void onChange(task.id, event.target.value || null).then(() => setEditing(false))}
+        onKeyDown={(event) => { if (event.key === "Escape") setEditing(false); }}
+        type="date"
+        value={task.dueDate ?? ""}
+      />
+    );
+  }
+
+  if (!task.dueDate) {
+    return (
+      <button aria-label={`Set due date for ${task.title}`} className="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100" onClick={() => setEditing(true)} type="button">
+        <Calendar aria-hidden="true" size={16} />
       </button>
-      <button
-        aria-label="Delete Subtask"
-        className="inline-flex h-9 items-center justify-center rounded-md border border-red-200 px-3 text-sm font-semibold text-red-700 hover:bg-red-50"
-        onClick={() => void onDelete(child)}
-        type="button"
-      >
-        Delete Subtask
-      </button>
+    );
+  }
+
+  return (
+    <button aria-label={`Edit due date for ${task.title}`} className="h-8 rounded-md px-2 text-left text-xs text-slate-700 hover:bg-slate-100" onClick={() => setEditing(true)} type="button">
+      {task.dueDate}
+    </button>
+  );
+}
+
+function SubtaskInput({ parentTitle, title, onTitleChange, onCreate, onCancel }: { parentTitle: string; title: string; onTitleChange: (value: string) => void; onCreate: () => Promise<void>; onCancel: () => void }) {
+  function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key === "Escape") onCancel();
+    if (event.key === "Enter") void onCreate();
+  }
+
+  return (
+    <div className="grid grid-cols-[2rem_minmax(0,1fr)_7rem_4rem_6.5rem_4.5rem] items-center gap-2 border-t border-slate-200 bg-slate-50 px-3 py-2" role="row">
+      <div role="cell" />
+      <div role="cell">
+        <input aria-label={`New subtask for ${parentTitle}`} autoFocus className="ml-5 h-8 w-full rounded-md border border-slate-300 px-2 text-sm text-ink outline-none focus:border-moss" onChange={(event) => onTitleChange(event.target.value)} onKeyDown={handleKeyDown} value={title} />
+      </div>
+      <div className="text-xs text-slate-500" role="cell">Not Started</div>
+      <div role="cell"><span className="inline-block h-3 w-3 rounded-full bg-amber-500" /></div>
+      <div role="cell"><Calendar aria-hidden="true" className="text-slate-400" size={16} /></div>
+      <div role="cell" />
     </div>
   );
 }
 
 function labelFor<T extends string>(options: Array<{ value: T; label: string }>, value: T): string {
   return options.find((option) => option.value === value)?.label ?? value;
+}
+
+function priorityLabel(priority: TaskPriority): string {
+  return labelFor(priorityOptions, priority);
+}
+
+function priorityDotClass(priority: TaskPriority): string {
+  if (priority === "high") return "bg-red-500";
+  if (priority === "medium") return "bg-amber-500";
+  return "bg-green-500";
 }

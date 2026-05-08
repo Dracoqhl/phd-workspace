@@ -22,6 +22,10 @@ function task(overrides: Partial<Task>): Task {
   };
 }
 
+function parseBody(init?: RequestInit): Record<string, unknown> {
+  return JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>;
+}
+
 function mockFetch(tasks: Task[]) {
   const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
@@ -32,48 +36,26 @@ function mockFetch(tasks: Task[]) {
     }
 
     if (url === "/api/tasks" && method === "POST") {
+      const body = parseBody(init);
       return Response.json({
         task: task({
           id: "task_new",
-          title: JSON.parse(String(init?.body)).title,
-          description: JSON.parse(String(init?.body)).description,
-          status: JSON.parse(String(init?.body)).status,
-          priority: JSON.parse(String(init?.body)).priority,
-          dueDate: JSON.parse(String(init?.body)).dueDate,
+          title: String(body.title),
+          description: String(body.description ?? ""),
+          status: "not_started",
+          priority: body.priority as Task["priority"],
+          dueDate: (body.dueDate as string | null) ?? null,
           parentTaskId: null
         })
       });
     }
 
-    if (url.startsWith("/api/tasks/") && method === "PATCH") {
-      const id = url.split("/").at(-1) ?? "task_1";
-      const body = JSON.parse(String(init?.body)) as Partial<Task>;
-      return Response.json({
-        task: task({
-          id,
-          parentTaskId: id.startsWith("subtask") ? "task_1" : null,
-          title: body.title ?? (id.startsWith("subtask") ? "Collect figures" : "Draft dissertation chapter"),
-          description: body.description ?? "Write the first complete draft.",
-          status: body.status ?? "in_progress",
-          priority: body.priority ?? "high",
-          dueDate: body.dueDate ?? "2026-05-09"
-        })
-      });
-    }
-
-    if (url === "/api/tasks/task_1" && method === "DELETE") {
-      return Response.json({ taskId: "task_1", deletedCount: 2 });
-    }
-
-    if (url === "/api/tasks/subtask_1" && method === "DELETE") {
-      return Response.json({ taskId: "subtask_1", deletedCount: 1 });
-    }
-
     if (url === "/api/tasks/task_1/subtasks" && method === "POST") {
+      const body = parseBody(init);
       return Response.json({
         task: task({
           id: "subtask_new",
-          title: JSON.parse(String(init?.body)).title,
+          title: String(body.title),
           description: "",
           status: "not_started",
           priority: "medium",
@@ -81,6 +63,31 @@ function mockFetch(tasks: Task[]) {
           parentTaskId: "task_1"
         })
       });
+    }
+
+    if (url.startsWith("/api/tasks/") && method === "PATCH") {
+      const id = url.split("/").at(-1) ?? "task_1";
+      const body = parseBody(init) as Partial<Task>;
+      const original = tasks.find((item) => item.id === id);
+      return Response.json({
+        task: task({
+          id,
+          parentTaskId: original?.parentTaskId ?? (id.startsWith("subtask") ? "task_1" : null),
+          title: body.title ?? original?.title ?? (id.startsWith("subtask") ? "Collect figures" : "Draft dissertation chapter"),
+          description: body.description ?? original?.description ?? "Write the first complete draft.",
+          status: body.status ?? original?.status ?? "in_progress",
+          priority: body.priority ?? original?.priority ?? "high",
+          dueDate: body.dueDate === undefined ? original?.dueDate ?? "2026-05-09" : body.dueDate
+        })
+      });
+    }
+
+    if (url === "/api/tasks/task_1" && method === "DELETE") {
+      return Response.json({ deleted: true });
+    }
+
+    if (url === "/api/tasks/subtask_1" && method === "DELETE") {
+      return Response.json({ deleted: true });
     }
 
     throw new Error(`Unexpected request ${method} ${url}`);
@@ -95,7 +102,7 @@ beforeEach(() => {
 });
 
 describe("TaskManager", () => {
-  it("loads tasks and renders readable labels with child progress", async () => {
+  it("renders compact task rows and keeps subtasks collapsed until expanded", async () => {
     mockFetch([
       task({ id: "task_1" }),
       task({ id: "subtask_1", title: "Collect figures", status: "completed", parentTaskId: "task_1" }),
@@ -104,11 +111,18 @@ describe("TaskManager", () => {
 
     render(<TaskManager />);
 
-    const card = await screen.findByRole("article", { name: "Draft dissertation chapter" });
-    expect(within(card).getByText("In Progress", { selector: "span" })).toBeInTheDocument();
-    expect(within(card).getByText("High", { selector: "span" })).toBeInTheDocument();
-    expect(within(card).getByText("1/2 subtasks completed")).toBeInTheDocument();
-    expect(within(card).getByDisplayValue("Collect figures")).toBeInTheDocument();
+    expect(await screen.findByRole("columnheader", { name: "Task" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Status" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Priority" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Due" })).toBeInTheDocument();
+    expect(screen.getByRole("row", { name: /Draft dissertation chapter/ })).toBeInTheDocument();
+    expect(screen.getByText("1/2")).toBeInTheDocument();
+    expect(screen.queryByText("Collect figures")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Expand subtasks for Draft dissertation chapter" }));
+
+    expect(screen.getByText("Collect figures")).toBeInTheDocument();
+    expect(screen.getByText("Revise intro")).toBeInTheDocument();
   });
 
   it("hides completed top-level tasks by default and reveals them with a toggle", async () => {
@@ -133,7 +147,6 @@ describe("TaskManager", () => {
     render(<TaskManager />);
 
     fireEvent.change(screen.getByLabelText("Task title"), { target: { value: "Prepare committee slides" } });
-    fireEvent.change(screen.getByLabelText("Task description"), { target: { value: "Create draft deck." } });
     fireEvent.change(screen.getByLabelText("Task priority"), { target: { value: "high" } });
     fireEvent.click(screen.getByRole("button", { name: "Create Task" }));
 
@@ -144,7 +157,7 @@ describe("TaskManager", () => {
         method: "POST",
         body: JSON.stringify({
           title: "Prepare committee slides",
-          description: "Create draft deck.",
+          description: "",
           status: "not_started",
           priority: "high",
           dueDate: null,
@@ -154,104 +167,117 @@ describe("TaskManager", () => {
     );
   });
 
-  it("updates status, creates a subtask, and deletes a task", async () => {
+  it("saves a title edit with Enter", async () => {
     const fetchMock = mockFetch([task({ id: "task_1" })]);
 
     render(<TaskManager />);
 
-    const card = await screen.findByRole("article", { name: "Draft dissertation chapter" });
-    fireEvent.change(within(card).getByLabelText("New subtask for Draft dissertation chapter"), {
-      target: { value: "Polish abstract" }
-    });
-    fireEvent.click(within(card).getByRole("button", { name: "Add Subtask" }));
-    expect(await within(card).findByDisplayValue("Polish abstract")).toBeInTheDocument();
+    fireEvent.click(await screen.findByText("Draft dissertation chapter"));
+    const input = screen.getByLabelText("Edit title for Draft dissertation chapter");
+    fireEvent.change(input, { target: { value: "Draft final chapter" } });
+    fireEvent.keyDown(input, { key: "Enter" });
 
-    fireEvent.change(within(card).getByLabelText("Status for Draft dissertation chapter"), {
-      target: { value: "completed" }
-    });
-    await waitFor(() => expect(screen.queryByText("Draft dissertation chapter")).not.toBeInTheDocument());
-
-    fireEvent.click(screen.getByRole("button", { name: "Show Completed" }));
-    expect(await screen.findByRole("article", { name: "Draft dissertation chapter" })).toBeInTheDocument();
-
-    vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
-    fireEvent.click(screen.getByRole("button", { name: "Delete Task" }));
-
-    await waitFor(() => expect(screen.queryByText("Draft dissertation chapter")).not.toBeInTheDocument());
-    expect(fetchMock).toHaveBeenCalledWith("/api/tasks/task_1", expect.objectContaining({ method: "PATCH" }));
-    expect(fetchMock).toHaveBeenCalledWith("/api/tasks/task_1/subtasks", expect.objectContaining({ method: "POST" }));
-    expect(fetchMock).toHaveBeenCalledWith("/api/tasks/task_1", expect.objectContaining({ method: "DELETE" }));
-  });
-
-  it("edits top-level task and subtask content", async () => {
-    const fetchMock = mockFetch([
-      task({ id: "task_1" }),
-      task({ id: "subtask_1", title: "Collect figures", description: "Old note", parentTaskId: "task_1" })
-    ]);
-
-    render(<TaskManager />);
-
-    const card = await screen.findByRole("article", { name: "Draft dissertation chapter" });
-    fireEvent.change(within(card).getByLabelText("Title for Draft dissertation chapter"), {
-      target: { value: "Draft final dissertation chapter" }
-    });
-    fireEvent.change(within(card).getByLabelText("Description for Draft dissertation chapter"), {
-      target: { value: "Updated chapter note." }
-    });
-    fireEvent.click(within(card).getByRole("button", { name: "Save Task" }));
-
-    expect(await screen.findByRole("article", { name: "Draft final dissertation chapter" })).toBeInTheDocument();
+    expect(await screen.findByText("Draft final chapter")).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/tasks/task_1",
-      expect.objectContaining({
-        method: "PATCH",
-        body: JSON.stringify({ title: "Draft final dissertation chapter", description: "Updated chapter note." })
-      })
-    );
-
-    const updatedCard = screen.getByRole("article", { name: "Draft final dissertation chapter" });
-    fireEvent.change(within(updatedCard).getByLabelText("Title for Collect figures"), {
-      target: { value: "Collect final figures" }
-    });
-    fireEvent.change(within(updatedCard).getByLabelText("Description for Collect figures"), {
-      target: { value: "Updated subtask note." }
-    });
-    fireEvent.click(within(updatedCard).getByRole("button", { name: "Save Subtask" }));
-
-    expect(await screen.findByDisplayValue("Collect final figures")).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledWith(
-      "/api/tasks/subtask_1",
-      expect.objectContaining({
-        method: "PATCH",
-        body: JSON.stringify({ title: "Collect final figures", description: "Updated subtask note." })
-      })
+      expect.objectContaining({ method: "PATCH", body: JSON.stringify({ title: "Draft final chapter" }) })
     );
   });
 
-  it("edits subtask priority and due date, then deletes the subtask", async () => {
-    const fetchMock = mockFetch([
-      task({ id: "task_1" }),
-      task({ id: "subtask_1", title: "Collect figures", parentTaskId: "task_1", priority: "medium", dueDate: null })
-    ]);
+  it("cancels a title edit with Escape", async () => {
+    const fetchMock = mockFetch([task({ id: "task_1" })]);
 
     render(<TaskManager />);
 
-    const card = await screen.findByRole("article", { name: "Draft dissertation chapter" });
-    fireEvent.change(within(card).getByLabelText("Priority for Collect figures"), { target: { value: "low" } });
-    fireEvent.change(within(card).getByLabelText("Due date for Collect figures"), { target: { value: "2026-05-12" } });
+    fireEvent.click(await screen.findByText("Draft dissertation chapter"));
+    const input = screen.getByLabelText("Edit title for Draft dissertation chapter");
+    fireEvent.change(input, { target: { value: "Do not save" } });
+    fireEvent.keyDown(input, { key: "Escape" });
 
-    vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
-    fireEvent.click(within(card).getByRole("button", { name: "Delete Subtask" }));
+    expect(screen.getByText("Draft dissertation chapter")).toBeInTheDocument();
+    expect(fetchMock).not.toHaveBeenCalledWith("/api/tasks/task_1", expect.objectContaining({ method: "PATCH" }));
+  });
 
-    await waitFor(() => expect(screen.queryByDisplayValue("Collect figures")).not.toBeInTheDocument());
+  it("updates priority from the compact swatch control", async () => {
+    const fetchMock = mockFetch([task({ id: "task_1", priority: "high" })]);
+
+    render(<TaskManager />);
+
+    const priority = await screen.findByLabelText("Priority for Draft dissertation chapter: High");
+    fireEvent.change(priority, { target: { value: "low" } });
+
     expect(fetchMock).toHaveBeenCalledWith(
-      "/api/tasks/subtask_1",
+      "/api/tasks/task_1",
       expect.objectContaining({ method: "PATCH", body: JSON.stringify({ priority: "low" }) })
     );
+  });
+
+  it("shows a calendar icon when due date is empty and saves a selected date", async () => {
+    const fetchMock = mockFetch([task({ id: "task_1", dueDate: null })]);
+
+    render(<TaskManager />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Set due date for Draft dissertation chapter" }));
+    fireEvent.change(screen.getByLabelText("Due date for Draft dissertation chapter"), {
+      target: { value: "2026-05-18" }
+    });
+
     expect(fetchMock).toHaveBeenCalledWith(
-      "/api/tasks/subtask_1",
-      expect.objectContaining({ method: "PATCH", body: JSON.stringify({ dueDate: "2026-05-12" }) })
+      "/api/tasks/task_1",
+      expect.objectContaining({ method: "PATCH", body: JSON.stringify({ dueDate: "2026-05-18" }) })
     );
+  });
+
+  it("clicks an existing due date to edit it", async () => {
+    const fetchMock = mockFetch([task({ id: "task_1", dueDate: "2026-05-09" })]);
+
+    render(<TaskManager />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Edit due date for Draft dissertation chapter" }));
+    fireEvent.change(screen.getByLabelText("Due date for Draft dissertation chapter"), {
+      target: { value: "2026-05-20" }
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/tasks/task_1",
+      expect.objectContaining({ method: "PATCH", body: JSON.stringify({ dueDate: "2026-05-20" }) })
+    );
+  });
+
+  it("creates a subtask and expands the parent row", async () => {
+    const fetchMock = mockFetch([task({ id: "task_1" })]);
+
+    render(<TaskManager />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Add subtask to Draft dissertation chapter" }));
+    const input = screen.getByLabelText("New subtask for Draft dissertation chapter");
+    fireEvent.change(input, { target: { value: "Polish abstract" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    expect(await screen.findByText("Polish abstract")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/tasks/task_1/subtasks",
+      expect.objectContaining({ method: "POST" })
+    );
+  });
+
+  it("deletes a task and deletes a visible subtask", async () => {
+    const fetchMock = mockFetch([
+      task({ id: "task_1" }),
+      task({ id: "subtask_1", title: "Collect figures", parentTaskId: "task_1" })
+    ]);
+
+    render(<TaskManager />);
+    vi.stubGlobal("confirm", vi.fn().mockReturnValue(true));
+
+    fireEvent.click(await screen.findByRole("button", { name: "Expand subtasks for Draft dissertation chapter" }));
+    fireEvent.click(screen.getByRole("button", { name: "Delete subtask Collect figures" }));
+    await waitFor(() => expect(screen.queryByText("Collect figures")).not.toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete task Draft dissertation chapter" }));
+    await waitFor(() => expect(screen.queryByText("Draft dissertation chapter")).not.toBeInTheDocument());
+
     expect(fetchMock).toHaveBeenCalledWith("/api/tasks/subtask_1", expect.objectContaining({ method: "DELETE" }));
+    expect(fetchMock).toHaveBeenCalledWith("/api/tasks/task_1", expect.objectContaining({ method: "DELETE" }));
   });
 });
