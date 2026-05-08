@@ -239,6 +239,34 @@ describe("TaskManager", () => {
     );
   });
 
+  it("marks a top-level task complete from the compact row control", async () => {
+    const fetchMock = mockFetch([task({ id: "task_1", status: "in_progress" })]);
+
+    render(<TaskManager />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Mark task Draft dissertation chapter complete" }));
+
+    await waitFor(() => expect(screen.queryByText("Draft dissertation chapter")).not.toBeInTheDocument());
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/tasks/task_1",
+      expect.objectContaining({ method: "PATCH", body: JSON.stringify({ status: "completed" }) })
+    );
+  });
+
+  it("reopens a completed top-level task from the compact row control", async () => {
+    const fetchMock = mockFetch([task({ id: "task_1", status: "completed", completedAt: now })]);
+
+    render(<TaskManager />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Show Completed" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Reopen task Draft dissertation chapter" }));
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/tasks/task_1",
+      expect.objectContaining({ method: "PATCH", body: JSON.stringify({ status: "not_started" }) })
+    );
+  });
+
   it("shows a calendar icon when due date is empty and saves a selected date", async () => {
     const fetchMock = mockFetch([task({ id: "task_1", dueDate: null })]);
 

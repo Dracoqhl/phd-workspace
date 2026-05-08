@@ -265,8 +265,8 @@ export function HabitManager() {
                   </>
                 ) : (
                   <>
-                    <button aria-label={item.isCompleted ? `Cancel check-in for ${item.habit.name}` : itemCompletedCount > 0 ? `Mark ${item.habit.name} progress` : `Mark ${item.habit.name} complete`} className={`inline-flex h-5 w-5 items-center justify-center rounded-full border transition-colors ${item.isCompleted ? "border-emerald-600 bg-emerald-600 text-white" : itemCompletedCount > 0 ? "border-emerald-500 bg-emerald-100 text-emerald-700" : "border-slate-300 bg-white hover:border-emerald-500"}`} onClick={() => void toggleCheckin(item)} type="button">
-                      {item.isCompleted ? <Check aria-hidden="true" data-testid="habit-checkmark" size={13} strokeWidth={3} /> : null}
+                    <button aria-label={item.isCompleted ? `Cancel check-in for ${item.habit.name}` : itemCompletedCount > 0 ? `Mark ${item.habit.name} progress` : `Mark ${item.habit.name} complete`} className={`inline-flex h-4 w-4 items-center justify-center rounded-full border transition-colors ${item.isCompleted ? "border-emerald-600 bg-emerald-600 text-white" : itemCompletedCount > 0 ? "border-emerald-500 bg-emerald-100 text-emerald-700" : "border-slate-300 bg-white hover:border-emerald-500"}`} onClick={() => void toggleCheckin(item)} type="button">
+                      {item.isCompleted ? <Check aria-hidden="true" data-testid="habit-checkmark" size={10} strokeWidth={3} /> : null}
                     </button>
                     <p className={`min-w-0 truncate font-medium ${item.isCompleted ? "line-through" : ""}`}>{item.habit.name}</p>
                     {editingTargetId === item.habit.id ? (

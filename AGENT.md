@@ -44,12 +44,13 @@ This file stores maintainer context for future development sessions.
 - Habit progress fractions such as `1/3` should be clickable in normal mode to edit the daily target.
 - Habit daily target is an integer from 1 to 5. Multi-check habits increment one count per click until target is reached; cancelling decrements one count.
 - Habit panel progress should use total checked counts over total daily targets, not completed habit rows over total habit rows. Updating check-ins or target counts must immediately update the header progress bar.
-- Habit completion controls should be small circles: incomplete is an empty outlined circle; complete is a solid green circle with a white checkmark.
+- Habit completion controls should be very small circles: incomplete is an empty outlined circle; complete is a solid green circle with a white checkmark.
 - Completed habit rows should be greyed out, struck through, and sorted after incomplete habits. Cancelling a check-in should restore the habit near the front of the active list.
 - Habit deactivation should use a small trash icon, matching the task module's delete affordance. Avoid power-button style icons for this action.
 - Habit editing should use the panel-level edit mode. In edit mode, row name fields save on Enter or blur. Avoid per-row edit icons for routine text editing.
 - The current business date should be shown near the top of the whole workspace page, not inside the habit panel.
 - Tasks: parent tasks plus one level of subtasks, status, priority, due date, filters, completed visibility.
+- Task rows should include a small circular complete/reopen control immediately before the task title and after the expand/collapse affordance. Completing a top-level task should rely on the existing completed-task hiding behavior.
 - Task rows should use a two-step text edit interaction: first click selects/highlights the row; a second click on the text enters inline edit. Enter and input blur both save; Escape cancels.
 - AI assistant: persistent right panel, chat, API test, structured operation proposals, user confirmation cards, operation logs.
 - Local persistence: JSON files with safe write behavior.

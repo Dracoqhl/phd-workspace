@@ -1,6 +1,6 @@
 "use client";
 
-import { Calendar, ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
+import { Calendar, Check, ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
 import { FormEvent, KeyboardEvent, useEffect, useMemo, useState } from "react";
 
 import { getTaskDueState, getTaskProgress } from "@/lib/domain/tasks";
@@ -282,6 +282,7 @@ export function TaskManager() {
                   onAddSubtask={startAddSubtask}
                   onDelete={deleteTask}
                   onPriorityChange={(taskId, priority) => updateTask(taskId, { priority })}
+                  onStatusToggle={(taskToToggle) => updateTask(taskToToggle.id, { status: taskToToggle.status === "completed" ? "not_started" : "completed" })}
                   onTitleSave={(taskId, title) => updateTask(taskId, { title })}
                   onToggleExpanded={toggleExpanded}
                   onDueDateChange={(taskId, dueDate) => updateTask(taskId, { dueDate })}
@@ -302,6 +303,7 @@ export function TaskManager() {
                     key={child.id}
                     onDelete={deleteSubtask}
                     onPriorityChange={(taskId, priority) => updateTask(taskId, { priority })}
+                    onStatusToggle={(taskToToggle) => updateTask(taskToToggle.id, { status: taskToToggle.status === "completed" ? "not_started" : "completed" })}
                     onTitleSave={(taskId, title) => updateTask(taskId, { title })}
                     onDueDateChange={(taskId, dueDate) => updateTask(taskId, { dueDate })}
                     selected={selectedTaskId === child.id}
@@ -331,12 +333,13 @@ interface TaskRowProps {
   onSelect: (taskId: string) => void;
   onAddSubtask?: (taskId: string) => void;
   onTitleSave: (taskId: string, title: string) => Promise<void>;
+  onStatusToggle: (task: Task) => Promise<void>;
   onPriorityChange: (taskId: string, priority: TaskPriority) => Promise<void>;
   onDueDateChange: (taskId: string, dueDate: string | null) => Promise<void>;
   onDelete: (task: Task) => Promise<void>;
 }
 
-function TaskRow({ task, isSubtask, canExpand, expanded, progress, selected, selectedTaskId, onToggleExpanded, onSelect, onAddSubtask, onTitleSave, onPriorityChange, onDueDateChange, onDelete }: TaskRowProps) {
+function TaskRow({ task, isSubtask, canExpand, expanded, progress, selected, selectedTaskId, onToggleExpanded, onSelect, onAddSubtask, onTitleSave, onStatusToggle, onPriorityChange, onDueDateChange, onDelete }: TaskRowProps) {
   const dueState = getTaskDueState(task);
   const rowClass = dueState === "overdue" ? "bg-red-50" : dueState === "near_due" ? "bg-amber-50" : isSubtask ? "bg-slate-50/60" : "bg-white";
 
@@ -351,6 +354,7 @@ function TaskRow({ task, isSubtask, canExpand, expanded, progress, selected, sel
       </div>
       <div className="min-w-0" role="cell">
         <div className="flex min-w-0 items-center gap-2">
+          <TaskCompletionButton onToggle={onStatusToggle} task={task} />
           <EditableTitle indent={isSubtask} onSave={onTitleSave} onSelect={onSelect} selectedTaskId={selectedTaskId} task={task} />
           {!isSubtask && progress ? <span className="shrink-0 text-xs text-slate-500">{progress.completed}/{progress.total}</span> : null}
         </div>
@@ -369,6 +373,21 @@ function TaskRow({ task, isSubtask, canExpand, expanded, progress, selected, sel
         </button>
       </div>
     </div>
+  );
+}
+
+function TaskCompletionButton({ task, onToggle }: { task: Task; onToggle: (task: Task) => Promise<void> }) {
+  const completed = task.status === "completed";
+
+  return (
+    <button
+      aria-label={completed ? `Reopen task ${task.title}` : `Mark task ${task.title} complete`}
+      className={`inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition-colors ${completed ? "border-emerald-600 bg-emerald-600 text-white" : "border-slate-300 bg-white hover:border-emerald-500"}`}
+      onClick={() => void onToggle(task)}
+      type="button"
+    >
+      {completed ? <Check aria-hidden="true" size={10} strokeWidth={3} /> : null}
+    </button>
   );
 }
 
