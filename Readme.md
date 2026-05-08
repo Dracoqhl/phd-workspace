@@ -70,7 +70,15 @@ AI_BASE_URL=https://api.openai.com/v1
 - `AI_MODEL` is the model name for later AI features.
 - `AI_BASE_URL` is the OpenAI-compatible model API base URL. It is part of the required AI configuration, but the current foundation slice does not call the model API yet.
 
-Run the app:
+Run the app with the helper script:
+
+```bash
+./scripts/start-dev.sh
+```
+
+The script loads `.env.local` when present, creates `DATA_DIR` when needed, binds the dev server to `0.0.0.0`, and uses port `3000` by default. You can override the port with `PORT=3001 ./scripts/start-dev.sh`.
+
+You can also run the underlying dev command directly:
 
 ```bash
 pnpm dev
@@ -128,6 +136,8 @@ The same empty example shapes are stored in `data.example/`.
 ## Git And GitHub Sync
 
 This project should use Git for source code and documentation. Normal development should be synced to a personal GitHub repository.
+
+Collaboration rule: after each completed, verified development version, the maintainer should commit the version and push it to GitHub.
 
 Recommended GitHub repository settings:
 

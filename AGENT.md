@@ -16,6 +16,7 @@ This file stores maintainer context for future development sessions.
 - Single-user product. Do not build registration, multi-account login, roles, or collaboration for MVP.
 - Use Git to sync source code and project documentation.
 - Sync code to a personal GitHub repository during normal development.
+- After each completed and verified development version, commit the version and push it to GitHub.
 - Do not sync runtime JSON data, API keys, password config, logs, or build artifacts through Git.
 - Use one access password instead of an account system.
 - Store the access password on the server, preferably through `APP_PASSWORD`.
@@ -53,5 +54,6 @@ This file stores maintainer context for future development sessions.
 - Keep `architecture.md` current when directories, file placement rules, module boundaries, or dependency rules change.
 - Keep product decisions in this file current when a later conversation settles an important implementation or scope choice.
 - Keep `.gitignore` aligned with runtime data and generated files.
+- Push completed, verified versions to GitHub before considering the version closed.
 - Prefer small, well-bounded modules over large mixed-responsibility files.
 - Do not introduce multi-user, database, notification, document/PDF, or complex agent features unless explicitly requested later.
