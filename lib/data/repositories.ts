@@ -27,7 +27,7 @@ export function createRepositories(dataDir: string) {
     trash,
     habits: new HabitRepository(new JsonStore<Habit>(dataDir, "habits.json", { validateItem: isHabit })),
     habitCheckins,
-    careRecords: new CollectionRepository(
+    careRecords: new CareRecordRepository(
       new JsonStore<CareRecord>(dataDir, "care-records.json", { validateItem: isCareRecord })
     ),
     aiLogs: new CollectionRepository(
@@ -347,6 +347,55 @@ class CollectionRepository<T> {
   async add(item: T): Promise<T> {
     await this.store.updateItems((items) => [...items, item]);
     return item;
+  }
+}
+
+class CareRecordRepository {
+  private mutationQueue: Promise<unknown> = Promise.resolve();
+
+  constructor(private readonly store: JsonStore<CareRecord>) {}
+
+  async list(): Promise<CareRecord[]> {
+    return (await this.store.read()).items;
+  }
+
+  async getByDate(date: string): Promise<CareRecord | null> {
+    const records = await this.list();
+    return records.find((record) => record.date === date) ?? null;
+  }
+
+  async upsertByDate(date: string, buildRecord: (existing: CareRecord | null) => CareRecord): Promise<CareRecord> {
+    return this.enqueueMutation(async () => {
+      let savedRecord: CareRecord | null = null;
+
+      await this.store.updateItems((records) => {
+        const existing = records.find((record) => record.date === date) ?? null;
+        savedRecord = buildRecord(existing);
+
+        if (existing) {
+          return records.map((record) => (record.id === existing.id ? savedRecord! : record));
+        }
+
+        return [...records, savedRecord];
+      });
+
+      if (!savedRecord) {
+        throw new Error("Care record was not saved");
+      }
+
+      return savedRecord;
+    });
+  }
+
+  private enqueueMutation<T>(operation: () => Promise<T>): Promise<T> {
+    const next = this.mutationQueue.then(operation, operation);
+
+    this.mutationQueue = next.then(
+      () => undefined,
+      () => undefined
+    );
+
+    return next;
   }
 }
 

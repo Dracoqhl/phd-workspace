@@ -1,18 +1,8 @@
 import { LoginForm } from "@/app/login-form";
+import { CarePanel } from "@/components/care/CarePanel";
 import { HabitManager } from "@/components/habits/HabitManager";
 import { TaskManager } from "@/components/tasks/TaskManager";
 import { getHabitBusinessDate } from "@/lib/domain/habits";
-
-const workspaceSections = [
-  {
-    title: "心灵关怀",
-    description: "这里将显示每日关怀内容、刷新按钮、打卡和心情备注。"
-  },
-  {
-    title: "任务管理",
-    description: "任务管理模块已连接本地 JSON 任务仓库。"
-  }
-];
 
 interface WorkspacePageContentProps {
   authenticated: boolean;
@@ -53,16 +43,7 @@ function WorkspaceSections() {
   return (
     <div className="grid gap-4">
       <div className="grid gap-4 xl:grid-cols-2">
-        {workspaceSections.slice(0, 1).map((section) => (
-          <section
-            aria-label={section.title}
-            className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm"
-            key={section.title}
-          >
-            <h2 className="text-base font-semibold text-ink">{section.title}</h2>
-            <p className="mt-3 text-sm leading-6 text-slate-600">{section.description}</p>
-          </section>
-        ))}
+        <CarePanel />
         <HabitManager />
       </div>
       <TaskManager />

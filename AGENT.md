@@ -36,7 +36,8 @@ This file stores maintainer context for future development sessions.
 
 ## MVP Modules
 
-- Mental care: one AI-generated gentle care message per day, refresh, daily check-in, optional mood note.
+- Mental care: one gentle care message per day, refresh, daily check-in, optional mood note. Until real AI is wired, use a local fallback message and keep the page stable.
+- Mental care UI should stay compact and use only `Retry`, `Check in`/`Checked`, and a short mood note input in this phase. Keep AI API testing in the AI assistant area, not inside the care card.
 - Habits: create/edit/deactivate habits, daily complete/uncomplete check-ins.
 - Habit UI should stay compact and avoid decorative icon columns unless the user explicitly asks for them.
 - Habit creation UI should show habit name and daily target only. Keep `description` in data for future details UI, but do not show it in the current compact list.
