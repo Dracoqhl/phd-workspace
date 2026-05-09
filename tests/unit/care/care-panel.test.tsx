@@ -69,6 +69,8 @@ describe("CarePanel", () => {
     expect(await screen.findByText("今天先完成一个清晰的小动作。")).toBeInTheDocument();
     expect(screen.getByTestId("care-header")).toContainElement(screen.getByRole("heading", { name: "心灵关怀" }));
     expect(screen.getByTestId("care-header")).toContainElement(screen.getByRole("button", { name: "Set energy to 1" }));
+    expect(screen.getByTestId("care-energy-icons")).toHaveClass("w-[148px]");
+    expect(screen.getByTestId("care-energy-status")).toHaveClass("w-14");
     expect(screen.queryByText("Energy")).not.toBeInTheDocument();
     expect(screen.getByTestId("care-quote-panel")).toContainElement(screen.getByText("Daily quote"));
     expect(screen.getByText("Daily quote")).toBeInTheDocument();
@@ -108,12 +110,46 @@ describe("CarePanel", () => {
     expect(await screen.findByText("Bright")).toBeInTheDocument();
     const suns = screen.getAllByTestId("energy-sun");
     expect(suns).toHaveLength(5);
-    expect(suns[0]).toHaveClass("bg-gradient-to-br", "from-amber-300", "to-orange-500");
-    expect(screen.queryByTestId("energy-sun-icon")).not.toBeInTheDocument();
+    expect(suns[0].tagName).toBe("svg");
+    expect(suns[0]).toHaveAttribute("width", "18");
+    expect(suns[0]).toHaveAttribute("height", "18");
+    expect(suns[0]).toHaveClass("fill-amber-400", "text-orange-500");
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/care/update",
       expect.objectContaining({ method: "POST", body: JSON.stringify({ energyLevel: 5 }) })
     );
+  });
+
+  it("keeps today's focus input stable while energy is saving", async () => {
+    const pending = deferred<Response>();
+    const initial = care();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+
+        if (url === "/api/care/today" && method === "GET") {
+          return Response.json({ care: initial });
+        }
+
+        if (url === "/api/care/update" && method === "POST") {
+          return pending.promise;
+        }
+
+        throw new Error(`Unexpected request ${method} ${url}`);
+      })
+    );
+
+    render(<CarePanel />);
+
+    const input = await screen.findByLabelText("Today focus");
+    fireEvent.click(screen.getByRole("button", { name: "Set energy to 3" }));
+
+    expect(input).not.toBeDisabled();
+
+    pending.resolve(Response.json({ care: care({ energyLevel: 3 }) }));
+    expect(await screen.findByText("Steady")).toBeInTheDocument();
   });
 
   it("toggles favorite state with star icons", async () => {
@@ -151,3 +187,14 @@ describe("CarePanel", () => {
     );
   });
 });
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((promiseResolve, promiseReject) => {
+    resolve = promiseResolve;
+    reject = promiseReject;
+  });
+
+  return { promise, resolve, reject };
+}

@@ -116,7 +116,7 @@ export function CarePanel() {
           <h2 className="text-base font-semibold text-ink">心灵关怀</h2>
         </div>
         <div className="flex min-w-0 items-center gap-2">
-          <div className="flex items-center gap-0.5">
+          <div className="flex w-[148px] items-center justify-end gap-0.5" data-testid="care-energy-icons">
             {[1, 2, 3, 4, 5].map((level) => (
               <button
                 aria-label={`Set energy to ${level}`}
@@ -130,7 +130,10 @@ export function CarePanel() {
               </button>
             ))}
           </div>
-          <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-semibold text-slate-600">
+          <span
+            className="inline-flex w-14 justify-center rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-semibold text-slate-600"
+            data-testid="care-energy-status"
+          >
             {energyLabel}
           </span>
         </div>
@@ -168,7 +171,7 @@ export function CarePanel() {
         <input
           aria-label="Today focus"
           className="mt-1 h-9 w-full rounded-md border border-slate-200 px-2.5 text-sm font-normal normal-case tracking-normal text-ink outline-none placeholder:text-slate-400 focus:border-moss disabled:opacity-60"
-          disabled={loading || saving}
+          disabled={loading}
           onBlur={() => void saveFocusText()}
           onChange={(event) => setFocusText(event.target.value)}
           onKeyDown={(event) => {
@@ -204,13 +207,23 @@ function energyButtonClass(currentLevel: CareRecord["energyLevel"]): string {
 function EnergyIcon({ currentLevel, index }: { currentLevel: CareRecord["energyLevel"]; index: number }) {
   if (currentLevel === 5) {
     return (
-      <span
+      <svg
         aria-hidden="true"
-        className="relative inline-flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-amber-300 to-orange-500 shadow-[0_0_0_1px_rgba(251,191,36,0.35),0_1px_4px_rgba(249,115,22,0.25)] before:absolute before:h-6 before:w-6 before:rounded-[7px] before:bg-amber-300 before:content-[''] before:[clip-path:polygon(50%_0%,62%_28%,92%_18%,74%_45%,100%_58%,68%_62%,76%_94%,50%_75%,24%_94%,32%_62%,0%_58%,26%_45%,8%_18%,38%_28%)] after:absolute after:left-1.5 after:top-1.5 after:h-1.5 after:w-1.5 after:rounded-full after:bg-white/70 after:content-['']"
+        className="fill-amber-400 text-orange-500 drop-shadow-sm"
         data-testid="energy-sun"
+        fill="none"
+        height="18"
+        viewBox="0 0 24 24"
+        width="18"
+        xmlns="http://www.w3.org/2000/svg"
       >
-        <span className="relative h-4 w-4 rounded-full bg-gradient-to-br from-amber-300 to-orange-500" />
-      </span>
+        <path
+          d="M12 1.75l1.45 3.32 3.18-1.74-.74 3.55 3.62.18-2.57 2.55 2.57 2.55-3.62.18.74 3.55-3.18-1.74L12 22.25l-1.45-3.32-3.18 1.74.74-3.55-3.62-.18 2.57-2.55-2.57-2.55 3.62-.18-.74-3.55 3.18 1.74L12 1.75z"
+          fill="currentColor"
+        />
+        <circle cx="12" cy="12" fill="#fbbf24" r="5.4" />
+        <circle cx="10.25" cy="9.75" fill="white" opacity="0.7" r="1.35" />
+      </svg>
     );
   }
 

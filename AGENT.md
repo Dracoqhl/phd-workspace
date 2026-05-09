@@ -40,10 +40,11 @@ This file stores maintainer context for future development sessions.
 - Mental care UI should stay compact and should not use a large check-in button inside the module. If a check-in/sign-in concept returns later, place it at the whole panel level rather than inside the quote area.
 - Mental care energy feedback uses five compact icons beside the card title, without an `Energy` text label. Initial state is five hollow hearts, level 1 shows a broken heart, levels 2-4 show selected hearts, and level 5 shows five small suns.
 - Mental care layout should put energy icons and a compact one-word status pill in the title row, then the highlighted Daily quote block, then the Today focus input. Do not place Energy and Daily quote side by side.
+- Mental care title-row energy icons and the status pill should use stable fixed widths so changing the energy label does not shift the icon positions.
 - Mental care energy status labels should be single words: `Unset`, `Low`, `Soft`, `Steady`, `Ready`, `Bright`.
-- Level 5 energy should use a custom solid amber/orange sun badge instead of lucide's line `Sun`, because the line icon can inherit inactive grey styling and look hollow.
+- Level 5 energy should use a custom solid amber/orange SVG sun at the same 18px size as the heart icons instead of lucide's line `Sun`, because the line icon can inherit inactive grey styling and look hollow.
 - Mental care quote actions should be small icon-only controls: refresh uses `Retry care message`, favorite uses hollow/filled star and toggles on repeated click.
-- Mental care "today focus" should look like an editable text field with a grey placeholder and save on blur or Enter.
+- Mental care "today focus" should look like an editable text field with a grey placeholder and save on blur or Enter. Do not disable this input during unrelated energy/favorite saves, because the disabled-state repaint looks like a visual flash.
 - Habits: create/edit/deactivate habits, daily complete/uncomplete check-ins.
 - Habit UI should stay compact and avoid decorative icon columns unless the user explicitly asks for them.
 - Habit creation UI should show habit name and daily target only. Keep `description` in data for future details UI, but do not show it in the current compact list.
