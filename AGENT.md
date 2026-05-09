@@ -39,6 +39,8 @@ This file stores maintainer context for future development sessions.
 - Mental care: one gentle daily quote, refresh, favorite toggle, 1-5 energy self-assessment, and one editable "today focus" item. Until real AI is wired, use a local fallback message and keep the page stable.
 - Mental care UI should stay compact and should not use a large check-in button inside the module. If a check-in/sign-in concept returns later, place it at the whole panel level rather than inside the quote area.
 - Mental care energy feedback uses five compact icons: initial state is five hollow hearts, level 1 shows a broken heart, levels 2-4 show selected hearts, and level 5 shows five small suns.
+- Mental care layout should use a vertical Scheme B structure: a compact top Energy row, then the highlighted Daily quote block, then the Today focus input. Do not place Energy and Daily quote side by side.
+- Level 5 energy should use a custom fixed-color amber sun badge instead of lucide's line `Sun`, because the line icon can inherit inactive grey styling.
 - Mental care quote actions should be small icon-only controls: refresh uses `Retry care message`, favorite uses hollow/filled star and toggles on repeated click.
 - Mental care "today focus" should look like an editable text field with a grey placeholder and save on blur or Enter.
 - Habits: create/edit/deactivate habits, daily complete/uncomplete check-ins.

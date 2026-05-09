@@ -1,6 +1,6 @@
 "use client";
 
-import { Heart, HeartCrack, RefreshCw, Star, Sun } from "lucide-react";
+import { Heart, HeartCrack, RefreshCw, Star } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import type { CareRecord, UpdateCareInput } from "@/types/care";
@@ -118,16 +118,13 @@ export function CarePanel() {
         </div>
       </div>
 
-      <div className="mt-3 flex flex-col gap-2 rounded-md border border-slate-100 bg-slate-50 px-3 py-2">
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Energy</span>
-          <span className="text-xs font-medium text-slate-600">{energyLabel}</span>
-        </div>
-        <div className="flex items-center gap-1.5">
+      <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2" data-testid="care-energy-row">
+        <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Energy</span>
+        <div className="flex items-center gap-1">
           {[1, 2, 3, 4, 5].map((level) => (
             <button
               aria-label={`Set energy to ${level}`}
-              className="inline-flex h-7 w-7 items-center justify-center rounded-full text-slate-300 transition hover:bg-white hover:text-rose-500 focus:outline-none focus:ring-2 focus:ring-moss/40 disabled:opacity-60"
+              className={energyButtonClass(energyLevel)}
               disabled={loading || saving}
               key={level}
               onClick={() => void updateCare({ energyLevel: level as CareRecord["energyLevel"] })}
@@ -137,9 +134,10 @@ export function CarePanel() {
             </button>
           ))}
         </div>
+        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">{energyLabel}</span>
       </div>
 
-      <div className="mt-3 rounded-md border border-amber-100 bg-amber-50 px-3 py-3">
+      <div className="mt-3 rounded-md border border-amber-100 bg-amber-50 px-3 py-3" data-testid="care-quote-panel">
         <div className="mb-2 flex items-center justify-between gap-2">
           <span className="text-xs font-semibold uppercase tracking-wide text-amber-700">Daily quote</span>
           <div className="flex items-center gap-1">
@@ -193,18 +191,37 @@ export function CarePanel() {
   );
 }
 
+function energyButtonClass(currentLevel: CareRecord["energyLevel"]): string {
+  const tone =
+    currentLevel === 5
+      ? "text-amber-500 hover:text-amber-600"
+      : currentLevel
+        ? "text-rose-500 hover:text-rose-600"
+        : "text-slate-300 hover:text-rose-500";
+
+  return `inline-flex h-8 w-8 items-center justify-center rounded-full transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-moss/40 disabled:opacity-60 ${tone}`;
+}
+
 function EnergyIcon({ currentLevel, index }: { currentLevel: CareRecord["energyLevel"]; index: number }) {
   if (currentLevel === 5) {
-    return <Sun aria-hidden="true" className="text-amber-500" data-testid="energy-sun" size={16} />;
+    return (
+      <span
+        aria-hidden="true"
+        className="relative inline-flex h-5 w-5 items-center justify-center rounded-full bg-amber-400 text-white shadow-[0_0_0_2px_rgba(251,191,36,0.22)] before:absolute before:h-6 before:w-0.5 before:rounded-full before:bg-amber-300 after:absolute after:h-0.5 after:w-6 after:rounded-full after:bg-amber-300"
+        data-testid="energy-sun"
+      >
+        <span className="relative h-2 w-2 rounded-full bg-white/90" />
+      </span>
+    );
   }
 
   if (currentLevel === 1 && index === 1) {
-    return <HeartCrack aria-hidden="true" className="text-rose-500" data-testid="energy-broken-heart" size={16} />;
+    return <HeartCrack aria-hidden="true" className="text-rose-500" data-testid="energy-broken-heart" size={18} />;
   }
 
   if (currentLevel && index <= currentLevel) {
-    return <Heart aria-hidden="true" className="fill-current text-rose-500" size={16} />;
+    return <Heart aria-hidden="true" className="fill-current text-rose-500" size={18} />;
   }
 
-  return <Heart aria-hidden="true" size={16} />;
+  return <Heart aria-hidden="true" size={18} />;
 }

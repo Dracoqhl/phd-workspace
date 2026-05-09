@@ -67,6 +67,8 @@ describe("CarePanel", () => {
     render(<CarePanel />);
 
     expect(await screen.findByText("今天先完成一个清晰的小动作。")).toBeInTheDocument();
+    expect(screen.getByTestId("care-energy-row")).toContainElement(screen.getByText("Energy"));
+    expect(screen.getByTestId("care-quote-panel")).toContainElement(screen.getByText("Daily quote"));
     expect(screen.getByText("Daily quote")).toBeInTheDocument();
     expect(screen.getByText("Energy")).toBeInTheDocument();
     expect(screen.getByText("Not set")).toBeInTheDocument();
@@ -103,7 +105,10 @@ describe("CarePanel", () => {
     fireEvent.click(screen.getByRole("button", { name: "Set energy to 5" }));
 
     expect(await screen.findByText("Bright")).toBeInTheDocument();
-    expect(screen.getAllByTestId("energy-sun")).toHaveLength(5);
+    const suns = screen.getAllByTestId("energy-sun");
+    expect(suns).toHaveLength(5);
+    expect(suns[0]).toHaveClass("bg-amber-400", "text-white");
+    expect(screen.queryByTestId("energy-sun-icon")).not.toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/care/update",
       expect.objectContaining({ method: "POST", body: JSON.stringify({ energyLevel: 5 }) })
