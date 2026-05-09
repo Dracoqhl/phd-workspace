@@ -6,8 +6,8 @@ import { useEffect, useState } from "react";
 import type { CareRecord, UpdateCareInput } from "@/types/care";
 
 const energyLabels: Record<NonNullable<CareRecord["energyLevel"]>, string> = {
-  1: "Low energy",
-  2: "Gentle pace",
+  1: "Low",
+  2: "Soft",
   3: "Steady",
   4: "Ready",
   5: "Bright"
@@ -106,35 +106,34 @@ export function CarePanel() {
   }
 
   const energyLevel = care?.energyLevel ?? null;
-  const energyLabel = energyLevel ? energyLabels[energyLevel] : "Not set";
+  const energyLabel = energyLevel ? energyLabels[energyLevel] : "Unset";
   const content = loading ? "Loading care message..." : care?.content ?? "今天不需要一次解决所有问题，只要往前走一点点就很好。";
 
   return (
     <section aria-label="心灵关怀" className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="flex items-start justify-between gap-3">
-        <div>
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2" data-testid="care-header">
+        <div className="min-w-0">
           <h2 className="text-base font-semibold text-ink">心灵关怀</h2>
-          <p className="mt-1 text-xs text-slate-500">给今天一个温和的起点</p>
         </div>
-      </div>
-
-      <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2" data-testid="care-energy-row">
-        <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Energy</span>
-        <div className="flex items-center gap-1">
-          {[1, 2, 3, 4, 5].map((level) => (
-            <button
-              aria-label={`Set energy to ${level}`}
-              className={energyButtonClass(energyLevel)}
-              disabled={loading || saving}
-              key={level}
-              onClick={() => void updateCare({ energyLevel: level as CareRecord["energyLevel"] })}
-              type="button"
-            >
-              <EnergyIcon currentLevel={energyLevel} index={level} />
-            </button>
-          ))}
+        <div className="flex min-w-0 items-center gap-2">
+          <div className="flex items-center gap-0.5">
+            {[1, 2, 3, 4, 5].map((level) => (
+              <button
+                aria-label={`Set energy to ${level}`}
+                className={energyButtonClass(energyLevel)}
+                disabled={loading || saving}
+                key={level}
+                onClick={() => void updateCare({ energyLevel: level as CareRecord["energyLevel"] })}
+                type="button"
+              >
+                <EnergyIcon currentLevel={energyLevel} index={level} />
+              </button>
+            ))}
+          </div>
+          <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs font-semibold text-slate-600">
+            {energyLabel}
+          </span>
         </div>
-        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">{energyLabel}</span>
       </div>
 
       <div className="mt-3 rounded-md border border-amber-100 bg-amber-50 px-3 py-3" data-testid="care-quote-panel">
@@ -194,12 +193,12 @@ export function CarePanel() {
 function energyButtonClass(currentLevel: CareRecord["energyLevel"]): string {
   const tone =
     currentLevel === 5
-      ? "text-amber-500 hover:text-amber-600"
+      ? "text-amber-500 hover:text-orange-500"
       : currentLevel
         ? "text-rose-500 hover:text-rose-600"
         : "text-slate-300 hover:text-rose-500";
 
-  return `inline-flex h-8 w-8 items-center justify-center rounded-full transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-moss/40 disabled:opacity-60 ${tone}`;
+  return `inline-flex h-7 w-7 items-center justify-center rounded-full transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-moss/40 disabled:opacity-60 ${tone}`;
 }
 
 function EnergyIcon({ currentLevel, index }: { currentLevel: CareRecord["energyLevel"]; index: number }) {
@@ -207,10 +206,10 @@ function EnergyIcon({ currentLevel, index }: { currentLevel: CareRecord["energyL
     return (
       <span
         aria-hidden="true"
-        className="relative inline-flex h-5 w-5 items-center justify-center rounded-full bg-amber-400 text-white shadow-[0_0_0_2px_rgba(251,191,36,0.22)] before:absolute before:h-6 before:w-0.5 before:rounded-full before:bg-amber-300 after:absolute after:h-0.5 after:w-6 after:rounded-full after:bg-amber-300"
+        className="relative inline-flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-amber-300 to-orange-500 shadow-[0_0_0_1px_rgba(251,191,36,0.35),0_1px_4px_rgba(249,115,22,0.25)] before:absolute before:h-6 before:w-6 before:rounded-[7px] before:bg-amber-300 before:content-[''] before:[clip-path:polygon(50%_0%,62%_28%,92%_18%,74%_45%,100%_58%,68%_62%,76%_94%,50%_75%,24%_94%,32%_62%,0%_58%,26%_45%,8%_18%,38%_28%)] after:absolute after:left-1.5 after:top-1.5 after:h-1.5 after:w-1.5 after:rounded-full after:bg-white/70 after:content-['']"
         data-testid="energy-sun"
       >
-        <span className="relative h-2 w-2 rounded-full bg-white/90" />
+        <span className="relative h-4 w-4 rounded-full bg-gradient-to-br from-amber-300 to-orange-500" />
       </span>
     );
   }

@@ -67,11 +67,12 @@ describe("CarePanel", () => {
     render(<CarePanel />);
 
     expect(await screen.findByText("今天先完成一个清晰的小动作。")).toBeInTheDocument();
-    expect(screen.getByTestId("care-energy-row")).toContainElement(screen.getByText("Energy"));
+    expect(screen.getByTestId("care-header")).toContainElement(screen.getByRole("heading", { name: "心灵关怀" }));
+    expect(screen.getByTestId("care-header")).toContainElement(screen.getByRole("button", { name: "Set energy to 1" }));
+    expect(screen.queryByText("Energy")).not.toBeInTheDocument();
     expect(screen.getByTestId("care-quote-panel")).toContainElement(screen.getByText("Daily quote"));
     expect(screen.getByText("Daily quote")).toBeInTheDocument();
-    expect(screen.getByText("Energy")).toBeInTheDocument();
-    expect(screen.getByText("Not set")).toBeInTheDocument();
+    expect(screen.getByText("Unset")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Retry care message" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Favorite care message" })).toBeInTheDocument();
     expect(screen.getByLabelText("Today focus")).toHaveAttribute("placeholder", "今天最想完成的一件事...");
@@ -95,7 +96,7 @@ describe("CarePanel", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: "Set energy to 1" }));
 
-    expect(await screen.findByText("Low energy")).toBeInTheDocument();
+    expect(await screen.findByText("Low")).toBeInTheDocument();
     expect(screen.getByTestId("energy-broken-heart")).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/care/update",
@@ -107,7 +108,7 @@ describe("CarePanel", () => {
     expect(await screen.findByText("Bright")).toBeInTheDocument();
     const suns = screen.getAllByTestId("energy-sun");
     expect(suns).toHaveLength(5);
-    expect(suns[0]).toHaveClass("bg-amber-400", "text-white");
+    expect(suns[0]).toHaveClass("bg-gradient-to-br", "from-amber-300", "to-orange-500");
     expect(screen.queryByTestId("energy-sun-icon")).not.toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/care/update",
