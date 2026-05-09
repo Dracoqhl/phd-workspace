@@ -118,56 +118,52 @@ export function CarePanel() {
         </div>
       </div>
 
-      <div className="mt-3 rounded-md border border-amber-100 bg-amber-50/80 px-3 py-3" data-testid="care-daily-panel">
-        <div className="grid gap-3 md:grid-cols-[minmax(138px,0.42fr)_1fr] md:items-start">
-          <div className="rounded-md border border-white/80 bg-white/70 px-3 py-2 shadow-[0_1px_0_rgba(15,23,42,0.03)]">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Energy</span>
-              <span className="text-xs font-medium text-slate-600">{energyLabel}</span>
-            </div>
-            <div className="mt-2 flex items-center gap-1">
-              {[1, 2, 3, 4, 5].map((level) => (
-                <button
-                  aria-label={`Set energy to ${level}`}
-                  className={energyButtonClass(energyLevel)}
-                  disabled={loading || saving}
-                  key={level}
-                  onClick={() => void updateCare({ energyLevel: level as CareRecord["energyLevel"] })}
-                  type="button"
-                >
-                  <EnergyIcon currentLevel={energyLevel} index={level} />
-                </button>
-              ))}
-            </div>
-          </div>
+      <div className="mt-3 flex flex-col gap-2 rounded-md border border-slate-100 bg-slate-50 px-3 py-2">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Energy</span>
+          <span className="text-xs font-medium text-slate-600">{energyLabel}</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          {[1, 2, 3, 4, 5].map((level) => (
+            <button
+              aria-label={`Set energy to ${level}`}
+              className="inline-flex h-7 w-7 items-center justify-center rounded-full text-slate-300 transition hover:bg-white hover:text-rose-500 focus:outline-none focus:ring-2 focus:ring-moss/40 disabled:opacity-60"
+              disabled={loading || saving}
+              key={level}
+              onClick={() => void updateCare({ energyLevel: level as CareRecord["energyLevel"] })}
+              type="button"
+            >
+              <EnergyIcon currentLevel={energyLevel} index={level} />
+            </button>
+          ))}
+        </div>
+      </div>
 
-          <div className="min-w-0">
-            <div className="mb-2 flex items-center justify-between gap-2">
-              <span className="text-xs font-semibold uppercase tracking-wide text-amber-700">Daily quote</span>
-              <div className="flex items-center gap-1">
-                <button
-                  aria-label="Retry care message"
-                  className="inline-flex h-7 w-7 items-center justify-center rounded-md text-amber-700 hover:bg-amber-100 disabled:opacity-60"
-                  disabled={loading || saving}
-                  onClick={() => void retryCare()}
-                  type="button"
-                >
-                  <RefreshCw aria-hidden="true" size={14} />
-                </button>
-                <button
-                  aria-label={care?.isFavorite ? "Unfavorite care message" : "Favorite care message"}
-                  className="inline-flex h-7 w-7 items-center justify-center rounded-md text-amber-700 hover:bg-amber-100 disabled:opacity-60"
-                  disabled={loading || saving}
-                  onClick={() => void updateCare({ isFavorite: !care?.isFavorite })}
-                  type="button"
-                >
-                  <Star aria-hidden="true" className={care?.isFavorite ? "fill-current" : ""} size={15} />
-                </button>
-              </div>
-            </div>
-            <p className="text-sm leading-6 text-slate-800">{content}</p>
+      <div className="mt-3 rounded-md border border-amber-100 bg-amber-50 px-3 py-3">
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <span className="text-xs font-semibold uppercase tracking-wide text-amber-700">Daily quote</span>
+          <div className="flex items-center gap-1">
+            <button
+              aria-label="Retry care message"
+              className="inline-flex h-7 w-7 items-center justify-center rounded-md text-amber-700 hover:bg-amber-100 disabled:opacity-60"
+              disabled={loading || saving}
+              onClick={() => void retryCare()}
+              type="button"
+            >
+              <RefreshCw aria-hidden="true" size={14} />
+            </button>
+            <button
+              aria-label={care?.isFavorite ? "Unfavorite care message" : "Favorite care message"}
+              className="inline-flex h-7 w-7 items-center justify-center rounded-md text-amber-700 hover:bg-amber-100 disabled:opacity-60"
+              disabled={loading || saving}
+              onClick={() => void updateCare({ isFavorite: !care?.isFavorite })}
+              type="button"
+            >
+              <Star aria-hidden="true" className={care?.isFavorite ? "fill-current" : ""} size={15} />
+            </button>
           </div>
         </div>
+        <p className="text-sm leading-6 text-slate-800">{content}</p>
       </div>
 
       <label className="mt-3 block text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -197,29 +193,18 @@ export function CarePanel() {
   );
 }
 
-function energyButtonClass(currentLevel: CareRecord["energyLevel"]): string {
-  const activeTone =
-    currentLevel === 5
-      ? "text-amber-500 hover:text-amber-600"
-      : currentLevel
-        ? "text-rose-500 hover:text-rose-600"
-        : "text-slate-300 hover:text-rose-500";
-
-  return `inline-flex h-8 w-8 items-center justify-center rounded-full transition hover:bg-white focus:outline-none focus:ring-2 focus:ring-moss/40 disabled:opacity-60 ${activeTone}`;
-}
-
 function EnergyIcon({ currentLevel, index }: { currentLevel: CareRecord["energyLevel"]; index: number }) {
   if (currentLevel === 5) {
-    return <Sun aria-hidden="true" className="fill-amber-300 text-amber-500" data-testid="energy-sun" size={20} />;
+    return <Sun aria-hidden="true" className="text-amber-500" data-testid="energy-sun" size={16} />;
   }
 
   if (currentLevel === 1 && index === 1) {
-    return <HeartCrack aria-hidden="true" className="text-rose-500" data-testid="energy-broken-heart" size={20} />;
+    return <HeartCrack aria-hidden="true" className="text-rose-500" data-testid="energy-broken-heart" size={16} />;
   }
 
   if (currentLevel && index <= currentLevel) {
-    return <Heart aria-hidden="true" className="fill-current text-rose-500" size={20} />;
+    return <Heart aria-hidden="true" className="fill-current text-rose-500" size={16} />;
   }
 
-  return <Heart aria-hidden="true" size={20} />;
+  return <Heart aria-hidden="true" size={16} />;
 }
