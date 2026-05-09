@@ -1,7 +1,7 @@
 import { createFallbackCareRecord, getCareDate } from "@/lib/domain/care";
 import { resolveDataDir } from "@/lib/data/data-dir";
 import { createRepositories } from "@/lib/data/repositories";
-import type { CareRecord } from "@/types/care";
+import type { CareRecord, UpdateCareInput } from "@/types/care";
 
 export const DATA_DIR_CONFIG_ERROR = "Data directory is not configured";
 export const INVALID_CARE_PAYLOAD = "Invalid care payload";
@@ -48,6 +48,23 @@ export async function checkInTodayCareRecord(
   });
 }
 
+export async function updateTodayCareRecord(
+  repos: ReturnType<typeof getCareRepositories>,
+  input: UpdateCareInput
+): Promise<CareRecord> {
+  const date = getCareDate();
+  return repos.careRecords.upsertByDate(date, (existing) => {
+    const base = createFallbackCareRecord(date, existing);
+    const now = new Date().toISOString();
+
+    return {
+      ...base,
+      ...input,
+      updatedAt: now
+    };
+  });
+}
+
 export async function readJsonObject(request: Request): Promise<Record<string, unknown> | null> {
   try {
     const body = (await request.json()) as unknown;
@@ -70,6 +87,40 @@ export function parseCareCheckinInput(body: Record<string, unknown>): { isChecke
     isChecked: body.isChecked,
     moodNote: typeof body.moodNote === "string" ? body.moodNote : ""
   };
+}
+
+export function parseCareUpdateInput(body: Record<string, unknown>): UpdateCareInput | null {
+  const input: UpdateCareInput = {};
+
+  if ("energyLevel" in body) {
+    if (body.energyLevel !== null && !isEnergyLevel(body.energyLevel)) {
+      return null;
+    }
+
+    input.energyLevel = body.energyLevel;
+  }
+
+  if ("isFavorite" in body) {
+    if (typeof body.isFavorite !== "boolean") {
+      return null;
+    }
+
+    input.isFavorite = body.isFavorite;
+  }
+
+  if ("focusText" in body) {
+    if (typeof body.focusText !== "string") {
+      return null;
+    }
+
+    input.focusText = body.focusText;
+  }
+
+  return Object.keys(input).length > 0 ? input : null;
+}
+
+function isEnergyLevel(value: unknown): value is NonNullable<CareRecord["energyLevel"]> {
+  return value === 1 || value === 2 || value === 3 || value === 4 || value === 5;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

@@ -356,7 +356,7 @@ class CareRecordRepository {
   constructor(private readonly store: JsonStore<CareRecord>) {}
 
   async list(): Promise<CareRecord[]> {
-    return (await this.store.read()).items;
+    return (await this.store.read()).items.map(normalizeCareRecord);
   }
 
   async getByDate(date: string): Promise<CareRecord | null> {
@@ -495,6 +495,19 @@ function normalizeTargetCount(value: number): number {
   return Number.isInteger(value) && value >= 1 && value <= 5 ? value : 1;
 }
 
+function normalizeCareRecord(record: CareRecord): CareRecord {
+  return {
+    ...record,
+    energyLevel: normalizeEnergyLevel(record.energyLevel),
+    isFavorite: typeof record.isFavorite === "boolean" ? record.isFavorite : false,
+    focusText: typeof record.focusText === "string" ? record.focusText : ""
+  };
+}
+
+function normalizeEnergyLevel(value: unknown): CareRecord["energyLevel"] {
+  return value === null || value === 1 || value === 2 || value === 3 || value === 4 || value === 5 ? value : null;
+}
+
 function isCareRecord(value: unknown): value is CareRecord {
   return (
     isRecord(value) &&
@@ -502,6 +515,9 @@ function isCareRecord(value: unknown): value is CareRecord {
     typeof value.date === "string" &&
     typeof value.content === "string" &&
     isCareSource(value.source) &&
+    (value.energyLevel === undefined || normalizeEnergyLevel(value.energyLevel) !== null || value.energyLevel === null) &&
+    (value.isFavorite === undefined || typeof value.isFavorite === "boolean") &&
+    (value.focusText === undefined || typeof value.focusText === "string") &&
     typeof value.isChecked === "boolean" &&
     typeof value.moodNote === "string" &&
     typeof value.createdAt === "string" &&

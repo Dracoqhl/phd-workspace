@@ -192,7 +192,7 @@ The project is in MVP implementation. Current dev status includes a versioned da
 - `.eslintrc.cjs`: ESLint configuration for the current TypeScript-only scaffolding stage.
 - `app/layout.tsx`: root App Router layout and metadata.
 - `app/page.tsx`: single-page workspace shell with care, habit, task, AI assistant regions, and the current habit business date in the page header.
-- `components/care/CarePanel.tsx`: compact mental care panel connected to `/api/care/today`, `/api/care/generate`, and `/api/care/checkin`, with local fallback content, Retry, Check in, and mood note support.
+- `components/care/CarePanel.tsx`: compact mental care panel connected to `/api/care/today`, `/api/care/generate`, and `/api/care/update`, with local fallback daily quote content, small retry/favorite icon actions, 1-5 energy self-assessment icons, and an editable "today focus" field.
 - `components/tasks/TaskManager.tsx`: compact hierarchical task table connected to `/api/tasks`, including top-level task create/delete, one-layer subtask create/delete, expandable subtasks, small row-level complete/reopen controls, two-step select-then-edit title editing with blur save, priority color-dot editing, due-date calendar editing, readable English status labels, completed top-level task hiding, and due-date highlighting.
 - `components/habits/HabitManager.tsx`: compact daily habit list connected to `/api/habits`, including a panel-level edit mode, bottom-only new-habit form, row-wide name/target maintenance in edit mode, clickable progress fractions for target changes in normal mode, trash-icon deactivation, compact circular complete/cancel controls, checked-count-over-target header progress, and multi-check cancellation behavior. Completed habits are greyed out, struck through, and sorted after incomplete habits.
 - `app/globals.css`: Tailwind entry point and base page styles.
@@ -206,7 +206,7 @@ The project is in MVP implementation. Current dev status includes a versioned da
 - `lib/data/repositories.ts`: versioned repository factory for tasks, trash, habits, habit check-ins, care records, and AI logs.
 - `app/api/tasks/**/route.ts`: protected task list, create, detail, update, delete, and subtask creation endpoints.
 - `app/api/habits/**/route.ts`: protected habit list, create, update, deactivate, check-in, and check-in cancellation endpoints.
-- `app/api/care/**/route.ts`: protected today's care, refresh, and care check-in endpoints.
+- `app/api/care/**/route.ts`: protected today's care, refresh, care update, and legacy care check-in endpoints.
 - `tests/`: unit tests for task and habit domain rules, JSON data layer, auth, task and habit routes, workspace page shell, and task/habit manager UI behavior.
 
 The app has the first login/session shell, protected task APIs, task management UI, protected habit APIs, daily habit UI, and fallback-backed care APIs/UI. Real AI workflows are still being added.

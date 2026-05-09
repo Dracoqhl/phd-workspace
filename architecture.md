@@ -147,7 +147,7 @@ Stage A implemented the first tested backend-only modules, and the current found
 - `app/api/auth/*/route.ts`: login, logout, and session route handlers. Login accepts JSON requests from the React form flow and native `application/x-www-form-urlencoded` form posts for mobile/browser fallback.
 - `app/api/tasks/**/route.ts`: protected task list, create, detail, update, delete, and subtask creation route handlers.
 - `app/api/habits/**/route.ts`: protected habit list, create, update, deactivate, daily check-in, and daily check-in cancellation route handlers.
-- `app/api/care/**/route.ts`: protected today's care, refresh, and care check-in route handlers backed by `care-records.json` and local fallback content.
+- `app/api/care/**/route.ts`: protected today's care, refresh, care update, and legacy care check-in route handlers backed by `care-records.json` and local fallback content.
 
 `lib/data/repositories.ts` can later split into `lib/data/repositories/*` files when each feature repository grows. For now it remains a single facade for the foundation slice.
 
@@ -159,7 +159,7 @@ Stage B implemented the first runnable App Router shell and the current task sli
 - `app/globals.css`: Tailwind directives and base page styling.
 - `components/tasks/TaskManager.tsx`: compact hierarchical task table backed by `/api/tasks`, including top-level task create/delete, one-layer subtask create/delete, expandable subtasks, small row-level complete/reopen controls, two-step select-then-edit title editing with blur save, priority swatch editing, due-date calendar editing, readable English status labels, completed top-level task hiding, and due-state highlighting.
 - `components/habits/HabitManager.tsx`: compact habit list backed by `/api/habits`, including panel-level edit mode, bottom-only habit creation with daily target 1-5, editable name and target fields in edit mode, clickable progress fractions for target edits in normal mode, trash-icon deactivate, compact circular check-in/cancel controls, checked-count-over-target header progress, completed-row grey/strikethrough styling, and completed-row sorting.
-- `components/care/CarePanel.tsx`: compact mental care card backed by `/api/care`, including local fallback content, Retry, Check in, and mood note support.
+- `components/care/CarePanel.tsx`: compact mental care card backed by `/api/care`, including local fallback daily quote content, small retry/favorite icon actions, 1-5 energy self-assessment icons, and an editable "today focus" field.
 - `tests/unit/app/page.test.tsx`: verifies that the workspace regions render.
 - `tests/unit/tasks/task-manager.test.tsx`: verifies compact task table loading, expand/collapse, inline title editing, priority and due-date editing, completed hiding, subtask creation, and deletion behavior.
 
@@ -296,7 +296,7 @@ Recommended responsibilities:
 - `tasks.json`: parent tasks and subtasks.
 - `habits.json`: habit definitions.
 - `habit-checkins.json`: daily habit completion records.
-- `care-records.json`: daily mental care content and check-in state.
+- `care-records.json`: daily mental care content, energy self-assessment, favorite state, and today-focus text.
 - `ai-logs.json`: AI requests, proposed operations, confirmed operations, and failures.
 - `trash.json`: deleted records with enough metadata to support future restore.
 

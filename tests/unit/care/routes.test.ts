@@ -5,9 +5,9 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { POST as login } from "@/app/api/auth/login/route";
-import { POST as checkinCare } from "@/app/api/care/checkin/route";
 import { POST as generateCare } from "@/app/api/care/generate/route";
 import { GET as getTodayCare } from "@/app/api/care/today/route";
+import { POST as updateCare } from "@/app/api/care/update/route";
 import { createRepositories } from "@/lib/data/repositories";
 
 const appPassword = "correct-password";
@@ -54,8 +54,9 @@ describe("care routes", () => {
       care: {
         date: "2026-05-08",
         source: "fallback",
-        isChecked: false,
-        moodNote: ""
+        energyLevel: null,
+        isFavorite: false,
+        focusText: ""
       }
     });
 
@@ -75,12 +76,12 @@ describe("care routes", () => {
     await expect(repos.careRecords.list()).resolves.toHaveLength(1);
   });
 
-  it("refreshes today's care content without clearing existing check-in state", async () => {
+  it("refreshes today's care content without clearing existing daily state", async () => {
     await getTodayCare(authRequest(`${baseUrl}/api/care/today`));
-    await checkinCare(
-      authRequest(`${baseUrl}/api/care/checkin`, {
+    await updateCare(
+      authRequest(`${baseUrl}/api/care/update`, {
         method: "POST",
-        body: JSON.stringify({ isChecked: true, moodNote: "Tired but steady" })
+        body: JSON.stringify({ energyLevel: 2, isFavorite: true, focusText: "Revise intro" })
       })
     );
 
@@ -91,17 +92,18 @@ describe("care routes", () => {
       care: {
         date: "2026-05-08",
         source: "fallback",
-        isChecked: true,
-        moodNote: "Tired but steady"
+        energyLevel: 2,
+        isFavorite: true,
+        focusText: "Revise intro"
       }
     });
   });
 
-  it("checks in today's care record and stores the mood note", async () => {
-    const response = await checkinCare(
-      authRequest(`${baseUrl}/api/care/checkin`, {
+  it("updates today's energy, favorite state, and focus text", async () => {
+    const response = await updateCare(
+      authRequest(`${baseUrl}/api/care/update`, {
         method: "POST",
-        body: JSON.stringify({ isChecked: true, moodNote: "A calmer start" })
+        body: JSON.stringify({ energyLevel: 5, isFavorite: true, focusText: "Finish one figure" })
       })
     );
 
@@ -109,10 +111,23 @@ describe("care routes", () => {
     await expect(response.json()).resolves.toMatchObject({
       care: {
         date: "2026-05-08",
-        isChecked: true,
-        moodNote: "A calmer start"
+        energyLevel: 5,
+        isFavorite: true,
+        focusText: "Finish one figure"
       }
     });
+  });
+
+  it("rejects invalid care updates", async () => {
+    const response = await updateCare(
+      authRequest(`${baseUrl}/api/care/update`, {
+        method: "POST",
+        body: JSON.stringify({ energyLevel: 6 })
+      })
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({ error: "Invalid care payload" });
   });
 });
 
