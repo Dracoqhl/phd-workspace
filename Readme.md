@@ -71,13 +71,21 @@ AI_BASE_URL=https://api.openai.com/v1
 - `AI_BASE_URL` is the OpenAI-compatible model API base URL, such as `https://api.openai.com/v1`.
 - Fill real AI values only in `.env.local` on your machine or server. `.env.local` is ignored by Git and must not be committed.
 
-Run the app with the helper script:
+Run the app for normal server access with the production helper script:
+
+```bash
+./scripts/start.sh
+```
+
+The production script loads `.env.local` when present, creates `DATA_DIR` when needed, builds the optimized Next.js app, binds the server to `0.0.0.0`, and uses port `3000` by default. You can override the port with `PORT=3001 ./scripts/start.sh`.
+
+Use the development helper only while actively changing code:
 
 ```bash
 ./scripts/start-dev.sh
 ```
 
-The script loads `.env.local` when present, creates `DATA_DIR` when needed, binds the dev server to `0.0.0.0`, and uses port `3000` by default. You can override the port with `PORT=3001 ./scripts/start-dev.sh`.
+The development script runs `next dev`, which performs on-demand route compilation and can intentionally duplicate some client requests in React development mode. It is useful for coding, but it is slower than production mode and is not the recommended way to serve the workspace for daily use.
 
 You can also run the underlying dev command directly:
 

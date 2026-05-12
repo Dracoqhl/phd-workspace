@@ -8,6 +8,7 @@ This file stores maintainer context for future development sessions.
 - Stage: MVP planning and initial scaffolding
 - Primary user: one personal PhD student user
 - Deployment: personal server with a public web port
+- For normal server access, prefer `./scripts/start.sh` production mode. `./scripts/start-dev.sh` is only for active development because `next dev` adds on-demand route compilation and React development-mode duplicate effects.
 - Storage: server-local JSON files, separated from code and not synced through Git
 - UI shape: one main workspace page plus a persistent right-side AI assistant panel
 

@@ -10,6 +10,9 @@ phd-workspace/
   Readme.md
   architecture.md
   package.json
+  scripts/
+    start.sh
+    start-dev.sh
   next.config.mjs
   tsconfig.json
   tailwind.config.ts
@@ -150,6 +153,8 @@ Stage A implemented the first tested backend-only modules, and the current found
 - `app/api/care/**/route.ts`: protected today's care, AI-backed refresh with local fallback, care update, and legacy care check-in route handlers backed by `care-records.json`.
 - `app/api/ai/test/route.ts`: protected AI connectivity test route handler backed by server-only OpenAI-compatible environment variables.
 - `app/api/ai/chat/route.ts`: protected read-only AI chat route handler that builds a concise workspace context from task, habit, and care repositories before calling the server-side AI chat helper.
+- `scripts/start.sh`: production helper for personal-server access. It loads `.env.local`, ensures `DATA_DIR`, builds with `next build`, and serves with `next start`.
+- `scripts/start-dev.sh`: development helper for active coding only. It runs `next dev`, so route compilation and React development behavior can add noticeable latency and duplicate initial client fetches.
 
 `lib/data/repositories.ts` can later split into `lib/data/repositories/*` files when each feature repository grows. For now it remains a single facade for the foundation slice.
 
