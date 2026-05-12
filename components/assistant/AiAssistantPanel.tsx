@@ -21,6 +21,8 @@ interface ChatMessage {
   content: string;
 }
 
+let fallbackMessageIdCounter = 0;
+
 export function AiAssistantPanel() {
   const [testing, setTesting] = useState(false);
   const [message, setMessage] = useState("Not tested");
@@ -60,7 +62,7 @@ export function AiAssistantPanel() {
       return;
     }
 
-    const userMessage: ChatMessage = { id: crypto.randomUUID(), role: "user", content };
+    const userMessage: ChatMessage = { id: createChatMessageId(), role: "user", content };
     setChatMessages((messages) => [...messages, userMessage]);
     setDraft("");
     setSending(true);
@@ -75,7 +77,7 @@ export function AiAssistantPanel() {
       });
       const payload = (await response.json()) as AiChatResponse;
       const assistantMessage: ChatMessage = {
-        id: crypto.randomUUID(),
+        id: createChatMessageId(),
         role: "assistant",
         content: payload.ok ? payload.reply ?? "" : payload.error ?? "AI chat failed"
       };
@@ -84,7 +86,7 @@ export function AiAssistantPanel() {
     } catch {
       setChatMessages((messages) => [
         ...messages,
-        { id: crypto.randomUUID(), role: "assistant", content: "AI chat failed" }
+        { id: createChatMessageId(), role: "assistant", content: "AI chat failed" }
       ]);
     } finally {
       setSending(false);
@@ -170,4 +172,16 @@ export function AiAssistantPanel() {
       </div>
     </aside>
   );
+}
+
+function createChatMessageId(): string {
+  const randomUUID = globalThis.crypto?.randomUUID?.bind(globalThis.crypto);
+  if (randomUUID) {
+    return `chat-${randomUUID()}`;
+  }
+
+  fallbackMessageIdCounter += 1;
+  return `chat-${Date.now().toString(36)}-${fallbackMessageIdCounter.toString(36)}-${Math.random()
+    .toString(36)
+    .slice(2, 8)}`;
 }

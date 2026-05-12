@@ -73,4 +73,17 @@ describe("AiAssistantPanel", () => {
 
     expect(await screen.findByText("AI is not configured")).toBeInTheDocument();
   });
+
+  it("can send chat messages when crypto.randomUUID is unavailable", async () => {
+    vi.stubGlobal("crypto", {});
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json({ ok: true, reply: "收到。" })));
+
+    render(<AiAssistantPanel />);
+
+    fireEvent.change(screen.getByLabelText("AI message"), { target: { value: "公网环境测试" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+
+    expect(await screen.findByText("公网环境测试")).toBeInTheDocument();
+    expect(await screen.findByText("收到。")).toBeInTheDocument();
+  });
 });
