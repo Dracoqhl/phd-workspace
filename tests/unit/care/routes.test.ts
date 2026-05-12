@@ -31,6 +31,7 @@ beforeEach(async () => {
 afterEach(async () => {
   vi.useRealTimers();
   vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
 
   if (tempDir) {
     await rm(tempDir, { recursive: true, force: true });
@@ -95,6 +96,71 @@ describe("care routes", () => {
         energyLevel: 2,
         isFavorite: true,
         focusText: "Revise intro"
+      }
+    });
+  });
+
+  it("generates today's care content with AI when configured", async () => {
+    vi.stubEnv("AI_API_KEY", "secret-key");
+    vi.stubEnv("AI_MODEL", "gpt-test");
+    vi.stubEnv("AI_BASE_URL", "https://example.test/v1/");
+    const fetchMock = vi.fn().mockResolvedValue(
+      Response.json({
+        choices: [{ message: { content: "今天先把注意力放在一个可以完成的小步骤上。" } }]
+      })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    await updateCare(
+      authRequest(`${baseUrl}/api/care/update`, {
+        method: "POST",
+        body: JSON.stringify({ energyLevel: 3, isFavorite: true, focusText: "Draft methods" })
+      })
+    );
+
+    const response = await generateCare(authRequest(`${baseUrl}/api/care/generate`, { method: "POST" }));
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      care: {
+        date: "2026-05-08",
+        content: "今天先把注意力放在一个可以完成的小步骤上。",
+        source: "ai_generated",
+        energyLevel: 3,
+        isFavorite: true,
+        focusText: "Draft methods"
+      }
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://example.test/v1/chat/completions",
+      expect.objectContaining({
+        method: "POST",
+        headers: {
+          Authorization: "Bearer secret-key",
+          "Content-Type": "application/json"
+        }
+      })
+    );
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(JSON.parse(String(init.body))).toMatchObject({
+      model: "gpt-test",
+      max_tokens: 180,
+      temperature: 0.7
+    });
+  });
+
+  it("falls back when AI care generation fails", async () => {
+    vi.stubEnv("AI_API_KEY", "secret-key");
+    vi.stubEnv("AI_MODEL", "gpt-test");
+    vi.stubEnv("AI_BASE_URL", "https://example.test/v1");
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json({ error: "bad key" }, { status: 401 })));
+
+    const response = await generateCare(authRequest(`${baseUrl}/api/care/generate`, { method: "POST" }));
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      care: {
+        date: "2026-05-08",
+        source: "fallback"
       }
     });
   });

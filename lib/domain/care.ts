@@ -22,14 +22,26 @@ export function getFallbackCareContent(date: string, refreshIndex = 0): string {
 }
 
 export function createFallbackCareRecord(date: string, existing?: CareRecord | null): CareRecord {
+  return createCareRecord(date, getFallbackCareContent(date, existing ? 1 : 0), "fallback", existing);
+}
+
+export function createAiCareRecord(date: string, content: string, existing?: CareRecord | null): CareRecord {
+  return createCareRecord(date, content, "ai_generated", existing);
+}
+
+function createCareRecord(
+  date: string,
+  content: string,
+  source: CareRecord["source"],
+  existing?: CareRecord | null
+): CareRecord {
   const now = new Date().toISOString();
-  const refreshIndex = existing ? 1 : 0;
 
   return {
     id: existing?.id ?? randomUUID(),
     date,
-    content: getFallbackCareContent(date, refreshIndex),
-    source: "fallback",
+    content,
+    source,
     energyLevel: existing?.energyLevel ?? null,
     isFavorite: existing?.isFavorite ?? false,
     focusText: existing?.focusText ?? "",

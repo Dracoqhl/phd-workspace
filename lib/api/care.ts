@@ -1,4 +1,6 @@
-import { createFallbackCareRecord, getCareDate } from "@/lib/domain/care";
+import { getAiConfig } from "@/lib/ai/config";
+import { generateAiCareContent } from "@/lib/ai/care";
+import { createAiCareRecord, createFallbackCareRecord, getCareDate } from "@/lib/domain/care";
 import { resolveDataDir } from "@/lib/data/data-dir";
 import { createRepositories } from "@/lib/data/repositories";
 import type { CareRecord, UpdateCareInput } from "@/types/care";
@@ -27,7 +29,12 @@ export async function ensureTodayCareRecord(repos: ReturnType<typeof getCareRepo
 
 export async function refreshTodayCareRecord(repos: ReturnType<typeof getCareRepositories>): Promise<CareRecord> {
   const date = getCareDate();
-  return repos.careRecords.upsertByDate(date, (existing) => createFallbackCareRecord(date, existing));
+  const config = getAiConfig();
+  const content = config ? await generateAiCareContent(config) : null;
+
+  return repos.careRecords.upsertByDate(date, (existing) =>
+    content ? createAiCareRecord(date, content, existing) : createFallbackCareRecord(date, existing)
+  );
 }
 
 export async function checkInTodayCareRecord(
