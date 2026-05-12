@@ -3,6 +3,7 @@
 import { Check, Pencil, Plus, Trash2 } from "lucide-react";
 import { FormEvent, KeyboardEvent, useEffect, useMemo, useState } from "react";
 
+import { useSyncStatus } from "@/components/sync/SyncStatusProvider";
 import { sortHabitListItems } from "@/lib/domain/habits";
 import type { Habit, HabitCheckin, HabitListItem } from "@/types/habit";
 
@@ -14,6 +15,7 @@ const emptyForm = {
 const targetOptions = [1, 2, 3, 4, 5];
 
 export function HabitManager() {
+  const { trackSync } = useSyncStatus();
   const [date, setDate] = useState("");
   const [habits, setHabits] = useState<HabitListItem[]>([]);
   const [form, setForm] = useState(emptyForm);
@@ -74,14 +76,27 @@ export function HabitManager() {
       return;
     }
 
-    const created = await writeHabit("/api/habits", {
-      method: "POST",
-      body: JSON.stringify({ name, description: "", icon: "", targetCount: Number(form.targetCount) })
-    });
+    const previousHabits = habits;
+    const previousForm = form;
+    const temporaryHabit = createOptimisticHabit(name, Number(form.targetCount));
 
-    if (created) {
-      setHabits((current) => [...current, { habit: created, checkin: null, isCompleted: false }]);
-      setForm(emptyForm);
+    setHabits((current) => [...current, { habit: temporaryHabit, checkin: null, isCompleted: false }]);
+
+    try {
+      const created = await writeHabit("/api/habits", {
+        method: "POST",
+        body: JSON.stringify({ name, description: "", icon: "", targetCount: Number(form.targetCount) })
+      });
+
+      if (created) {
+        setHabits((current) =>
+          current.map((item) => (item.habit.id === temporaryHabit.id ? { habit: created, checkin: null, isCompleted: false } : item))
+        );
+        setForm(emptyForm);
+      }
+    } catch {
+      setHabits(previousHabits);
+      setForm(previousForm);
     }
   }
 
@@ -94,24 +109,39 @@ export function HabitManager() {
     }
 
     const targetCount = input.targetCount ?? item.habit.targetCount;
-    const updated = await writeHabit(`/api/habits/${item.habit.id}`, {
-      method: "PATCH",
-      body: JSON.stringify({
-        name,
-        description: item.habit.description,
-        icon: item.habit.icon,
-        targetCount
-      })
-    });
+    const previousHabits = habits;
+    const optimisticHabit = { ...item.habit, name, targetCount };
 
-    if (updated) {
-      setHabits((current) =>
-        current.map((habit) =>
-          habit.habit.id === updated.id
-            ? { ...habit, habit: updated, isCompleted: (habit.checkin?.completedCount ?? 0) >= updated.targetCount }
-            : habit
-        )
-      );
+    setHabits((current) =>
+      current.map((habitItem) =>
+        habitItem.habit.id === item.habit.id
+          ? { ...habitItem, habit: optimisticHabit, isCompleted: (habitItem.checkin?.completedCount ?? 0) >= targetCount }
+          : habitItem
+      )
+    );
+
+    try {
+      const updated = await writeHabit(`/api/habits/${item.habit.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          name,
+          description: item.habit.description,
+          icon: item.habit.icon,
+          targetCount
+        })
+      });
+
+      if (updated) {
+        setHabits((current) =>
+          current.map((habitItem) =>
+            habitItem.habit.id === updated.id
+              ? { ...habitItem, habit: updated, isCompleted: (habitItem.checkin?.completedCount ?? 0) >= updated.targetCount }
+              : habitItem
+          )
+        );
+      }
+    } catch {
+      setHabits(previousHabits);
     }
   }
 
@@ -128,73 +158,104 @@ export function HabitManager() {
   }
 
   async function deactivateHabit(item: HabitListItem) {
+    const previousHabits = habits;
     setError(null);
-    const response = await fetch(`/api/habits/${item.habit.id}/deactivate`, { method: "PATCH" });
-    const payload = (await response.json()) as { habit?: Habit; error?: string };
-
-    if (!response.ok || !payload.habit) {
-      setError(payload.error ?? "Unable to deactivate habit.");
-      return;
-    }
-
     setHabits((current) => current.filter((habit) => habit.habit.id !== item.habit.id));
+
+    try {
+      const payload = await requestJson<{ habit?: Habit; error?: string }>(
+        `/api/habits/${item.habit.id}/deactivate`,
+        { method: "PATCH" },
+        "Unable to deactivate habit."
+      );
+
+      if (!payload.habit) {
+        throw new Error("Unable to deactivate habit.");
+      }
+    } catch (caught) {
+      setHabits(previousHabits);
+      setError(caught instanceof Error ? caught.message : "Unable to deactivate habit.");
+    }
   }
 
   async function toggleCheckin(item: HabitListItem) {
+    const previousHabits = habits;
     setError(null);
 
     if (item.isCompleted) {
-      const response = await fetch(`/api/habits/${item.habit.id}/checkins/${date}`, { method: "DELETE" });
-      const payload = (await response.json()) as { checkin?: HabitCheckin | null; error?: string };
+      setRestoredHabitId(item.habit.id);
+      setHabits((current) => updateHabitCheckin(current, item, decrementOptimisticCheckin(item)));
 
-      if (!response.ok) {
-        setError(payload.error ?? "Unable to cancel habit check-in.");
-        return;
+      try {
+        const payload = await requestJson<{ checkin?: HabitCheckin | null; error?: string }>(
+          `/api/habits/${item.habit.id}/checkins/${date}`,
+          { method: "DELETE" },
+          "Unable to cancel habit check-in."
+        );
+
+        setHabits((current) => updateHabitCheckin(current, item, payload.checkin ?? null));
+      } catch (caught) {
+        setHabits(previousHabits);
+        setError(caught instanceof Error ? caught.message : "Unable to cancel habit check-in.");
+      }
+      return;
+    }
+
+    const optimisticCheckin = incrementOptimisticCheckin(item, date);
+    setRestoredHabitId(null);
+    setHabits((current) => updateHabitCheckin(current, item, optimisticCheckin));
+
+    try {
+      const payload = await requestJson<{ checkin?: HabitCheckin; error?: string }>(
+        `/api/habits/${item.habit.id}/checkins`,
+        { method: "POST" },
+        "Unable to complete habit check-in."
+      );
+
+      if (!payload.checkin) {
+        throw new Error("Unable to complete habit check-in.");
       }
 
-      setRestoredHabitId(item.habit.id);
       setHabits((current) =>
-        current.map((habit) =>
-          habit.habit.id === item.habit.id
-            ? { ...habit, checkin: payload.checkin ?? null, isCompleted: (payload.checkin?.completedCount ?? 0) >= habit.habit.targetCount }
-            : habit
+        current.map((habitItem) =>
+          habitItem.habit.id === item.habit.id
+            ? { ...habitItem, checkin: payload.checkin!, isCompleted: payload.checkin!.completedCount >= habitItem.habit.targetCount }
+            : habitItem
         )
       );
-      return;
+    } catch (caught) {
+      setHabits(previousHabits);
+      setError(caught instanceof Error ? caught.message : "Unable to complete habit check-in.");
     }
-
-    const response = await fetch(`/api/habits/${item.habit.id}/checkins`, { method: "POST" });
-    const payload = (await response.json()) as { checkin?: HabitCheckin; error?: string };
-
-    if (!response.ok || !payload.checkin) {
-      setError(payload.error ?? "Unable to complete habit check-in.");
-      return;
-    }
-
-    setRestoredHabitId(null);
-    setHabits((current) =>
-      current.map((habit) =>
-        habit.habit.id === item.habit.id
-          ? { ...habit, checkin: payload.checkin!, isCompleted: payload.checkin!.completedCount >= habit.habit.targetCount }
-          : habit
-      )
-    );
   }
 
   async function writeHabit(url: string, init: RequestInit): Promise<Habit | null> {
     setError(null);
-    const response = await fetch(url, {
-      ...init,
-      headers: { "Content-Type": "application/json", ...(init.headers ?? {}) }
-    });
-    const payload = (await response.json()) as { habit?: Habit; error?: string };
+    const payload = await requestJson<{ habit?: Habit; error?: string }>(url, init, "Unable to save habit.");
 
-    if (!response.ok || !payload.habit) {
-      setError(payload.error ?? "Unable to save habit.");
-      return null;
+    if (!payload.habit) {
+      throw new Error("Unable to save habit.");
     }
 
     return payload.habit;
+  }
+
+  async function requestJson<T extends { error?: string }>(url: string, init: RequestInit, fallbackError: string): Promise<T> {
+    return trackSync(
+      (async () => {
+        const response = await fetch(url, {
+          ...init,
+          headers: { "Content-Type": "application/json", ...(init.headers ?? {}) }
+        });
+        const payload = (await response.json()) as T;
+
+        if (!response.ok) {
+          throw new Error(payload.error ?? fallbackError);
+        }
+
+        return payload;
+      })()
+    );
   }
 
   return (
@@ -311,5 +372,63 @@ export function HabitManager() {
         </form>
       ) : null}
     </section>
+  );
+}
+
+function createOptimisticHabit(name: string, targetCount: number): Habit {
+  const now = new Date().toISOString();
+
+  return {
+    id: `optimistic-habit-${now}`,
+    name,
+    description: "",
+    icon: "",
+    targetCount,
+    isActive: true,
+    createdAt: now,
+    updatedAt: now
+  };
+}
+
+function incrementOptimisticCheckin(item: HabitListItem, date: string): HabitCheckin {
+  const now = new Date().toISOString();
+  const completedCount = Math.min((item.checkin?.completedCount ?? 0) + 1, item.habit.targetCount);
+
+  return {
+    id: item.checkin?.id ?? `optimistic-checkin-${item.habit.id}`,
+    habitId: item.habit.id,
+    date,
+    isCompleted: completedCount >= item.habit.targetCount,
+    completedCount,
+    note: item.checkin?.note ?? "",
+    createdAt: item.checkin?.createdAt ?? now,
+    updatedAt: now
+  };
+}
+
+function decrementOptimisticCheckin(item: HabitListItem): HabitCheckin | null {
+  const now = new Date().toISOString();
+  const completedCount = Math.max((item.checkin?.completedCount ?? item.habit.targetCount) - 1, 0);
+  if (completedCount === 0) {
+    return null;
+  }
+
+  return {
+    id: item.checkin?.id ?? `optimistic-checkin-${item.habit.id}`,
+    habitId: item.habit.id,
+    date: item.checkin?.date ?? "",
+    isCompleted: completedCount >= item.habit.targetCount,
+    completedCount,
+    note: item.checkin?.note ?? "",
+    createdAt: item.checkin?.createdAt ?? now,
+    updatedAt: now
+  };
+}
+
+function updateHabitCheckin(items: HabitListItem[], item: HabitListItem, checkin: HabitCheckin | null): HabitListItem[] {
+  return items.map((habitItem) =>
+    habitItem.habit.id === item.habit.id
+      ? { ...habitItem, checkin, isCompleted: (checkin?.completedCount ?? 0) >= habitItem.habit.targetCount }
+      : habitItem
   );
 }

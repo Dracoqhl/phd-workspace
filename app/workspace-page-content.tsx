@@ -2,6 +2,7 @@ import { LoginForm } from "@/app/login-form";
 import { AiAssistantPanel } from "@/components/assistant/AiAssistantPanel";
 import { CarePanel } from "@/components/care/CarePanel";
 import { HabitManager } from "@/components/habits/HabitManager";
+import { SyncStatusBadge, SyncStatusProvider } from "@/components/sync/SyncStatusProvider";
 import { TaskManager } from "@/components/tasks/TaskManager";
 import { getHabitBusinessDate } from "@/lib/domain/habits";
 
@@ -11,6 +12,19 @@ interface WorkspacePageContentProps {
 
 export function WorkspacePageContent({ authenticated }: WorkspacePageContentProps) {
   const businessDate = getHabitBusinessDate();
+
+  if (authenticated) {
+    return (
+      <SyncStatusProvider>
+        <WorkspaceShell authenticated={true} businessDate={businessDate} />
+      </SyncStatusProvider>
+    );
+  }
+
+  return <WorkspaceShell authenticated={false} businessDate={businessDate} />;
+}
+
+function WorkspaceShell({ authenticated, businessDate }: WorkspacePageContentProps & { businessDate: string }) {
 
   return (
     <main className="min-h-screen bg-paper text-ink">
@@ -25,9 +39,12 @@ export function WorkspacePageContent({ authenticated }: WorkspacePageContentProp
                   当前是最小可运行页面壳，用于确认 Next.js、React、Tailwind 和构建流程已经连通。
                 </p>
               </div>
-              <span className="w-fit rounded-md bg-white px-3 py-1.5 text-sm font-medium text-slate-600 shadow-sm ring-1 ring-slate-200">
-                {businessDate}
-              </span>
+              <div className="flex flex-wrap items-center gap-2">
+                {authenticated ? <SyncStatusBadge /> : null}
+                <span className="w-fit rounded-md bg-white px-3 py-1.5 text-sm font-medium text-slate-600 shadow-sm ring-1 ring-slate-200">
+                  {businessDate}
+                </span>
+              </div>
             </div>
           </header>
 

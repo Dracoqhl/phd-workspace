@@ -3,6 +3,7 @@
 import { Heart, HeartCrack, RefreshCw, Star } from "lucide-react";
 import { useEffect, useState } from "react";
 
+import { useSyncStatus } from "@/components/sync/SyncStatusProvider";
 import type { CareRecord, UpdateCareInput } from "@/types/care";
 
 const energyLabels: Record<NonNullable<CareRecord["energyLevel"]>, string> = {
@@ -14,6 +15,7 @@ const energyLabels: Record<NonNullable<CareRecord["energyLevel"]>, string> = {
 };
 
 export function CarePanel() {
+  const { trackSync } = useSyncStatus();
   const [care, setCare] = useState<CareRecord | null>(null);
   const [focusText, setFocusText] = useState("");
   const [lastSavedFocusText, setLastSavedFocusText] = useState("");
@@ -68,10 +70,27 @@ export function CarePanel() {
   }
 
   async function updateCare(input: UpdateCareInput) {
-    await writeCare("/api/care/update", {
+    const previousCare = care;
+    const previousFocusText = focusText;
+    const previousLastSavedFocusText = lastSavedFocusText;
+
+    if (care) {
+      setCare({ ...care, ...input, updatedAt: new Date().toISOString() });
+    }
+    if (typeof input.focusText === "string") {
+      setFocusText(input.focusText);
+    }
+
+    const saved = await writeCare("/api/care/update", {
       method: "POST",
       body: JSON.stringify(input)
     });
+
+    if (!saved) {
+      setCare(previousCare);
+      setFocusText(previousFocusText);
+      setLastSavedFocusText(previousLastSavedFocusText);
+    }
   }
 
   async function saveFocusText() {
@@ -82,24 +101,32 @@ export function CarePanel() {
     await updateCare({ focusText });
   }
 
-  async function writeCare(url: string, init: RequestInit) {
+  async function writeCare(url: string, init: RequestInit): Promise<boolean> {
     setSaving(true);
     setError(null);
 
     try {
-      const response = await fetch(url, {
-        ...init,
-        headers: { "Content-Type": "application/json", ...(init.headers ?? {}) }
-      });
-      const payload = (await response.json()) as { care?: CareRecord; error?: string };
+      const payload = await trackSync(
+        (async () => {
+          const response = await fetch(url, {
+            ...init,
+            headers: { "Content-Type": "application/json", ...(init.headers ?? {}) }
+          });
+          const responsePayload = (await response.json()) as { care?: CareRecord; error?: string };
 
-      if (!response.ok || !payload.care) {
-        throw new Error(payload.error ?? "Unable to save care message.");
-      }
+          if (!response.ok || !responsePayload.care) {
+            throw new Error(responsePayload.error ?? "Unable to save care message.");
+          }
+
+          return { care: responsePayload.care };
+        })()
+      );
 
       applyCare(payload.care);
+      return true;
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to save care message.");
+      return false;
     } finally {
       setSaving(false);
     }

@@ -1,8 +1,9 @@
 "use client";
 
 import { Calendar, Check, ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
-import { FormEvent, KeyboardEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
 
+import { useSyncStatus } from "@/components/sync/SyncStatusProvider";
 import { getTaskDueState, getTaskProgress } from "@/lib/domain/tasks";
 import type { Task, TaskPriority, TaskStatus } from "@/types/task";
 
@@ -26,6 +27,7 @@ const emptyForm = {
 };
 
 export function TaskManager() {
+  const { trackSync } = useSyncStatus();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [form, setForm] = useState(emptyForm);
   const [showCompleted, setShowCompleted] = useState(false);
@@ -35,6 +37,7 @@ export function TaskManager() {
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [addingSubtaskFor, setAddingSubtaskFor] = useState<string | null>(null);
   const [subtaskTitle, setSubtaskTitle] = useState("");
+  const hasLocalWrites = useRef(false);
 
   useEffect(() => {
     let active = true;
@@ -51,7 +54,7 @@ export function TaskManager() {
           throw new Error(payload.error ?? "Unable to load tasks.");
         }
 
-        if (active) {
+        if (active && !hasLocalWrites.current) {
           setTasks(payload.tasks);
         }
       } catch (caught) {
@@ -85,21 +88,27 @@ export function TaskManager() {
       return;
     }
 
-    const created = await writeTask("/api/tasks", {
-      method: "POST",
-      body: JSON.stringify({
-        title,
-        description: "",
-        status: "not_started",
-        priority: form.priority,
-        dueDate: form.dueDate || null,
-        parentTaskId: null
-      })
-    });
+    hasLocalWrites.current = true;
 
-    if (created) {
-      setTasks((current) => [...current, created]);
-      setForm(emptyForm);
+    try {
+      const created = await writeTask("/api/tasks", {
+        method: "POST",
+        body: JSON.stringify({
+          title,
+          description: "",
+          status: "not_started",
+          priority: form.priority,
+          dueDate: form.dueDate || null,
+          parentTaskId: null
+        })
+      });
+
+      if (created) {
+        setTasks((current) => [...current, created]);
+        setForm(emptyForm);
+      }
+    } catch {
+      setError("Unable to save task.");
     }
   }
 
@@ -109,9 +118,18 @@ export function TaskManager() {
       return;
     }
 
-    const updated = await writeTask(`/api/tasks/${taskId}`, { method: "PATCH", body: JSON.stringify(input) });
-    if (updated) {
-      setTasks((current) => current.map((task) => (task.id === taskId ? updated : task)));
+    const previousTasks = tasks;
+    hasLocalWrites.current = true;
+    setTasks((current) => current.map((task) => (task.id === taskId ? applyOptimisticTaskUpdate(task, input) : task)));
+
+    try {
+      const updated = await writeTask(`/api/tasks/${taskId}`, { method: "PATCH", body: JSON.stringify(input) });
+      if (updated) {
+        setTasks((current) => current.map((task) => (task.id === taskId ? updated : task)));
+      }
+    } catch {
+      setTasks(previousTasks);
+      setError("Unable to save task.");
     }
   }
 
@@ -122,22 +140,30 @@ export function TaskManager() {
       return;
     }
 
-    const created = await writeTask(`/api/tasks/${parentTask.id}/subtasks`, {
-      method: "POST",
-      body: JSON.stringify({
-        title,
-        description: "",
-        status: "not_started",
-        priority: "medium",
-        dueDate: null
-      })
-    });
+    hasLocalWrites.current = true;
 
-    if (created) {
-      setTasks((current) => [...current, created]);
-      setExpanded(parentTask.id, true);
-      setAddingSubtaskFor(null);
-      setSubtaskTitle("");
+    try {
+      const created = await writeTask(`/api/tasks/${parentTask.id}/subtasks`, {
+        method: "POST",
+        body: JSON.stringify({
+          title,
+          description: "",
+          status: "not_started",
+          priority: "medium",
+          dueDate: null
+        })
+      });
+
+      if (created) {
+        setTasks((current) => [...current, created]);
+        setExpanded(parentTask.id, true);
+        setAddingSubtaskFor(null);
+        setSubtaskTitle("");
+      }
+    } catch {
+      setAddingSubtaskFor(parentTask.id);
+      setSubtaskTitle(title);
+      setError("Unable to save task.");
     }
   }
 
@@ -146,16 +172,17 @@ export function TaskManager() {
       return;
     }
 
+    const previousTasks = tasks;
+    hasLocalWrites.current = true;
     setError(null);
-    const response = await fetch(`/api/tasks/${task.id}`, { method: "DELETE" });
-    const payload = (await response.json()) as { error?: string };
-
-    if (!response.ok) {
-      setError(payload.error ?? "Unable to delete task.");
-      return;
-    }
-
     setTasks((current) => current.filter((item) => item.id !== task.id && item.parentTaskId !== task.id));
+
+    try {
+      await requestJson<{ error?: string }>(`/api/tasks/${task.id}`, { method: "DELETE" }, "Unable to delete task.");
+    } catch (caught) {
+      setTasks(previousTasks);
+      setError(caught instanceof Error ? caught.message : "Unable to delete task.");
+    }
   }
 
   async function deleteSubtask(task: Task) {
@@ -163,32 +190,46 @@ export function TaskManager() {
       return;
     }
 
+    const previousTasks = tasks;
+    hasLocalWrites.current = true;
     setError(null);
-    const response = await fetch(`/api/tasks/${task.id}`, { method: "DELETE" });
-    const payload = (await response.json()) as { error?: string };
-
-    if (!response.ok) {
-      setError(payload.error ?? "Unable to delete subtask.");
-      return;
-    }
-
     setTasks((current) => current.filter((item) => item.id !== task.id));
+
+    try {
+      await requestJson<{ error?: string }>(`/api/tasks/${task.id}`, { method: "DELETE" }, "Unable to delete subtask.");
+    } catch (caught) {
+      setTasks(previousTasks);
+      setError(caught instanceof Error ? caught.message : "Unable to delete subtask.");
+    }
   }
 
   async function writeTask(url: string, init: RequestInit): Promise<Task | null> {
     setError(null);
-    const response = await fetch(url, {
-      ...init,
-      headers: { "Content-Type": "application/json", ...(init.headers ?? {}) }
-    });
-    const payload = (await response.json()) as { task?: Task; error?: string };
+    const payload = await requestJson<{ task?: Task; error?: string }>(url, init, "Unable to save task.");
 
-    if (!response.ok || !payload.task) {
-      setError(payload.error ?? "Unable to save task.");
-      return null;
+    if (!payload.task) {
+      throw new Error("Unable to save task.");
     }
 
     return payload.task;
+  }
+
+  async function requestJson<T extends { error?: string }>(url: string, init: RequestInit, fallbackError: string): Promise<T> {
+    return trackSync(
+      (async () => {
+        const response = await fetch(url, {
+          ...init,
+          headers: { "Content-Type": "application/json", ...(init.headers ?? {}) }
+        });
+        const payload = (await response.json()) as T;
+
+        if (!response.ok) {
+          throw new Error(payload.error ?? fallbackError);
+        }
+
+        return payload;
+      })()
+    );
   }
 
   function toggleExpanded(taskId: string) {
@@ -528,4 +569,20 @@ function priorityDotClass(priority: TaskPriority): string {
   if (priority === "high") return "bg-red-500";
   if (priority === "medium") return "bg-amber-500";
   return "bg-green-500";
+}
+
+function applyOptimisticTaskUpdate(
+  task: Task,
+  input: Partial<Pick<Task, "title" | "status" | "priority" | "dueDate">>
+): Task {
+  const now = new Date().toISOString();
+  const status = input.status ?? task.status;
+
+  return {
+    ...task,
+    ...input,
+    status,
+    updatedAt: now,
+    completedAt: status === "completed" ? task.completedAt ?? now : null
+  };
 }

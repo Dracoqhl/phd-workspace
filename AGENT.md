@@ -25,6 +25,7 @@ This file stores maintainer context for future development sessions.
 - Store data in multiple local JSON files, configured by `DATA_DIR`.
 - Use server timezone for all "today" behavior and daily check-ins.
 - Daily habit check-ins refresh at 02:00 server time; 00:00-01:59 belongs to the previous habit business date.
+- Normal non-AI writes should feel immediate. Use optimistic UI for high-frequency row edits, task completion, habit check-ins, habit target changes, deletions, and care status updates. Show a compact global sync badge near the page date.
 - Use `YYYY-MM-DD` for date-only fields.
 - AI may propose operations for all app content, but every create/update/delete/check-in operation must be explicitly confirmed by the user before data is written.
 - The current AI chat slice is read-only: it may read current tasks, active habits with today's progress, and today's care summary as context, but it must not write data or imply that it has executed changes.
