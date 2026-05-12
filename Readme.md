@@ -2,7 +2,7 @@
 
 博士工作台是一个轻量级个人博士工作台，用于管理科研任务、每日健康习惯、心灵关怀打卡，并通过页面内 AI 助手辅助梳理和维护任务体系。
 
-当前项目处于 MVP 增量开发阶段，已包含 versioned data foundation、auth routes、login shell、protected task API、任务管理 UI MVP、每日健康习惯 MVP、AI 心灵关怀生成和 AI API 测试入口。
+当前项目处于 MVP 增量开发阶段，已包含 versioned data foundation、auth routes、login shell、protected task API、任务管理 UI MVP、每日健康习惯 MVP、AI 心灵关怀生成、AI API 测试入口和右侧 AI 基础聊天。
 
 ## MVP Scope
 
@@ -66,7 +66,7 @@ AI_BASE_URL=https://api.openai.com/v1
 - `APP_PASSWORD` is the single access password entered on the login screen.
 - `SESSION_SECRET` signs the 30-day HTTP-only session cookie. Use a long random value.
 - `DATA_DIR` points to runtime JSON data outside the repository.
-- `AI_API_KEY` is the server-side model API key used by `/api/ai/test` and later AI features.
+- `AI_API_KEY` is the server-side model API key used by `/api/ai/test`, `/api/care/generate`, and `/api/ai/chat`.
 - `AI_MODEL` is the OpenAI-compatible model name used by the server-side AI client.
 - `AI_BASE_URL` is the OpenAI-compatible model API base URL, such as `https://api.openai.com/v1`.
 - Fill real AI values only in `.env.local` on your machine or server. `.env.local` is ignored by Git and must not be committed.
@@ -106,7 +106,7 @@ Rules:
 - `SESSION_SECRET` signs session cookies and must be a long random value.
 - `DATA_DIR` points to runtime JSON data outside the repository.
 - `AI_BASE_URL` is required for the upcoming server-side AI client configuration.
-- `AI_API_KEY`, `AI_MODEL`, and `AI_BASE_URL` are read only on the server. The frontend calls `/api/ai/test` and never receives the API key.
+- `AI_API_KEY`, `AI_MODEL`, and `AI_BASE_URL` are read only on the server. The frontend calls protected AI API routes and never receives the API key.
 - AI keys must only be used server-side.
 - Real `.env` files should not be committed.
 
@@ -193,7 +193,7 @@ git remote add origin https://github.com/<your-user>/<your-repo>.git
 
 ## Development Status
 
-The project is in MVP implementation. Current dev status includes a versioned data foundation, auth routes, a login shell, protected task APIs, task management UI, daily habit management UI, an AI-backed mental care refresh with fallback, and the first AI API test slice. Stage A added the first tested server-side modules, Stage B added the first runnable Next.js app shell, the task slice connects the shell to local JSON task data, Stage C adds daily health habits, Stage D starts mental care, Stage E adds AI configuration testing, and Stage F starts real AI care generation:
+The project is in MVP implementation. Current dev status includes a versioned data foundation, auth routes, a login shell, protected task APIs, task management UI, daily habit management UI, an AI-backed mental care refresh with fallback, AI API testing, and a read-only AI chat slice. Stage A added the first tested server-side modules, Stage B added the first runnable Next.js app shell, the task slice connects the shell to local JSON task data, Stage C adds daily health habits, Stage D starts mental care, Stage E adds AI configuration testing, Stage F starts real AI care generation, and Stage G adds basic AI chat:
 
 - `AGENT.md`: maintainer context and confirmed decisions.
 - `architecture.md`: planned directory layout and file placement rules.
@@ -205,7 +205,7 @@ The project is in MVP implementation. Current dev status includes a versioned da
 - `app/layout.tsx`: root App Router layout and metadata.
 - `app/page.tsx`: single-page workspace shell with care, habit, task, AI assistant regions, and the current habit business date in the page header.
 - `components/care/CarePanel.tsx`: compact mental care panel connected to `/api/care/today`, `/api/care/generate`, and `/api/care/update`, with AI-backed daily quote refresh, local fallback content, stable title-row energy icons and status pill, small retry/favorite icon actions, and an editable "today focus" field.
-- `components/assistant/AiAssistantPanel.tsx`: right-side assistant shell with a compact `Test AI` control connected to `/api/ai/test`.
+- `components/assistant/AiAssistantPanel.tsx`: right-side assistant shell with a compact `Test AI` control connected to `/api/ai/test` and a compact chat area connected to `/api/ai/chat`.
 - `components/tasks/TaskManager.tsx`: compact hierarchical task table connected to `/api/tasks`, including top-level task create/delete, one-layer subtask create/delete, expandable subtasks, small row-level complete/reopen controls, two-step select-then-edit title editing with blur save, priority color-dot editing, due-date calendar editing, readable English status labels, completed top-level task hiding, and due-date highlighting.
 - `components/habits/HabitManager.tsx`: compact daily habit list connected to `/api/habits`, including a panel-level edit mode, bottom-only new-habit form, row-wide name/target maintenance in edit mode, clickable progress fractions for target changes in normal mode, trash-icon deactivation, compact circular complete/cancel controls, checked-count-over-target header progress, and multi-check cancellation behavior. Completed habits are greyed out, struck through, and sorted after incomplete habits.
 - `app/globals.css`: Tailwind entry point and base page styles.
@@ -215,16 +215,17 @@ The project is in MVP implementation. Current dev status includes a versioned da
 - `lib/domain/tasks.ts`: task completion, subtask progress, and due-state business rules.
 - `lib/domain/habits.ts`: habit business-date helper using a 02:00 server-time day boundary and habit list sorting rules.
 - `lib/domain/care.ts`: care date helper plus local fallback and AI-generated care record construction.
-- `lib/ai/config.ts`, `lib/ai/test-client.ts`, and `lib/ai/care.ts`: server-only OpenAI-compatible AI configuration, connectivity test helper, and mental-care generation helper.
+- `lib/ai/config.ts`, `lib/ai/test-client.ts`, `lib/ai/care.ts`, and `lib/ai/chat.ts`: server-only OpenAI-compatible AI configuration, connectivity test helper, mental-care generation helper, and read-only assistant chat helper.
 - `lib/data/json-store.ts`: JSON file initialization, read, update, and atomic write helper.
 - `lib/data/repositories.ts`: versioned repository factory for tasks, trash, habits, habit check-ins, care records, and AI logs.
 - `app/api/tasks/**/route.ts`: protected task list, create, detail, update, delete, and subtask creation endpoints.
 - `app/api/habits/**/route.ts`: protected habit list, create, update, deactivate, check-in, and check-in cancellation endpoints.
 - `app/api/care/**/route.ts`: protected today's care, AI-backed refresh with fallback, care update, and legacy care check-in endpoints.
 - `app/api/ai/test/route.ts`: protected AI connectivity test endpoint. It returns only availability state and never returns the configured API key.
+- `app/api/ai/chat/route.ts`: protected read-only AI chat endpoint. It sends a concise workspace context of current tasks, active habits with today's progress, and today's care summary to the configured model, but does not execute writes.
 - `tests/`: unit tests for task and habit domain rules, JSON data layer, auth, task and habit routes, workspace page shell, and task/habit manager UI behavior.
 
-The app has the first login/session shell, protected task APIs, task management UI, protected habit APIs, daily habit UI, AI-backed care refresh with fallback, and an AI connectivity test. Real AI chat and proposal workflows are still being added.
+The app has the first login/session shell, protected task APIs, task management UI, protected habit APIs, daily habit UI, AI-backed care refresh with fallback, an AI connectivity test, and basic read-only AI chat. AI proposal and confirmation workflows are still being added.
 
 ## Documentation Maintenance
 

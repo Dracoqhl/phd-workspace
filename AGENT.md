@@ -26,6 +26,7 @@ This file stores maintainer context for future development sessions.
 - Daily habit check-ins refresh at 02:00 server time; 00:00-01:59 belongs to the previous habit business date.
 - Use `YYYY-MM-DD` for date-only fields.
 - AI may propose operations for all app content, but every create/update/delete/check-in operation must be explicitly confirmed by the user before data is written.
+- The current AI chat slice is read-only: it may read current tasks, active habits with today's progress, and today's care summary as context, but it must not write data or imply that it has executed changes.
 - Parent task completion and child task completion are independent.
 - Completing a parent task does not complete subtasks.
 - Completing all subtasks does not complete the parent task.
@@ -63,7 +64,7 @@ This file stores maintainer context for future development sessions.
 - Task rows should use a two-step text edit interaction: first click selects/highlights the row; a second click on the text enters inline edit. Enter and input blur both save; Escape cancels.
 - AI assistant: persistent right panel, chat, API test, structured operation proposals, user confirmation cards, operation logs.
 - AI configuration is server-only through `AI_API_KEY`, `AI_MODEL`, and `AI_BASE_URL`. Real values belong in `.env.local` or server environment variables and must not be committed.
-- The AI assistant panel should expose a compact `Test AI` control before chat/proposal workflows are built.
+- The AI assistant panel should expose a compact `Test AI` control and a compact chat area. Chat can help plan or break down work from read-only workspace context; proposal and confirmation workflows are a later step.
 - Local persistence: JSON files with safe write behavior.
 
 ## Preferred Technical Direction
