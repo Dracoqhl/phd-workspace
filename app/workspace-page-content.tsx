@@ -1,4 +1,5 @@
 import { LoginForm } from "@/app/login-form";
+import { AiAssistantPanel } from "@/components/assistant/AiAssistantPanel";
 import { CarePanel } from "@/components/care/CarePanel";
 import { HabitManager } from "@/components/habits/HabitManager";
 import { TaskManager } from "@/components/tasks/TaskManager";
@@ -52,15 +53,5 @@ function WorkspaceSections() {
 }
 
 function AiAssistantAside() {
-  return (
-    <aside
-      aria-label="AI 助手"
-      className="min-h-48 rounded-lg border border-slate-200 bg-white p-5 shadow-sm lg:w-[30%]"
-    >
-      <h2 className="text-base font-semibold text-ink">AI 助手</h2>
-      <p className="mt-3 text-sm leading-6 text-slate-600">
-        右侧常驻助手会在后续阶段接入 API 测试、聊天、任务拆解和确认卡片。
-      </p>
-    </aside>
-  );
+  return <AiAssistantPanel />;
 }

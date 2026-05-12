@@ -62,6 +62,8 @@ This file stores maintainer context for future development sessions.
 - Task rows should include a small circular complete/reopen control immediately before the task title and after the expand/collapse affordance. Completing a top-level task should rely on the existing completed-task hiding behavior.
 - Task rows should use a two-step text edit interaction: first click selects/highlights the row; a second click on the text enters inline edit. Enter and input blur both save; Escape cancels.
 - AI assistant: persistent right panel, chat, API test, structured operation proposals, user confirmation cards, operation logs.
+- AI configuration is server-only through `AI_API_KEY`, `AI_MODEL`, and `AI_BASE_URL`. Real values belong in `.env.local` or server environment variables and must not be committed.
+- The AI assistant panel should expose a compact `Test AI` control before chat/proposal workflows are built.
 - Local persistence: JSON files with safe write behavior.
 
 ## Preferred Technical Direction

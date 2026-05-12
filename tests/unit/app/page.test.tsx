@@ -36,6 +36,14 @@ vi.mock("@/components/care/CarePanel", () => ({
   CarePanel: () => <section aria-label="心灵关怀">Care panel</section>
 }));
 
+vi.mock("@/components/assistant/AiAssistantPanel", () => ({
+  AiAssistantPanel: () => (
+    <aside aria-label="AI 助手">
+      <button type="button">Test AI</button>
+    </aside>
+  )
+}));
+
 const mockedCookies = vi.mocked(cookies);
 const mockedGetSessionSecret = vi.mocked(getSessionSecret);
 const mockedVerifySessionToken = vi.mocked(verifySessionToken);
@@ -64,6 +72,7 @@ describe("workspace page shell", () => {
     expect(screen.getByRole("region", { name: "每日健康习惯" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "心灵关怀" })).toBeInTheDocument();
     expect(screen.getByRole("complementary", { name: "AI 助手" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Test AI" })).toBeInTheDocument();
   });
 
   it("marks the password input invalid and describes it with the login error", async () => {
