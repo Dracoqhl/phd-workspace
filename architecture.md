@@ -150,8 +150,11 @@ Stage A implemented the first tested backend-only modules, and the current found
 - `lib/data/json-store.ts`: generic versioned JSON store with missing-file initialization, atomic replace writes, flat filename safety, in-process per-file update serialization, and optional item validation.
 - `lib/data/repositories.ts`: versioned repository factory exposing tasks, trash, habits, habit check-ins, care records, and AI logs through narrow repository APIs.
 - `lib/data/data-dir.ts`: `DATA_DIR` resolver and MVP runtime JSON file list.
-- `lib/auth/password.ts` and `lib/auth/session.ts`: password and 30-day session helpers using `APP_PASSWORD` and `SESSION_SECRET`.
-- `app/api/auth/*/route.ts`: login, logout, and session route handlers. Login accepts JSON requests from the React form flow and native `application/x-www-form-urlencoded` form posts for mobile/browser fallback.
+- `lib/auth/password.ts` and `lib/auth/session.ts`: legacy password and 30-day session helpers using `APP_PASSWORD` and `SESSION_SECRET`.
+- `lib/auth/credentials.ts`: SQLite-mode password hashing and email normalization helpers.
+- `lib/db/*`: SQLite path resolution, CLI-backed query wrapper, schema initialization, user/session/invite repositories, and user-scoped business repositories.
+- `app/api/auth/*/route.ts`: login, register, logout, and session route handlers. Login/register accept JSON requests from the React form flow and native `application/x-www-form-urlencoded` form posts for mobile/browser fallback.
+- `app/api/admin/invites/route.ts`: admin-only one-time invite generation and listing.
 - `app/api/tasks/**/route.ts`: protected task list, create, detail, update, delete, and subtask creation route handlers.
 - `app/api/habits/**/route.ts`: protected habit list, create, update, deactivate, daily check-in, and daily check-in cancellation route handlers.
 - `app/api/care/**/route.ts`: protected today's care, AI-backed refresh with local fallback, care update, and legacy care check-in route handlers backed by `care-records.json`.
@@ -206,18 +209,20 @@ Owns React UI components.
 Owns password access and session helpers.
 
 - Password comparison and session cookie signing logic live here.
-- Auth uses `APP_PASSWORD` for login and `SESSION_SECRET` for 30-day HTTP-only cookie sessions.
+- Legacy auth uses `APP_PASSWORD` for login and `SESSION_SECRET` for 30-day HTTP-only cookie sessions.
+- Multi-user auth is enabled when `DATABASE_PATH` is configured. It uses SQLite users, hashed passwords, database sessions, and one-time invite codes.
 - The session cookie protects the shell and should protect future API routes.
 - Auth helpers may read `APP_PASSWORD` and `SESSION_SECRET`.
+- In multi-user mode, route helpers return the current user context and every business repository is scoped by that `userId`.
 - UI components should interact with auth only through API routes or lightweight client state.
 
 ### `lib/data/`
 
 Owns server-local JSON persistence.
 
-- `data-dir.ts` resolves and validates `DATA_DIR`.
+- `data-dir.ts` resolves and validates legacy `DATA_DIR`.
 - `json-store.ts` implements safe JSON reads/writes, including temporary-file writes and atomic replace.
-- `JsonStore` is in-process concurrency safe for a single Node.js process. It is not a multi-process file lock.
+- `JsonStore` is in-process concurrency safe for a single Node.js process. It is not a multi-process file lock. It remains for legacy mode and migration source data.
 - `repositories/*` expose typed data operations for each JSON file.
 - This layer must not import React components or browser-only APIs.
 
@@ -251,7 +256,7 @@ Owns shared route-handler helpers for protected API slices.
 
 - AI chat request parsing and workspace-context construction live in `lib/api/ai-chat.ts`.
 - AI action confirmation parsing and execution live in `lib/api/ai-actions.ts`.
-- Context sent to AI includes all records from `tasks.json` so completed and historical tasks are available for planning. It omits secrets, runtime logs, trash, and API keys.
+- Context sent to AI includes all task records for the current authenticated user so completed and historical tasks are available for planning. It omits other users' data, secrets, runtime logs, trash, and API keys.
 
 ### `lib/validation/`
 

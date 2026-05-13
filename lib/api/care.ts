@@ -3,6 +3,10 @@ import { generateAiCareContent } from "@/lib/ai/care";
 import { createAiCareRecord, createFallbackCareRecord, getCareDate } from "@/lib/domain/care";
 import { resolveDataDir } from "@/lib/data/data-dir";
 import { createRepositories } from "@/lib/data/repositories";
+import { getDatabase, isDatabaseConfigured } from "@/lib/db/database";
+import { createSqliteRepositories } from "@/lib/db/repositories";
+import { ensureDatabaseSchema } from "@/lib/db/schema";
+import type { AuthContext } from "@/lib/api/auth";
 import type { CareRecord, UpdateCareInput } from "@/types/care";
 
 export const DATA_DIR_CONFIG_ERROR = "Data directory is not configured";
@@ -12,7 +16,16 @@ export function dataConfigErrorResponse(): Response {
   return Response.json({ error: DATA_DIR_CONFIG_ERROR }, { status: 500 });
 }
 
-export function getCareRepositories() {
+export function getCareRepositories(auth?: AuthContext) {
+  if (isDatabaseConfigured()) {
+    if (!auth?.user) {
+      throw new Error("Authenticated user is required");
+    }
+    const db = getDatabase();
+    ensureDatabaseSchema(db);
+    return createSqliteRepositories(db, auth.user.id);
+  }
+
   return createRepositories(resolveDataDir());
 }
 

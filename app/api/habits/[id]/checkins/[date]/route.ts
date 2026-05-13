@@ -1,4 +1,4 @@
-import { requireAuth } from "@/lib/api/auth";
+import { requireUser, type AuthContext } from "@/lib/api/auth";
 import { dataConfigErrorResponse, getHabitRepositories } from "@/lib/api/habits";
 
 interface HabitCheckinDateRouteContext {
@@ -9,16 +9,14 @@ interface HabitCheckinDateRouteContext {
 }
 
 export async function DELETE(request: Request, context: HabitCheckinDateRouteContext): Promise<Response> {
-  const authResponse = requireAuth(request);
-  if (authResponse) {
-    return authResponse;
-  }
+  const auth = requireUser(request);
+  if (auth instanceof Response) return auth;
 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(context.params.date)) {
     return Response.json({ error: "Invalid habit check-in date" }, { status: 400 });
   }
 
-  const repos = getRepositoriesOrResponse();
+  const repos = getRepositoriesOrResponse(auth);
   if (repos instanceof Response) {
     return repos;
   }
@@ -32,9 +30,9 @@ export async function DELETE(request: Request, context: HabitCheckinDateRouteCon
   return Response.json({ checkin, deleted: checkin === null });
 }
 
-function getRepositoriesOrResponse(): ReturnType<typeof getHabitRepositories> | Response {
+function getRepositoriesOrResponse(auth: AuthContext): ReturnType<typeof getHabitRepositories> | Response {
   try {
-    return getHabitRepositories();
+    return getHabitRepositories(auth);
   } catch {
     return dataConfigErrorResponse();
   }

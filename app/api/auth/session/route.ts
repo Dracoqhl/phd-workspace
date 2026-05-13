@@ -3,6 +3,9 @@ import {
   SESSION_COOKIE_NAME,
   verifySessionToken
 } from "@/lib/auth/session";
+import { SessionRepository, toPublicUser } from "@/lib/db/auth-repositories";
+import { getDatabase, isDatabaseConfigured } from "@/lib/db/database";
+import { ensureDatabaseSchema } from "@/lib/db/schema";
 
 const CONFIG_ERROR_RESPONSE = {
   authenticated: false,
@@ -10,6 +13,10 @@ const CONFIG_ERROR_RESPONSE = {
 };
 
 export function GET(request: Request): Response {
+  if (isDatabaseConfigured()) {
+    return databaseSessionResponse(request);
+  }
+
   let sessionSecret: string;
 
   try {
@@ -22,6 +29,27 @@ export function GET(request: Request): Response {
   const authenticated = verifySessionToken(token, sessionSecret);
 
   return sessionResponse({ authenticated }, 200);
+}
+
+function databaseSessionResponse(request: Request): Response {
+  try {
+    const db = getDatabase();
+    ensureDatabaseSchema(db);
+    const token = getCookieValue(request.headers.get("cookie"), SESSION_COOKIE_NAME);
+    const user = new SessionRepository(db).findUserByToken(token);
+
+    return sessionResponse(
+      user
+        ? {
+            authenticated: true,
+            user: toPublicUser(user)
+          }
+        : { authenticated: false },
+      200
+    );
+  } catch {
+    return sessionResponse(CONFIG_ERROR_RESPONSE, 500);
+  }
 }
 
 function getCookieValue(cookieHeader: string | null, name: string): string | undefined {

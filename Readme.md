@@ -2,7 +2,7 @@
 
 博士工作台是一个轻量级个人博士工作台，用于管理科研任务、每日健康习惯、心灵关怀打卡，并通过页面内 AI 助手辅助梳理和维护任务体系。
 
-当前项目处于 MVP 增量开发阶段，已包含 versioned data foundation、auth routes、login shell、protected task API、任务管理 UI MVP、每日健康习惯 MVP、AI 心灵关怀生成、AI API 测试入口、右侧 AI 聊天、AI 操作建议确认和 AI 操作日志。
+当前项目处于 MVP 增量开发阶段，已包含 versioned data foundation、auth routes、login shell、protected task API、任务管理 UI MVP、每日健康习惯 MVP、AI 心灵关怀生成、AI API 测试入口、右侧 AI 聊天、AI 操作建议确认、AI 操作日志，以及邀请制多用户 SQLite 迁移基础。
 普通非 AI 操作使用页面级同步状态提示：页面日期旁显示 `Synced`、`Saving...` 或 `Sync failed`。高频编辑会先更新界面，再在后台同步到本地 JSON API；任务完成和习惯打卡会先显示短暂 pending 高亮，再进入最终完成/置底/隐藏状态。
 
 ## MVP Scope
@@ -14,8 +14,8 @@ P0 功能：
 - 每日健康习惯模块：创建、编辑、停用、完成/未完成打卡。
 - 任务模块：一级任务、一层子任务、状态、优先级、截止日期、完成隐藏、接近截止/逾期高亮。
 - 右侧常驻 AI 助手：聊天、API 测试、任务拆解、操作建议、勾选确认后写入。
-- 单一访问口令，不做账号系统。
-- 服务器本地多 JSON 文件存储。
+- 邀请制多用户账号，邮箱 + 密码登录。
+- SQLite 多用户数据存储；未配置 `DATABASE_PATH` 时仍可使用 legacy 单口令 JSON 模式。
 
 暂不做：
 
@@ -34,7 +34,7 @@ P0 功能：
 - Next.js + React
 - Tailwind CSS
 - Next.js Route Handlers
-- Server-local JSON files
+- SQLite for multi-user runtime data; legacy server-local JSON files remain as migration source
 - Server-side AI model API integration
 
 最终技术栈以后续实际初始化项目为准。若技术栈变化，需要同步更新本文件和 `architecture.md`。
@@ -47,6 +47,8 @@ Install dependencies:
 pnpm install
 ```
 
+For multi-user mode, the server must have the `sqlite3` CLI available on `PATH`.
+
 Create local environment configuration:
 
 ```bash
@@ -56,17 +58,21 @@ cp .env.example .env.local
 Required variables:
 
 ```bash
-APP_PASSWORD=change-me
 SESSION_SECRET=replace-with-a-long-random-secret
 DATA_DIR=/absolute/path/to/phd-workspace-data
+DATABASE_PATH=/absolute/path/to/phd-workspace.sqlite
+ADMIN_EMAIL=admin@example.com
+ADMIN_PASSWORD=replace-with-admin-password
 AI_API_KEY=your-model-api-key
 AI_MODEL=your-model-name
 AI_BASE_URL=https://api.openai.com/v1
 ```
 
-- `APP_PASSWORD` is the single access password entered on the login screen.
+- `APP_PASSWORD` is only used by legacy single-user mode when `DATABASE_PATH` is not configured.
 - `SESSION_SECRET` signs the 30-day HTTP-only session cookie. Use a long random value.
-- `DATA_DIR` points to runtime JSON data outside the repository.
+- `DATA_DIR` points to legacy runtime JSON data outside the repository and is used as the source for JSON-to-SQLite migration.
+- `DATABASE_PATH` enables invite-only multi-user mode and points to the SQLite database file.
+- `ADMIN_EMAIL` and `ADMIN_PASSWORD` initialize the first admin user when the SQLite database has no users.
 - `AI_API_KEY` is the server-side model API key used by `/api/ai/test`, `/api/care/generate`, and `/api/ai/chat`.
 - `AI_MODEL` is the OpenAI-compatible model name used by the server-side AI client.
 - `AI_BASE_URL` is the OpenAI-compatible model API base URL, such as `https://api.openai.com/v1`.
@@ -94,7 +100,7 @@ You can also run the underlying dev command directly:
 pnpm dev
 ```
 
-Open `http://localhost:3000`, enter `APP_PASSWORD`, and the app sets a 30-day HTTP-only session cookie. The login form supports both the normal React login flow and native HTML form POST fallback for mobile browsers.
+Open `http://localhost:3000`. In multi-user mode, log in with `ADMIN_EMAIL` and `ADMIN_PASSWORD`, then generate invite codes for beta users. In legacy mode, enter `APP_PASSWORD`. The login/register forms support both the normal React flow and native HTML form POST fallback for mobile browsers.
 
 ## Environment Variables
 
@@ -104,6 +110,9 @@ Example variables:
 APP_PASSWORD=change-me
 SESSION_SECRET=replace-with-a-long-random-secret
 DATA_DIR=/absolute/path/to/phd-workspace-data
+DATABASE_PATH=/absolute/path/to/phd-workspace.sqlite
+ADMIN_EMAIL=admin@example.com
+ADMIN_PASSWORD=replace-with-admin-password
 AI_API_KEY=your-model-api-key
 AI_MODEL=your-model-name
 AI_BASE_URL=https://api.openai.com/v1
@@ -114,6 +123,8 @@ Rules:
 - `APP_PASSWORD` is the single access password.
 - `SESSION_SECRET` signs session cookies and must be a long random value.
 - `DATA_DIR` points to runtime JSON data outside the repository.
+- `DATABASE_PATH` enables SQLite multi-user mode.
+- `ADMIN_EMAIL` and `ADMIN_PASSWORD` are used only to initialize the first admin user when the SQLite database is empty.
 - `AI_BASE_URL` is required for the upcoming server-side AI client configuration.
 - `AI_API_KEY`, `AI_MODEL`, and `AI_BASE_URL` are read only on the server. The frontend calls protected AI API routes and never receives the API key.
 - AI keys must only be used server-side.
@@ -131,7 +142,7 @@ After editing `.env.local`, restart the app and click `Test AI` in the right ass
 
 ## Runtime Data
 
-Runtime data should live outside this repo:
+Legacy JSON runtime data should live outside this repo:
 
 ```text
 $DATA_DIR/
@@ -153,6 +164,20 @@ Each runtime JSON file is a versioned collection:
 ```
 
 The same empty example shapes are stored in `data.example/`.
+
+For multi-user mode, set `DATABASE_PATH` to an absolute SQLite file path outside this repo. Back up this SQLite file regularly.
+
+To migrate existing single-user JSON data into the admin account:
+
+```bash
+DATA_DIR=/absolute/path/to/phd-workspace-data \
+DATABASE_PATH=/absolute/path/to/phd-workspace.sqlite \
+ADMIN_EMAIL=admin@example.com \
+ADMIN_PASSWORD=replace-with-admin-password \
+pnpm migrate:sqlite
+```
+
+The migration keeps old JSON files in place as backup and records a migration marker so repeated runs do not duplicate data.
 
 ## Git And GitHub Sync
 

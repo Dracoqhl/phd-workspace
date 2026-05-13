@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { getHabitBusinessDate } from "@/lib/domain/habits";
 import type { createRepositories } from "@/lib/data/repositories";
+import type { createSqliteRepositories } from "@/lib/db/repositories";
 import type { AiActionLog, AiActionProposal, AiActionStatus, AiActionType } from "@/types/assistant";
 import type { CreateHabitInput, UpdateHabitInput } from "@/types/habit";
 import type { CreateTaskInput, TaskPriority, TaskStatus, UpdateTaskInput } from "@/types/task";
@@ -9,7 +10,7 @@ import type { CreateTaskInput, TaskPriority, TaskStatus, UpdateTaskInput } from 
 export const INVALID_AI_ACTION_PAYLOAD = "Invalid AI action payload";
 export const DATA_DIR_CONFIG_ERROR = "Data directory is not configured";
 
-type Repositories = ReturnType<typeof createRepositories>;
+type Repositories = ReturnType<typeof createRepositories> | ReturnType<typeof createSqliteRepositories>;
 
 export interface AiActionConfirmInput {
   decision: "confirm" | "reject";

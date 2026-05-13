@@ -1,30 +1,34 @@
 import { LoginForm } from "@/app/login-form";
+import { InviteManager } from "@/components/admin/InviteManager";
 import { AiAssistantPanel } from "@/components/assistant/AiAssistantPanel";
 import { CarePanel } from "@/components/care/CarePanel";
 import { HabitManager } from "@/components/habits/HabitManager";
 import { SyncStatusBadge, SyncStatusProvider } from "@/components/sync/SyncStatusProvider";
 import { TaskManager } from "@/components/tasks/TaskManager";
 import { getHabitBusinessDate } from "@/lib/domain/habits";
+import type { PublicUser } from "@/types/user";
 
 interface WorkspacePageContentProps {
   authenticated: boolean;
+  multiUserEnabled?: boolean;
+  user?: PublicUser | null;
 }
 
-export function WorkspacePageContent({ authenticated }: WorkspacePageContentProps) {
+export function WorkspacePageContent({ authenticated, multiUserEnabled = false, user = null }: WorkspacePageContentProps) {
   const businessDate = getHabitBusinessDate();
 
   if (authenticated) {
     return (
       <SyncStatusProvider>
-        <WorkspaceShell authenticated={true} businessDate={businessDate} />
+        <WorkspaceShell authenticated={true} businessDate={businessDate} multiUserEnabled={multiUserEnabled} user={user} />
       </SyncStatusProvider>
     );
   }
 
-  return <WorkspaceShell authenticated={false} businessDate={businessDate} />;
+  return <WorkspaceShell authenticated={false} businessDate={businessDate} multiUserEnabled={multiUserEnabled} user={user} />;
 }
 
-function WorkspaceShell({ authenticated, businessDate }: WorkspacePageContentProps & { businessDate: string }) {
+function WorkspaceShell({ authenticated, businessDate, multiUserEnabled = false, user = null }: WorkspacePageContentProps & { businessDate: string }) {
 
   return (
     <main className="min-h-screen bg-paper text-ink">
@@ -41,14 +45,26 @@ function WorkspaceShell({ authenticated, businessDate }: WorkspacePageContentPro
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 {authenticated ? <SyncStatusBadge /> : null}
+                {authenticated && user ? (
+                  <span className="w-fit rounded-md bg-white px-3 py-1.5 text-sm font-medium text-slate-600 shadow-sm ring-1 ring-slate-200">
+                    {user.email}
+                  </span>
+                ) : null}
                 <span className="w-fit rounded-md bg-white px-3 py-1.5 text-sm font-medium text-slate-600 shadow-sm ring-1 ring-slate-200">
                   {businessDate}
                 </span>
+                {authenticated ? (
+                  <form action="/api/auth/logout" method="post">
+                    <button className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 shadow-sm transition hover:border-slate-300" type="submit">
+                      Logout
+                    </button>
+                  </form>
+                ) : null}
               </div>
             </div>
           </header>
 
-          {authenticated ? <WorkspaceSections /> : <LoginForm />}
+          {authenticated ? <WorkspaceSections user={user} /> : <LoginForm multiUserEnabled={multiUserEnabled} />}
         </section>
 
         {authenticated ? <AiAssistantAside /> : null}
@@ -57,9 +73,10 @@ function WorkspaceShell({ authenticated, businessDate }: WorkspacePageContentPro
   );
 }
 
-function WorkspaceSections() {
+function WorkspaceSections({ user }: { user: PublicUser | null }) {
   return (
     <div className="grid gap-4">
+      {user?.role === "admin" ? <InviteManager /> : null}
       <div className="grid gap-4 xl:grid-cols-2">
         <CarePanel />
         <HabitManager />

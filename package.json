@@ -8,6 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint . --ext .ts,.tsx",
+    "migrate:sqlite": "node scripts/migrate-json-to-sqlite.mjs",
     "test": "vitest run",
     "test:watch": "vitest"
   },

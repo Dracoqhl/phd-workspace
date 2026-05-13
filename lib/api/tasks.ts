@@ -1,5 +1,9 @@
 import { resolveDataDir } from "@/lib/data/data-dir";
 import { createRepositories } from "@/lib/data/repositories";
+import { getDatabase, isDatabaseConfigured } from "@/lib/db/database";
+import { ensureDatabaseSchema } from "@/lib/db/schema";
+import { createSqliteRepositories } from "@/lib/db/repositories";
+import type { AuthContext } from "@/lib/api/auth";
 import type { CreateTaskInput, TaskPriority, TaskStatus, UpdateTaskInput } from "@/types/task";
 
 export const INVALID_TASK_PAYLOAD = "Invalid task payload";
@@ -9,7 +13,16 @@ export function dataConfigErrorResponse(): Response {
   return Response.json({ error: DATA_DIR_CONFIG_ERROR }, { status: 500 });
 }
 
-export function getTaskRepositories() {
+export function getTaskRepositories(auth?: AuthContext) {
+  if (isDatabaseConfigured()) {
+    if (!auth?.user) {
+      throw new Error("Authenticated user is required");
+    }
+    const db = getDatabase();
+    ensureDatabaseSchema(db);
+    return createSqliteRepositories(db, auth.user.id);
+  }
+
   return createRepositories(resolveDataDir());
 }
 

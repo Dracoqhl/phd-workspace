@@ -1,6 +1,7 @@
 import { getCareDate } from "@/lib/domain/care";
 import { getHabitBusinessDate } from "@/lib/domain/habits";
 import type { createRepositories } from "@/lib/data/repositories";
+import type { createSqliteRepositories } from "@/lib/db/repositories";
 import type { AiAssistantContext } from "@/lib/ai/chat";
 
 export const INVALID_AI_CHAT_PAYLOAD = "Invalid AI chat payload";
@@ -10,7 +11,7 @@ export const DATA_DIR_CONFIG_ERROR = "Data directory is not configured";
 const MAX_MESSAGE_LENGTH = 2000;
 const MAX_CONTEXT_HABITS = 20;
 
-type Repositories = ReturnType<typeof createRepositories>;
+type Repositories = ReturnType<typeof createRepositories> | ReturnType<typeof createSqliteRepositories>;
 
 export function dataConfigErrorResponse(): Response {
   return Response.json({ error: DATA_DIR_CONFIG_ERROR }, { status: 500 });

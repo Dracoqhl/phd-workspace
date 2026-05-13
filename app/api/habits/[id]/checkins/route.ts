@@ -1,4 +1,4 @@
-import { requireAuth } from "@/lib/api/auth";
+import { requireUser, type AuthContext } from "@/lib/api/auth";
 import { dataConfigErrorResponse, getHabitRepositories } from "@/lib/api/habits";
 import { getHabitBusinessDate } from "@/lib/domain/habits";
 
@@ -9,12 +9,10 @@ interface HabitCheckinRouteContext {
 }
 
 export async function POST(request: Request, context: HabitCheckinRouteContext): Promise<Response> {
-  const authResponse = requireAuth(request);
-  if (authResponse) {
-    return authResponse;
-  }
+  const auth = requireUser(request);
+  if (auth instanceof Response) return auth;
 
-  const repos = getRepositoriesOrResponse();
+  const repos = getRepositoriesOrResponse(auth);
   if (repos instanceof Response) {
     return repos;
   }
@@ -28,9 +26,9 @@ export async function POST(request: Request, context: HabitCheckinRouteContext):
   return Response.json({ checkin: result.checkin }, { status: result.created ? 201 : 200 });
 }
 
-function getRepositoriesOrResponse(): ReturnType<typeof getHabitRepositories> | Response {
+function getRepositoriesOrResponse(auth: AuthContext): ReturnType<typeof getHabitRepositories> | Response {
   try {
-    return getHabitRepositories();
+    return getHabitRepositories(auth);
   } catch {
     return dataConfigErrorResponse();
   }

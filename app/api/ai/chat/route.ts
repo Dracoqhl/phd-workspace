@@ -1,4 +1,4 @@
-import { requireAuth } from "@/lib/api/auth";
+import { requireUser } from "@/lib/api/auth";
 import {
   AI_CHAT_FAILED,
   INVALID_AI_CHAT_PAYLOAD,
@@ -11,10 +11,13 @@ import { generateAiAssistantReply } from "@/lib/ai/chat";
 import { getAiConfig } from "@/lib/ai/config";
 import { resolveDataDir } from "@/lib/data/data-dir";
 import { createRepositories } from "@/lib/data/repositories";
+import { getDatabase, isDatabaseConfigured } from "@/lib/db/database";
+import { createSqliteRepositories } from "@/lib/db/repositories";
+import { ensureDatabaseSchema } from "@/lib/db/schema";
 
 export async function POST(request: Request): Promise<Response> {
-  const authError = requireAuth(request);
-  if (authError) return authError;
+  const auth = requireUser(request);
+  if (auth instanceof Response) return auth;
 
   const body = await readJsonObject(request);
   const input = body ? parseAiChatInput(body) : null;
@@ -27,9 +30,16 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ ok: false, error: "AI is not configured" });
   }
 
-  let repositories: ReturnType<typeof createRepositories>;
+  let repositories: ReturnType<typeof createRepositories> | ReturnType<typeof createSqliteRepositories>;
   try {
-    repositories = createRepositories(resolveDataDir());
+    if (isDatabaseConfigured()) {
+      if (!auth.user) return Response.json({ error: "Unauthorized" }, { status: 401 });
+      const db = getDatabase();
+      ensureDatabaseSchema(db);
+      repositories = createSqliteRepositories(db, auth.user.id);
+    } else {
+      repositories = createRepositories(resolveDataDir());
+    }
   } catch {
     return dataConfigErrorResponse();
   }

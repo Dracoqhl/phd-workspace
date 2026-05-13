@@ -1,6 +1,10 @@
 import { getHabitBusinessDate } from "@/lib/domain/habits";
 import { resolveDataDir } from "@/lib/data/data-dir";
 import { createRepositories } from "@/lib/data/repositories";
+import { getDatabase, isDatabaseConfigured } from "@/lib/db/database";
+import { createSqliteRepositories } from "@/lib/db/repositories";
+import { ensureDatabaseSchema } from "@/lib/db/schema";
+import type { AuthContext } from "@/lib/api/auth";
 import type { CreateHabitInput, HabitListItem, UpdateHabitInput } from "@/types/habit";
 
 export const INVALID_HABIT_PAYLOAD = "Invalid habit payload";
@@ -10,7 +14,16 @@ export function dataConfigErrorResponse(): Response {
   return Response.json({ error: DATA_DIR_CONFIG_ERROR }, { status: 500 });
 }
 
-export function getHabitRepositories() {
+export function getHabitRepositories(auth?: AuthContext) {
+  if (isDatabaseConfigured()) {
+    if (!auth?.user) {
+      throw new Error("Authenticated user is required");
+    }
+    const db = getDatabase();
+    ensureDatabaseSchema(db);
+    return createSqliteRepositories(db, auth.user.id);
+  }
+
   return createRepositories(resolveDataDir());
 }
 

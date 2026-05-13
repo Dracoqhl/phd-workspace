@@ -1,4 +1,4 @@
-import { requireAuth } from "@/lib/api/auth";
+import { requireUser, type AuthContext } from "@/lib/api/auth";
 import {
   dataConfigErrorResponse,
   getHabitRepositories,
@@ -14,10 +14,8 @@ interface HabitRouteContext {
 }
 
 export async function PATCH(request: Request, context: HabitRouteContext): Promise<Response> {
-  const authResponse = requireAuth(request);
-  if (authResponse) {
-    return authResponse;
-  }
+  const auth = requireUser(request);
+  if (auth instanceof Response) return auth;
 
   const body = await readJsonObject(request);
   const input = body ? parseUpdateHabitInput(body) : null;
@@ -25,7 +23,7 @@ export async function PATCH(request: Request, context: HabitRouteContext): Promi
     return Response.json({ error: INVALID_HABIT_PAYLOAD }, { status: 400 });
   }
 
-  const repos = getRepositoriesOrResponse();
+  const repos = getRepositoriesOrResponse(auth);
   if (repos instanceof Response) {
     return repos;
   }
@@ -38,9 +36,9 @@ export async function PATCH(request: Request, context: HabitRouteContext): Promi
   return Response.json({ habit });
 }
 
-function getRepositoriesOrResponse(): ReturnType<typeof getHabitRepositories> | Response {
+function getRepositoriesOrResponse(auth: AuthContext): ReturnType<typeof getHabitRepositories> | Response {
   try {
-    return getHabitRepositories();
+    return getHabitRepositories(auth);
   } catch {
     return dataConfigErrorResponse();
   }

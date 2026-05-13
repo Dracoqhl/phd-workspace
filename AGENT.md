@@ -6,7 +6,7 @@ This file stores maintainer context for future development sessions.
 
 - Product name: 博士工作台 / PhD Workspace
 - Stage: MVP planning and initial scaffolding
-- Primary user: one personal PhD student user
+- Primary user: personal PhD student users; the project is migrating from single-user MVP to invite-only multi-user beta.
 - Deployment: personal server with a public web port
 - For normal server access, prefer `./scripts/start.sh` production mode. `./scripts/start-dev.sh` is only for active development because `next dev` adds on-demand route compilation and React development-mode duplicate effects.
 - Storage: server-local JSON files, separated from code and not synced through Git
@@ -14,20 +14,21 @@ This file stores maintainer context for future development sessions.
 
 ## Confirmed Product Decisions
 
-- Single-user product. Do not build registration, multi-account login, roles, or collaboration for MVP.
+- Multi-user beta uses invite-only registration with email/password accounts. Open public registration, teams, shared tasks, and fine-grained roles are still out of scope.
 - Use Git to sync source code and project documentation.
 - Sync code to a personal GitHub repository during normal development.
 - After each completed and verified development version, commit the version and push it to GitHub.
 - Do not sync runtime JSON data, API keys, password config, logs, or build artifacts through Git.
-- Use one access password instead of an account system.
-- Store the access password on the server, preferably through `APP_PASSWORD`.
-- Login must work with both the React fetch flow and native HTML form submission, so mobile browsers can still set the session cookie if client-side JavaScript is delayed or unavailable.
-- Store data in multiple local JSON files, configured by `DATA_DIR`.
+- Legacy single-user mode can still use one access password through `APP_PASSWORD` when `DATABASE_PATH` is not configured.
+- When `DATABASE_PATH` is configured, use SQLite-backed email/password login with database sessions and one-time invite codes.
+- Login/register must work with both the React fetch flow and native HTML form submission, so mobile browsers can still set the session cookie if client-side JavaScript is delayed or unavailable.
+- Legacy mode stores data in multiple local JSON files configured by `DATA_DIR`. Multi-user mode stores runtime data in SQLite configured by `DATABASE_PATH`.
+- Existing JSON data migrates to the initialized admin user through `pnpm migrate:sqlite`; old JSON files remain as backup and must not be deleted automatically.
 - Use server timezone for all "today" behavior and daily check-ins.
 - Daily habit check-ins refresh at 02:00 server time; 00:00-01:59 belongs to the previous habit business date.
 - Normal non-AI writes should feel immediate but not abrupt. Use optimistic UI for high-frequency row edits, habit target changes, deletions, and care status updates. Completion/check-in actions must update local state and header progress immediately, then show a short pending highlight while the background sync finishes. Row movement, hiding, or final settling can be briefly delayed, but counts and status should not wait for the network. Show a compact global sync badge near the page date.
 - Use `YYYY-MM-DD` for date-only fields.
-- AI may read all current and historical task records in `tasks.json` without extra confirmation, including completed tasks and subtasks. It may also read active habits with today's progress and today's care summary.
+- AI may read all current and historical task records for the current authenticated user without extra confirmation, including completed tasks and subtasks. It may also read that user's active habits with today's progress and today's care summary. It must never read another user's data.
 - AI may propose create/update/delete/check-in operations for tasks and habits, but every write must be explicitly confirmed by the user before data is written.
 - AI write proposals use a selectable confirmation card in the assistant panel. Users can confirm a checked subset or reject the suggestions. The chat route must never write data; the confirm route is the only AI write path.
 - When AI proposes a new parent task and subtasks in the same batch, subtasks should use `parentProposalId`; the confirmation route also falls back to the most recently created top-level task in that batch so task splitting does not partially fail.
