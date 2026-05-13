@@ -168,8 +168,8 @@ Stage B implemented the first runnable App Router shell and the current task sli
 - `app/globals.css`: Tailwind directives and base page styling.
 - `components/tasks/TaskManager.tsx`: compact hierarchical task table backed by `/api/tasks`, including top-level task create/delete, one-layer subtask create/delete, expandable subtasks, small row-level complete/reopen controls, two-step select-then-edit title editing with blur save, priority swatch editing, due-date calendar editing, readable English status labels, completed top-level task hiding, and due-state highlighting.
 - `components/habits/HabitManager.tsx`: compact habit list backed by `/api/habits`, including panel-level edit mode, bottom-only habit creation with daily target 1-5, editable name and target fields in edit mode, clickable progress fractions for target edits in normal mode, trash-icon deactivate, compact circular check-in/cancel controls, checked-count-over-target header progress, completed-row grey/strikethrough styling, and completed-row sorting.
-- `components/care/CarePanel.tsx`: compact mental care card backed by `/api/care`, including AI-backed daily quote refresh with local fallback, stable title-row energy icons and status pill, small retry/favorite icon actions, and an editable "today focus" field.
-- `components/assistant/AiAssistantPanel.tsx`: right-side assistant shell with a compact AI connectivity test control and a compact read-only chat area.
+- `components/care/CarePanel.tsx`: compact mental care card backed by `/api/care`, including AI-backed daily quote refresh with local fallback, stable title-row energy icons and status pill, bright level-5 sparkle icons, small retry/favorite icon actions, and an editable "today focus" field.
+- `components/assistant/AiAssistantPanel.tsx`: right-side assistant shell with a compact AI connectivity test control and a compact read-only chat area. The desktop panel is sticky, the message log is the scroll container, and the input stays anchored at the panel bottom.
 - `components/sync/SyncStatusProvider.tsx`: client-side provider and badge for page-level `Synced`, `Saving...`, and `Sync failed` state. Feature components wrap write requests with `trackSync` and keep their own rollback snapshots.
 - `tests/unit/app/page.test.tsx`: verifies that the workspace regions render.
 - `tests/unit/tasks/task-manager.test.tsx`: verifies compact task table loading, expand/collapse, inline title editing, priority and due-date editing, completed hiding, subtask creation, and deletion behavior.
@@ -193,7 +193,7 @@ Owns React UI components.
 - Components may call API endpoints or receive data through props.
 - Components must not import from `lib/data`.
 - Components must not read environment secrets.
-- Components that perform normal non-AI writes should use the sync provider and prefer optimistic local state updates for high-frequency interactions.
+- Components that perform normal non-AI writes should use the sync provider and prefer optimistic local state updates for high-frequency interactions. Completion and check-in actions should include a short pending visual state before final row movement, hiding, or completion styling.
 - Shared low-level UI belongs in `components/ui`.
 - Feature-specific UI belongs in its feature folder, such as `components/tasks` or `components/habits`.
 

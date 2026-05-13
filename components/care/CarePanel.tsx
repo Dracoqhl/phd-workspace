@@ -1,7 +1,7 @@
 "use client";
 
 import { Heart, HeartCrack, RefreshCw, Star } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useSyncStatus } from "@/components/sync/SyncStatusProvider";
 import type { CareRecord, UpdateCareInput } from "@/types/care";
@@ -22,6 +22,7 @@ export function CarePanel() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const updateSequence = useRef(0);
 
   useEffect(() => {
     let active = true;
@@ -66,10 +67,15 @@ export function CarePanel() {
   }
 
   async function retryCare() {
-    await writeCare("/api/care/generate", { method: "POST" });
+    const payload = await writeCare("/api/care/generate", { method: "POST" });
+    if (payload) {
+      applyCare(payload.care);
+    }
   }
 
   async function updateCare(input: UpdateCareInput) {
+    const sequence = updateSequence.current + 1;
+    updateSequence.current = sequence;
     const previousCare = care;
     const previousFocusText = focusText;
     const previousLastSavedFocusText = lastSavedFocusText;
@@ -81,15 +87,20 @@ export function CarePanel() {
       setFocusText(input.focusText);
     }
 
-    const saved = await writeCare("/api/care/update", {
+    const payload = await writeCare("/api/care/update", {
       method: "POST",
       body: JSON.stringify(input)
     });
 
-    if (!saved) {
+    if (!payload) {
       setCare(previousCare);
       setFocusText(previousFocusText);
       setLastSavedFocusText(previousLastSavedFocusText);
+      return;
+    }
+
+    if (sequence === updateSequence.current) {
+      applyCare(payload.care);
     }
   }
 
@@ -101,7 +112,7 @@ export function CarePanel() {
     await updateCare({ focusText });
   }
 
-  async function writeCare(url: string, init: RequestInit): Promise<boolean> {
+  async function writeCare(url: string, init: RequestInit): Promise<{ care: CareRecord } | null> {
     setSaving(true);
     setError(null);
 
@@ -122,11 +133,10 @@ export function CarePanel() {
         })()
       );
 
-      applyCare(payload.care);
-      return true;
+      return payload;
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to save care message.");
-      return false;
+      return null;
     } finally {
       setSaving(false);
     }
@@ -148,7 +158,7 @@ export function CarePanel() {
               <button
                 aria-label={`Set energy to ${level}`}
                 className={energyButtonClass(energyLevel)}
-                disabled={loading || saving}
+                disabled={loading}
                 key={level}
                 onClick={() => void updateCare({ energyLevel: level as CareRecord["energyLevel"] })}
                 type="button"
@@ -233,25 +243,7 @@ function energyButtonClass(currentLevel: CareRecord["energyLevel"]): string {
 
 function EnergyIcon({ currentLevel, index }: { currentLevel: CareRecord["energyLevel"]; index: number }) {
   if (currentLevel === 5) {
-    return (
-      <svg
-        aria-hidden="true"
-        className="fill-amber-400 text-orange-500 drop-shadow-sm"
-        data-testid="energy-sun"
-        fill="none"
-        height="18"
-        viewBox="0 0 24 24"
-        width="18"
-        xmlns="http://www.w3.org/2000/svg"
-      >
-        <path
-          d="M12 1.75l1.45 3.32 3.18-1.74-.74 3.55 3.62.18-2.57 2.55 2.57 2.55-3.62.18.74 3.55-3.18-1.74L12 22.25l-1.45-3.32-3.18 1.74.74-3.55-3.62-.18 2.57-2.55-2.57-2.55 3.62-.18-.74-3.55 3.18 1.74L12 1.75z"
-          fill="currentColor"
-        />
-        <circle cx="12" cy="12" fill="#fbbf24" r="5.4" />
-        <circle cx="10.25" cy="9.75" fill="white" opacity="0.7" r="1.35" />
-      </svg>
-    );
+    return <EnergySparkle />;
   }
 
   if (currentLevel === 1 && index === 1) {
@@ -263,4 +255,26 @@ function EnergyIcon({ currentLevel, index }: { currentLevel: CareRecord["energyL
   }
 
   return <Heart aria-hidden="true" size={18} />;
+}
+
+function EnergySparkle() {
+  return (
+    <svg
+      aria-hidden="true"
+      className="drop-shadow-sm"
+      data-testid="energy-sparkle"
+      height="18"
+      viewBox="0 0 24 24"
+      width="18"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="M12 1.8l2.05 5.55L19.6 9.4l-5.55 2.05L12 17l-2.05-5.55L4.4 9.4l5.55-2.05L12 1.8z"
+        fill="#f59e0b"
+      />
+      <path d="M19 14.5l.95 2.55 2.55.95-2.55.95L19 21.5l-.95-2.55-2.55-.95 2.55-.95L19 14.5z" fill="#fbbf24" />
+      <path d="M6 12.5l.75 2 .75-2 2-.75-2-.75-.75-2-.75 2-2 .75 2 .75z" fill="#fde68a" />
+      <circle cx="12" cy="9.3" fill="#fff7ed" opacity="0.8" r="1.4" />
+    </svg>
+  );
 }

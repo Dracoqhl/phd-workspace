@@ -25,7 +25,7 @@ This file stores maintainer context for future development sessions.
 - Store data in multiple local JSON files, configured by `DATA_DIR`.
 - Use server timezone for all "today" behavior and daily check-ins.
 - Daily habit check-ins refresh at 02:00 server time; 00:00-01:59 belongs to the previous habit business date.
-- Normal non-AI writes should feel immediate. Use optimistic UI for high-frequency row edits, task completion, habit check-ins, habit target changes, deletions, and care status updates. Show a compact global sync badge near the page date.
+- Normal non-AI writes should feel immediate but not abrupt. Use optimistic UI for high-frequency row edits, habit target changes, deletions, and care status updates. Completion/check-in actions should show a short pending highlight before the row moves, greys out, hides, or changes count. Show a compact global sync badge near the page date.
 - Use `YYYY-MM-DD` for date-only fields.
 - AI may propose operations for all app content, but every create/update/delete/check-in operation must be explicitly confirmed by the user before data is written.
 - The current AI chat slice is read-only: it may read current tasks, active habits with today's progress, and today's care summary as context, but it must not write data or imply that it has executed changes.
@@ -41,11 +41,11 @@ This file stores maintainer context for future development sessions.
 
 - Mental care: one gentle daily quote, refresh, favorite toggle, 1-5 energy self-assessment, and one editable "today focus" item. When AI is configured, refresh should generate the quote through the server-side OpenAI-compatible API; when AI is unavailable or fails, use a local fallback message and keep the page stable.
 - Mental care UI should stay compact and should not use a large check-in button inside the module. If a check-in/sign-in concept returns later, place it at the whole panel level rather than inside the quote area.
-- Mental care energy feedback uses five compact icons beside the card title, without an `Energy` text label. Initial state is five hollow hearts, level 1 shows a broken heart, levels 2-4 show selected hearts, and level 5 shows five small suns.
+- Mental care energy feedback uses five compact icons beside the card title, without an `Energy` text label. Initial state is five hollow hearts, level 1 shows a broken heart, levels 2-4 show selected hearts, and level 5 shows five bright amber sparkle icons.
 - Mental care layout should put energy icons and a compact one-word status pill in the title row, then the highlighted Daily quote block, then the Today focus input. Do not place Energy and Daily quote side by side.
 - Mental care title-row energy icons and the status pill should use stable fixed widths so changing the energy label does not shift the icon positions.
 - Mental care energy status labels should be single words: `Unset`, `Low`, `Soft`, `Steady`, `Ready`, `Bright`.
-- Level 5 energy should use a custom solid amber/orange SVG sun at the same 18px size as the heart icons instead of lucide's line `Sun`, because the line icon can inherit inactive grey styling and look hollow.
+- Level 5 energy should use a custom solid amber/orange sparkle SVG at the same 18px size as the heart icons. Energy buttons should remain clickable during save so the user can change the level again; the latest click wins.
 - Mental care quote actions should be small icon-only controls: refresh uses `Retry care message`, favorite uses hollow/filled star and toggles on repeated click.
 - Mental care "today focus" should look like an editable text field with a grey placeholder and save on blur or Enter. Do not disable this input during unrelated energy/favorite saves, because the disabled-state repaint looks like a visual flash.
 - Habits: create/edit/deactivate habits, daily complete/uncomplete check-ins.
@@ -67,6 +67,7 @@ This file stores maintainer context for future development sessions.
 - AI assistant: persistent right panel, chat, API test, structured operation proposals, user confirmation cards, operation logs.
 - AI configuration is server-only through `AI_API_KEY`, `AI_MODEL`, and `AI_BASE_URL`. Real values belong in `.env.local` or server environment variables and must not be committed.
 - The AI assistant panel should expose a compact `Test AI` control and a compact chat area. Chat can help plan or break down work from read-only workspace context; proposal and confirmation workflows are a later step.
+- On desktop, the AI assistant panel should stay sticky within the viewport. Its message history scrolls independently, and the text input remains at the bottom of the assistant panel.
 - Local persistence: JSON files with safe write behavior.
 
 ## Preferred Technical Direction

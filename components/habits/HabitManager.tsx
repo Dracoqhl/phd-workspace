@@ -22,6 +22,7 @@ export function HabitManager() {
   const [isEditingPanel, setIsEditingPanel] = useState(false);
   const [editingTargetId, setEditingTargetId] = useState<string | null>(null);
   const [restoredHabitId, setRestoredHabitId] = useState<string | null>(null);
+  const [pendingCheckinHabitIds, setPendingCheckinHabitIds] = useState<Set<string>>(() => new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -184,33 +185,40 @@ export function HabitManager() {
 
     if (item.isCompleted) {
       setRestoredHabitId(item.habit.id);
-      setHabits((current) => updateHabitCheckin(current, item, decrementOptimisticCheckin(item)));
+      setPendingCheckinHabitIds((current) => addSetValue(current, item.habit.id));
 
       try {
-        const payload = await requestJson<{ checkin?: HabitCheckin | null; error?: string }>(
-          `/api/habits/${item.habit.id}/checkins/${date}`,
-          { method: "DELETE" },
-          "Unable to cancel habit check-in."
-        );
+        const [payload] = await Promise.all([
+          requestJson<{ checkin?: HabitCheckin | null; error?: string }>(
+            `/api/habits/${item.habit.id}/checkins/${date}`,
+            { method: "DELETE" },
+            "Unable to cancel habit check-in."
+          ),
+          delay(320)
+        ]);
 
         setHabits((current) => updateHabitCheckin(current, item, payload.checkin ?? null));
       } catch (caught) {
         setHabits(previousHabits);
         setError(caught instanceof Error ? caught.message : "Unable to cancel habit check-in.");
+      } finally {
+        setPendingCheckinHabitIds((current) => removeSetValue(current, item.habit.id));
       }
       return;
     }
 
-    const optimisticCheckin = incrementOptimisticCheckin(item, date);
     setRestoredHabitId(null);
-    setHabits((current) => updateHabitCheckin(current, item, optimisticCheckin));
+    setPendingCheckinHabitIds((current) => addSetValue(current, item.habit.id));
 
     try {
-      const payload = await requestJson<{ checkin?: HabitCheckin; error?: string }>(
-        `/api/habits/${item.habit.id}/checkins`,
-        { method: "POST" },
-        "Unable to complete habit check-in."
-      );
+      const [payload] = await Promise.all([
+        requestJson<{ checkin?: HabitCheckin; error?: string }>(
+          `/api/habits/${item.habit.id}/checkins`,
+          { method: "POST" },
+          "Unable to complete habit check-in."
+        ),
+        delay(320)
+      ]);
 
       if (!payload.checkin) {
         throw new Error("Unable to complete habit check-in.");
@@ -226,6 +234,8 @@ export function HabitManager() {
     } catch (caught) {
       setHabits(previousHabits);
       setError(caught instanceof Error ? caught.message : "Unable to complete habit check-in.");
+    } finally {
+      setPendingCheckinHabitIds((current) => removeSetValue(current, item.habit.id));
     }
   }
 
@@ -300,9 +310,10 @@ export function HabitManager() {
             const rowClass = item.isCompleted ? "bg-slate-50 text-slate-400" : "bg-white text-slate-700";
             const itemCompletedCount = item.checkin?.completedCount ?? 0;
             const progressLabel = `${itemCompletedCount}/${item.habit.targetCount}`;
+            const pendingCheckin = pendingCheckinHabitIds.has(item.habit.id);
 
             return (
-              <li className={`grid gap-2 px-3 py-2 text-sm ${isEditingPanel ? "sm:grid-cols-[minmax(0,1fr)_5rem_2.5rem]" : "sm:grid-cols-[1.5rem_minmax(0,1fr)_4rem]"} sm:items-center ${rowClass}`} key={item.habit.id}>
+              <li aria-busy={pendingCheckin} className={`grid gap-2 px-3 py-2 text-sm transition-colors duration-300 ${isEditingPanel ? "sm:grid-cols-[minmax(0,1fr)_5rem_2.5rem]" : "sm:grid-cols-[1.5rem_minmax(0,1fr)_4rem]"} sm:items-center ${pendingCheckin ? "bg-emerald-50 text-emerald-800 ring-1 ring-inset ring-emerald-200" : rowClass}`} key={item.habit.id}>
                 {isEditingPanel ? (
                   <>
                     <input
@@ -326,7 +337,7 @@ export function HabitManager() {
                   </>
                 ) : (
                   <>
-                    <button aria-label={item.isCompleted ? `Cancel check-in for ${item.habit.name}` : itemCompletedCount > 0 ? `Mark ${item.habit.name} progress` : `Mark ${item.habit.name} complete`} className={`inline-flex h-4 w-4 items-center justify-center rounded-full border transition-colors ${item.isCompleted ? "border-emerald-600 bg-emerald-600 text-white" : itemCompletedCount > 0 ? "border-emerald-500 bg-emerald-100 text-emerald-700" : "border-slate-300 bg-white hover:border-emerald-500"}`} onClick={() => void toggleCheckin(item)} type="button">
+                    <button aria-label={item.isCompleted ? `Cancel check-in for ${item.habit.name}` : itemCompletedCount > 0 ? `Mark ${item.habit.name} progress` : `Mark ${item.habit.name} complete`} className={`inline-flex h-4 w-4 items-center justify-center rounded-full border transition-colors ${pendingCheckin ? "animate-pulse border-emerald-500 bg-emerald-100 text-emerald-700" : item.isCompleted ? "border-emerald-600 bg-emerald-600 text-white" : itemCompletedCount > 0 ? "border-emerald-500 bg-emerald-100 text-emerald-700" : "border-slate-300 bg-white hover:border-emerald-500"}`} onClick={() => void toggleCheckin(item)} type="button">
                       {item.isCompleted ? <Check aria-hidden="true" data-testid="habit-checkmark" size={10} strokeWidth={3} /> : null}
                     </button>
                     <p className={`min-w-0 truncate font-medium ${item.isCompleted ? "line-through" : ""}`}>{item.habit.name}</p>
@@ -390,45 +401,28 @@ function createOptimisticHabit(name: string, targetCount: number): Habit {
   };
 }
 
-function incrementOptimisticCheckin(item: HabitListItem, date: string): HabitCheckin {
-  const now = new Date().toISOString();
-  const completedCount = Math.min((item.checkin?.completedCount ?? 0) + 1, item.habit.targetCount);
-
-  return {
-    id: item.checkin?.id ?? `optimistic-checkin-${item.habit.id}`,
-    habitId: item.habit.id,
-    date,
-    isCompleted: completedCount >= item.habit.targetCount,
-    completedCount,
-    note: item.checkin?.note ?? "",
-    createdAt: item.checkin?.createdAt ?? now,
-    updatedAt: now
-  };
-}
-
-function decrementOptimisticCheckin(item: HabitListItem): HabitCheckin | null {
-  const now = new Date().toISOString();
-  const completedCount = Math.max((item.checkin?.completedCount ?? item.habit.targetCount) - 1, 0);
-  if (completedCount === 0) {
-    return null;
-  }
-
-  return {
-    id: item.checkin?.id ?? `optimistic-checkin-${item.habit.id}`,
-    habitId: item.habit.id,
-    date: item.checkin?.date ?? "",
-    isCompleted: completedCount >= item.habit.targetCount,
-    completedCount,
-    note: item.checkin?.note ?? "",
-    createdAt: item.checkin?.createdAt ?? now,
-    updatedAt: now
-  };
-}
-
 function updateHabitCheckin(items: HabitListItem[], item: HabitListItem, checkin: HabitCheckin | null): HabitListItem[] {
   return items.map((habitItem) =>
     habitItem.habit.id === item.habit.id
       ? { ...habitItem, checkin, isCompleted: (checkin?.completedCount ?? 0) >= habitItem.habit.targetCount }
       : habitItem
   );
+}
+
+function addSetValue<T>(set: Set<T>, value: T): Set<T> {
+  const next = new Set(set);
+  next.add(value);
+  return next;
+}
+
+function removeSetValue<T>(set: Set<T>, value: T): Set<T> {
+  const next = new Set(set);
+  next.delete(value);
+  return next;
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
 }

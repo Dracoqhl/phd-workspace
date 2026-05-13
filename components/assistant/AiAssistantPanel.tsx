@@ -103,7 +103,7 @@ export function AiAssistantPanel() {
   return (
     <aside
       aria-label="AI 助手"
-      className="flex min-h-48 flex-col rounded-lg border border-slate-200 bg-white p-5 shadow-sm lg:w-[30%]"
+      className="flex min-h-48 flex-col rounded-lg border border-slate-200 bg-white p-5 shadow-sm lg:sticky lg:top-6 lg:h-[calc(100vh-3rem)] lg:w-[30%] lg:self-start"
     >
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-base font-semibold text-ink">AI 助手</h2>
@@ -121,8 +121,12 @@ export function AiAssistantPanel() {
         {message}
       </p>
 
-      <div className="mt-4 flex min-h-56 flex-1 flex-col gap-3">
-        <div className="flex max-h-[52vh] min-h-40 flex-1 flex-col gap-2 overflow-y-auto rounded-md border border-slate-100 bg-slate-50 p-3">
+      <div className="mt-4 flex min-h-0 flex-1 flex-col gap-3">
+        <div
+          aria-label="AI conversation history"
+          className="flex min-h-40 flex-1 flex-col gap-2 overflow-y-auto overscroll-contain rounded-md border border-slate-100 bg-slate-50 p-3"
+          role="log"
+        >
           {chatMessages.length === 0 ? (
             <p className="text-sm leading-6 text-slate-500">可以问我如何安排今天、拆解任务或整理当前任务。</p>
           ) : (
@@ -142,7 +146,7 @@ export function AiAssistantPanel() {
         </div>
 
         <form
-          className="flex items-end gap-2"
+          className="flex shrink-0 items-end gap-2 border-t border-slate-100 pt-3"
           onSubmit={(event) => {
             event.preventDefault();
             void sendMessage();

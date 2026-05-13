@@ -108,16 +108,48 @@ describe("CarePanel", () => {
     fireEvent.click(screen.getByRole("button", { name: "Set energy to 5" }));
 
     expect(await screen.findByText("Bright")).toBeInTheDocument();
-    const suns = screen.getAllByTestId("energy-sun");
-    expect(suns).toHaveLength(5);
-    expect(suns[0].tagName).toBe("svg");
-    expect(suns[0]).toHaveAttribute("width", "18");
-    expect(suns[0]).toHaveAttribute("height", "18");
-    expect(suns[0]).toHaveClass("fill-amber-400", "text-orange-500");
+    const sparkles = screen.getAllByTestId("energy-sparkle");
+    expect(sparkles).toHaveLength(5);
+    expect(sparkles[0].tagName).toBe("svg");
+    expect(sparkles[0]).toHaveAttribute("width", "18");
+    expect(sparkles[0]).toHaveAttribute("height", "18");
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/care/update",
       expect.objectContaining({ method: "POST", body: JSON.stringify({ energyLevel: 5 }) })
     );
+  });
+
+  it("allows changing energy again while a previous save is still pending", async () => {
+    const pending = deferred<Response>();
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      const method = init?.method ?? "GET";
+
+      if (url === "/api/care/today" && method === "GET") {
+        return Response.json({ care: care({ energyLevel: 5 }) });
+      }
+
+      if (url === "/api/care/update" && method === "POST") {
+        const body = JSON.parse(String(init?.body ?? "{}")) as Partial<CareRecord>;
+        if (body.energyLevel === 2) {
+          return Response.json({ care: care({ energyLevel: 2 }) });
+        }
+        return pending.promise;
+      }
+
+      throw new Error(`Unexpected request ${method} ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<CarePanel />);
+
+    expect(await screen.findByText("Bright")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Set energy to 4" }));
+    fireEvent.click(screen.getByRole("button", { name: "Set energy to 2" }));
+
+    expect(await screen.findByText("Soft")).toBeInTheDocument();
+    pending.resolve(Response.json({ care: care({ energyLevel: 4 }) }));
+    expect(await screen.findByText("Soft")).toBeInTheDocument();
   });
 
   it("keeps today's focus input stable while energy is saving", async () => {

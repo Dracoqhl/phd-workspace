@@ -37,6 +37,7 @@ export function TaskManager() {
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [addingSubtaskFor, setAddingSubtaskFor] = useState<string | null>(null);
   const [subtaskTitle, setSubtaskTitle] = useState("");
+  const [pendingCompletionTaskIds, setPendingCompletionTaskIds] = useState<Set<string>>(() => new Set());
   const hasLocalWrites = useRef(false);
 
   useEffect(() => {
@@ -119,17 +120,29 @@ export function TaskManager() {
     }
 
     const previousTasks = tasks;
+    const isCompletionUpdate = "status" in input;
     hasLocalWrites.current = true;
-    setTasks((current) => current.map((task) => (task.id === taskId ? applyOptimisticTaskUpdate(task, input) : task)));
+    if (isCompletionUpdate) {
+      setPendingCompletionTaskIds((current) => addSetValue(current, taskId));
+    } else {
+      setTasks((current) => current.map((task) => (task.id === taskId ? applyOptimisticTaskUpdate(task, input) : task)));
+    }
 
     try {
-      const updated = await writeTask(`/api/tasks/${taskId}`, { method: "PATCH", body: JSON.stringify(input) });
+      const [updated] = await Promise.all([
+        writeTask(`/api/tasks/${taskId}`, { method: "PATCH", body: JSON.stringify(input) }),
+        isCompletionUpdate ? delay(320) : Promise.resolve()
+      ]);
       if (updated) {
         setTasks((current) => current.map((task) => (task.id === taskId ? updated : task)));
       }
     } catch {
       setTasks(previousTasks);
       setError("Unable to save task.");
+    } finally {
+      if (isCompletionUpdate) {
+        setPendingCompletionTaskIds((current) => removeSetValue(current, taskId));
+      }
     }
   }
 
@@ -320,6 +333,7 @@ export function TaskManager() {
                   canExpand={children.length > 0}
                   expanded={expanded}
                   isSubtask={false}
+                  pendingCompletion={pendingCompletionTaskIds.has(task.id)}
                   onAddSubtask={startAddSubtask}
                   onDelete={deleteTask}
                   onPriorityChange={(taskId, priority) => updateTask(taskId, { priority })}
@@ -342,6 +356,7 @@ export function TaskManager() {
                     expanded={false}
                     isSubtask={true}
                     key={child.id}
+                    pendingCompletion={pendingCompletionTaskIds.has(child.id)}
                     onDelete={deleteSubtask}
                     onPriorityChange={(taskId, priority) => updateTask(taskId, { priority })}
                     onStatusToggle={(taskToToggle) => updateTask(taskToToggle.id, { status: taskToToggle.status === "completed" ? "not_started" : "completed" })}
@@ -369,6 +384,7 @@ interface TaskRowProps {
   expanded: boolean;
   progress?: { completed: number; total: number };
   selected: boolean;
+  pendingCompletion: boolean;
   selectedTaskId: string | null;
   onToggleExpanded?: (taskId: string) => void;
   onSelect: (taskId: string) => void;
@@ -380,12 +396,20 @@ interface TaskRowProps {
   onDelete: (task: Task) => Promise<void>;
 }
 
-function TaskRow({ task, isSubtask, canExpand, expanded, progress, selected, selectedTaskId, onToggleExpanded, onSelect, onAddSubtask, onTitleSave, onStatusToggle, onPriorityChange, onDueDateChange, onDelete }: TaskRowProps) {
+function TaskRow({ task, isSubtask, canExpand, expanded, progress, selected, pendingCompletion, selectedTaskId, onToggleExpanded, onSelect, onAddSubtask, onTitleSave, onStatusToggle, onPriorityChange, onDueDateChange, onDelete }: TaskRowProps) {
   const dueState = getTaskDueState(task);
-  const rowClass = dueState === "overdue" ? "bg-red-50" : dueState === "near_due" ? "bg-amber-50" : isSubtask ? "bg-slate-50/60" : "bg-white";
+  const rowClass = pendingCompletion
+    ? "bg-emerald-50"
+    : dueState === "overdue"
+      ? "bg-red-50"
+      : dueState === "near_due"
+        ? "bg-amber-50"
+        : isSubtask
+          ? "bg-slate-50/60"
+          : "bg-white";
 
   return (
-    <div aria-selected={selected} className={`grid grid-cols-[2rem_minmax(0,1fr)_7rem_4rem_6.5rem_4.5rem] items-center gap-2 border-t border-slate-200 px-3 py-2 text-sm ${rowClass} ${selected ? "ring-1 ring-inset ring-moss" : ""} ${task.status === "completed" ? "text-slate-400" : "text-slate-700"}`} role="row">
+    <div aria-busy={pendingCompletion} aria-selected={selected} className={`grid grid-cols-[2rem_minmax(0,1fr)_7rem_4rem_6.5rem_4.5rem] items-center gap-2 border-t border-slate-200 px-3 py-2 text-sm transition-colors duration-300 ${rowClass} ${selected ? "ring-1 ring-inset ring-moss" : ""} ${pendingCompletion ? "ring-1 ring-inset ring-emerald-200" : ""} ${task.status === "completed" ? "text-slate-400" : "text-slate-700"}`} role="row">
       <div className="flex items-center" role="cell">
         {!isSubtask && canExpand ? (
           <button aria-label={`${expanded ? "Collapse" : "Expand"} subtasks for ${task.title}`} className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100" onClick={() => onToggleExpanded?.(task.id)} type="button">
@@ -395,7 +419,7 @@ function TaskRow({ task, isSubtask, canExpand, expanded, progress, selected, sel
       </div>
       <div className="min-w-0" role="cell">
         <div className="flex min-w-0 items-center gap-2">
-          <TaskCompletionButton onToggle={onStatusToggle} task={task} />
+          <TaskCompletionButton onToggle={onStatusToggle} pending={pendingCompletion} task={task} />
           <EditableTitle indent={isSubtask} onSave={onTitleSave} onSelect={onSelect} selectedTaskId={selectedTaskId} task={task} />
           {!isSubtask && progress ? <span className="shrink-0 text-xs text-slate-500">{progress.completed}/{progress.total}</span> : null}
         </div>
@@ -417,13 +441,13 @@ function TaskRow({ task, isSubtask, canExpand, expanded, progress, selected, sel
   );
 }
 
-function TaskCompletionButton({ task, onToggle }: { task: Task; onToggle: (task: Task) => Promise<void> }) {
+function TaskCompletionButton({ task, pending, onToggle }: { task: Task; pending: boolean; onToggle: (task: Task) => Promise<void> }) {
   const completed = task.status === "completed";
 
   return (
     <button
       aria-label={completed ? `Reopen task ${task.title}` : `Mark task ${task.title} complete`}
-      className={`inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition-colors ${completed ? "border-emerald-600 bg-emerald-600 text-white" : "border-slate-300 bg-white hover:border-emerald-500"}`}
+      className={`inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition-colors ${pending ? "animate-pulse border-emerald-500 bg-emerald-100" : completed ? "border-emerald-600 bg-emerald-600 text-white" : "border-slate-300 bg-white hover:border-emerald-500"}`}
       onClick={() => void onToggle(task)}
       type="button"
     >
@@ -585,4 +609,22 @@ function applyOptimisticTaskUpdate(
     updatedAt: now,
     completedAt: status === "completed" ? task.completedAt ?? now : null
   };
+}
+
+function addSetValue<T>(set: Set<T>, value: T): Set<T> {
+  const next = new Set(set);
+  next.add(value);
+  return next;
+}
+
+function removeSetValue<T>(set: Set<T>, value: T): Set<T> {
+  const next = new Set(set);
+  next.delete(value);
+  return next;
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
 }
