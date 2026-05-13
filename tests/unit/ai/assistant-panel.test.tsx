@@ -65,6 +65,72 @@ describe("AiAssistantPanel", () => {
     );
   });
 
+  it("renders selectable proposals and confirms checked actions", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+
+      if (url === "/api/ai/chat") {
+        return Response.json({
+          ok: true,
+          reply: "我整理了两个建议。",
+          proposals: [
+            {
+              id: "proposal_1",
+              actionType: "create_task",
+              summary: "新增任务：整理实验数据",
+              riskLevel: "low",
+              payload: { title: "整理实验数据", description: "", status: "not_started", priority: "high", dueDate: null, parentTaskId: null }
+            },
+            {
+              id: "proposal_2",
+              actionType: "create_habit",
+              summary: "新增习惯：喝水",
+              riskLevel: "low",
+              payload: { name: "喝水", description: "", icon: "", targetCount: 3 }
+            }
+          ]
+        });
+      }
+
+      if (url === "/api/ai/actions/confirm") {
+        return Response.json({
+          ok: true,
+          results: [{ proposalId: "proposal_1", status: "confirmed_executed" }]
+        });
+      }
+
+      throw new Error(`Unexpected request ${url} ${String(init?.method ?? "GET")}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<AiAssistantPanel />);
+
+    fireEvent.change(screen.getByLabelText("AI message"), { target: { value: "帮我安排一下" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+
+    expect(await screen.findByText("我整理了两个建议。")).toBeInTheDocument();
+    expect(screen.getByText("新增任务：整理实验数据")).toBeInTheDocument();
+    expect(screen.getByText("新增习惯：喝水")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "Select 新增习惯：喝水" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm selected actions" }));
+
+    expect(await screen.findByText("已执行 1 项建议。")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/ai/actions/confirm",
+      expect.objectContaining({
+        method: "POST",
+        body: expect.stringContaining("proposal_1")
+      })
+    );
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      "/api/ai/actions/confirm",
+      expect.objectContaining({
+        body: expect.stringContaining("proposal_2")
+      })
+    );
+  });
+
   it("renders a chat failure as an assistant message", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json({ ok: false, error: "AI is not configured" })));
 

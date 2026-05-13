@@ -35,11 +35,28 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   const context = await buildAiWorkspaceContext(repositories);
-  const reply = await generateAiAssistantReply(config, { userMessage: input.message, context });
+  const result = await generateAiAssistantReply(config, { userMessage: input.message, context });
 
-  if (!reply) {
+  if (!result) {
     return Response.json({ ok: false, error: AI_CHAT_FAILED });
   }
 
-  return Response.json({ ok: true, reply });
+  await Promise.all(
+    result.proposals.map((proposal) =>
+      repositories.aiLogs.add({
+        id: proposal.id,
+        userMessage: input.message,
+        actionType: proposal.actionType,
+        actionPayload: proposal.payload,
+        status: "proposed",
+        createdAt: new Date().toISOString()
+      })
+    )
+  );
+
+  return Response.json({
+    ok: true,
+    reply: result.reply,
+    ...(result.proposals.length > 0 ? { proposals: result.proposals } : {})
+  });
 }

@@ -4,6 +4,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { POST as chat } from "@/app/api/ai/chat/route";
+import { POST as confirmActions } from "@/app/api/ai/actions/confirm/route";
+import { GET as getAiLogs } from "@/app/api/ai/logs/route";
 import { POST as login } from "@/app/api/auth/login/route";
 import { POST as testAi } from "@/app/api/ai/test/route";
 import { createFallbackCareRecord } from "@/lib/domain/care";
@@ -195,6 +197,206 @@ describe("AI chat route", () => {
     expect(serializedMessages).toContain("Drink water");
     expect(serializedMessages).toContain("Finish one paragraph");
     expect(serializedMessages).toContain("帮我安排一下今天");
+  });
+
+  it("returns structured operation proposals without writing data", async () => {
+    dataDir = await mkdtemp(join(tmpdir(), "phd-ai-chat-"));
+    vi.stubEnv("DATA_DIR", dataDir);
+    vi.stubEnv("AI_API_KEY", "secret-key");
+    vi.stubEnv("AI_MODEL", "test-model");
+    vi.stubEnv("AI_BASE_URL", "https://example.test/v1/");
+
+    const fetchMock = vi.fn().mockResolvedValue(
+      Response.json({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                reply: "我建议先新增一个整理数据任务。",
+                proposals: [
+                  {
+                    actionType: "create_task",
+                    summary: "新增任务：整理实验数据",
+                    payload: {
+                      title: "整理实验数据",
+                      description: "",
+                      priority: "high",
+                      dueDate: "2026-05-18",
+                      status: "not_started",
+                      parentTaskId: null
+                    }
+                  }
+                ]
+              })
+            }
+          }
+        ]
+      })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await chat(
+      authRequest(`${baseUrl}/api/ai/chat`, {
+        method: "POST",
+        body: JSON.stringify({ message: "帮我创建一个整理数据任务" })
+      })
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      ok: true,
+      reply: "我建议先新增一个整理数据任务。",
+      proposals: [
+        {
+          actionType: "create_task",
+          summary: "新增任务：整理实验数据",
+          riskLevel: "low",
+          payload: {
+            title: "整理实验数据",
+            priority: "high"
+          }
+        }
+      ]
+    });
+
+    const repositories = createRepositories(dataDir);
+    await expect(repositories.tasks.list()).resolves.toEqual([]);
+    await expect(repositories.aiLogs.list()).resolves.toHaveLength(1);
+  });
+});
+
+describe("AI action confirm route", () => {
+  it("rejects unauthenticated action confirmation", async () => {
+    const response = await confirmActions(jsonRequest(`${baseUrl}/api/ai/actions/confirm`, { proposals: [] }));
+
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({ error: "Unauthorized" });
+  });
+
+  it("creates selected task proposals and logs execution", async () => {
+    dataDir = await mkdtemp(join(tmpdir(), "phd-ai-actions-"));
+    vi.stubEnv("DATA_DIR", dataDir);
+
+    const response = await confirmActions(
+      authRequest(`${baseUrl}/api/ai/actions/confirm`, {
+        method: "POST",
+        body: JSON.stringify({
+          userMessage: "帮我创建整理数据任务",
+          proposals: [
+            {
+              id: "proposal_1",
+              actionType: "create_task",
+              summary: "新增任务：整理实验数据",
+              payload: {
+                title: "整理实验数据",
+                description: "",
+                status: "not_started",
+                priority: "high",
+                dueDate: "2026-05-18",
+                parentTaskId: null
+              }
+            }
+          ]
+        })
+      })
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      ok: true,
+      results: [{ proposalId: "proposal_1", status: "confirmed_executed" }]
+    });
+
+    const repositories = createRepositories(dataDir);
+    await expect(repositories.tasks.list()).resolves.toMatchObject([{ title: "整理实验数据", priority: "high" }]);
+    await expect(repositories.aiLogs.list()).resolves.toMatchObject([
+      { userMessage: "帮我创建整理数据任务", actionType: "create_task", status: "confirmed_executed" }
+    ]);
+  });
+
+  it("deletes tasks through trash and rejects proposals without writing business data", async () => {
+    dataDir = await mkdtemp(join(tmpdir(), "phd-ai-actions-"));
+    vi.stubEnv("DATA_DIR", dataDir);
+    const repositories = createRepositories(dataDir);
+    const task = await repositories.tasks.create({
+      title: "Temporary task",
+      description: "",
+      status: "not_started",
+      priority: "medium",
+      dueDate: null,
+      parentTaskId: null
+    });
+
+    const deleteResponse = await confirmActions(
+      authRequest(`${baseUrl}/api/ai/actions/confirm`, {
+        method: "POST",
+        body: JSON.stringify({
+          userMessage: "删除临时任务",
+          proposals: [{ id: "delete_1", actionType: "delete_task", summary: "删除任务", payload: { taskId: task.id } }]
+        })
+      })
+    );
+
+    expect(deleteResponse.status).toBe(200);
+    await expect(repositories.tasks.list()).resolves.toEqual([]);
+    await expect(repositories.trash.list()).resolves.toHaveLength(1);
+
+    const rejectResponse = await confirmActions(
+      authRequest(`${baseUrl}/api/ai/actions/confirm`, {
+        method: "POST",
+        body: JSON.stringify({
+          decision: "reject",
+          userMessage: "不要新建习惯",
+          proposals: [
+            {
+              id: "habit_1",
+              actionType: "create_habit",
+              summary: "新增习惯：喝水",
+              payload: { name: "喝水", description: "", icon: "", targetCount: 3 }
+            }
+          ]
+        })
+      })
+    );
+
+    expect(rejectResponse.status).toBe(200);
+    await expect(repositories.habits.list()).resolves.toEqual([]);
+    await expect(repositories.aiLogs.list()).resolves.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ actionType: "delete_task", status: "confirmed_executed" }),
+        expect.objectContaining({ actionType: "create_habit", status: "rejected" })
+      ])
+    );
+  });
+
+  it("lists AI action logs without exposing model secrets", async () => {
+    dataDir = await mkdtemp(join(tmpdir(), "phd-ai-actions-"));
+    vi.stubEnv("DATA_DIR", dataDir);
+    const repositories = createRepositories(dataDir);
+    await repositories.aiLogs.add({
+      id: "log_1",
+      userMessage: "创建任务",
+      actionType: "create_task",
+      actionPayload: { title: "任务" },
+      status: "proposed",
+      createdAt: "2026-05-13T10:00:00.000Z"
+    });
+
+    const response = await getAiLogs(authRequest(`${baseUrl}/api/ai/logs`));
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      logs: [
+        {
+          id: "log_1",
+          userMessage: "创建任务",
+          actionType: "create_task",
+          actionPayload: { title: "任务" },
+          status: "proposed",
+          createdAt: "2026-05-13T10:00:00.000Z"
+        }
+      ]
+    });
   });
 });
 

@@ -33,6 +33,8 @@ phd-workspace/
       ai/
         test/route.ts
         chat/route.ts
+        actions/confirm/route.ts
+        logs/route.ts
         care/route.ts
         operations/route.ts
       tasks/route.ts
@@ -154,7 +156,9 @@ Stage A implemented the first tested backend-only modules, and the current found
 - `app/api/habits/**/route.ts`: protected habit list, create, update, deactivate, daily check-in, and daily check-in cancellation route handlers.
 - `app/api/care/**/route.ts`: protected today's care, AI-backed refresh with local fallback, care update, and legacy care check-in route handlers backed by `care-records.json`.
 - `app/api/ai/test/route.ts`: protected AI connectivity test route handler backed by server-only OpenAI-compatible environment variables.
-- `app/api/ai/chat/route.ts`: protected read-only AI chat route handler that builds a concise workspace context from task, habit, and care repositories before calling the server-side AI chat helper.
+- `app/api/ai/chat/route.ts`: protected AI chat route handler that builds workspace context from task, habit, and care repositories before calling the server-side AI chat helper. It may return structured proposals, but it does not write business data.
+- `app/api/ai/actions/confirm/route.ts`: protected AI proposal confirmation endpoint. It validates selected proposal payloads, executes confirmed task/habit/check-in writes through repositories, and records action logs.
+- `app/api/ai/logs/route.ts`: protected AI action-log listing endpoint backed by `ai-logs.json`.
 - `scripts/start.sh`: production helper for personal-server access. It loads `.env.local`, ensures `DATA_DIR`, builds with `next build`, and serves with `next start`.
 - `scripts/start-dev.sh`: development helper for active coding only. It runs `next dev`, so route compilation and React development behavior can add noticeable latency and duplicate initial client fetches.
 
@@ -169,12 +173,12 @@ Stage B implemented the first runnable App Router shell and the current task sli
 - `components/tasks/TaskManager.tsx`: compact hierarchical task table backed by `/api/tasks`, including top-level task create/delete, one-layer subtask create/delete, expandable subtasks, small row-level complete/reopen controls, two-step select-then-edit title editing with blur save, priority swatch editing, due-date calendar editing, readable English status labels, completed top-level task hiding, and due-state highlighting.
 - `components/habits/HabitManager.tsx`: compact habit list backed by `/api/habits`, including panel-level edit mode, bottom-only habit creation with daily target 1-5, editable name and target fields in edit mode, clickable progress fractions for target edits in normal mode, trash-icon deactivate, compact circular check-in/cancel controls, checked-count-over-target header progress, completed-row grey/strikethrough styling, and completed-row sorting. Check-in increments/decrements update local counts and the header progress immediately while the network request syncs in the background.
 - `components/care/CarePanel.tsx`: compact mental care card backed by `/api/care`, including AI-backed daily quote refresh with local fallback, stable title-row energy icons and status pill, bright level-5 amber badge icons, small retry/favorite icon actions, and an editable "today focus" field.
-- `components/assistant/AiAssistantPanel.tsx`: right-side assistant shell with a compact AI connectivity test control and a compact read-only chat area. The desktop panel is sticky, the message log is the scroll container, and the input stays anchored at the panel bottom.
+- `components/assistant/AiAssistantPanel.tsx`: right-side assistant shell with a compact AI connectivity test control, chat area, and selectable proposal confirmation cards. The desktop panel is sticky, the message log is the scroll container, and the input stays anchored at the panel bottom.
 - `components/sync/SyncStatusProvider.tsx`: client-side provider and badge for page-level `Synced`, `Saving...`, and `Sync failed` state. Feature components wrap write requests with `trackSync` and keep their own rollback snapshots.
 - `tests/unit/app/page.test.tsx`: verifies that the workspace regions render.
 - `tests/unit/tasks/task-manager.test.tsx`: verifies compact task table loading, expand/collapse, inline title editing, priority and due-date editing, completed hiding, subtask creation, and deletion behavior.
 
-Current development also includes the versioned data foundation, auth routes, login shell, protected task APIs, task UI, protected habit APIs, habit UI, protected care APIs/UI, AI-backed care refresh with fallback, protected AI connectivity testing, and a basic read-only AI chat slice. AI proposal and confirmation workflows should be added in later stages.
+Current development also includes the versioned data foundation, auth routes, login shell, protected task APIs, task UI, protected habit APIs, habit UI, protected care APIs/UI, AI-backed care refresh with fallback, protected AI connectivity testing, AI chat, selectable AI operation proposals, AI proposal confirmation, and AI action logging.
 
 ## Layer Responsibilities
 
@@ -235,7 +239,7 @@ Owns AI integration and AI-specific schemas.
 - `config.ts` reads `AI_API_KEY`, `AI_MODEL`, and `AI_BASE_URL` only on the server.
 - `test-client.ts` calls the OpenAI-compatible `/chat/completions` endpoint for connectivity testing without exposing secrets.
 - `care.ts` calls the OpenAI-compatible `/chat/completions` endpoint for mental-care quote generation and returns `null` for fallback on any failure.
-- `chat.ts` calls the OpenAI-compatible `/chat/completions` endpoint for assistant chat and returns `null` on any failure so route handlers can respond safely.
+- `chat.ts` calls the OpenAI-compatible `/chat/completions` endpoint for assistant chat, parses optional structured operation proposals, and returns `null` on any failure so route handlers can respond safely.
 - `prompts.ts` stores prompt builders.
 - `schemas.ts` defines structured AI response schemas.
 - `operations.ts` converts AI responses into pending operation proposals.
@@ -246,7 +250,8 @@ Owns AI integration and AI-specific schemas.
 Owns shared route-handler helpers for protected API slices.
 
 - AI chat request parsing and workspace-context construction live in `lib/api/ai-chat.ts`.
-- Context sent to AI should stay concise and omit secrets, runtime logs, and unrelated historical data unless a later feature explicitly needs them.
+- AI action confirmation parsing and execution live in `lib/api/ai-actions.ts`.
+- Context sent to AI includes all records from `tasks.json` so completed and historical tasks are available for planning. It omits secrets, runtime logs, trash, and API keys.
 
 ### `lib/validation/`
 
@@ -379,7 +384,7 @@ Trash entries should include:
 ## Behavioral Rules
 
 - AI write operations must be represented as pending proposals before execution.
-- User confirmation is required before create, update, delete, or check-in operations generated by AI.
+- User confirmation is required before create, update, delete, deactivate, or check-in operations generated by AI. The chat route cannot write data; only the confirmation route can execute selected proposals.
 - Deleting data moves it to `trash.json`; do not permanently remove it in MVP flows.
 - Parent tasks and subtasks do not auto-complete each other.
 - Completed tasks are hidden by default in UI, with an explicit show-completed control.

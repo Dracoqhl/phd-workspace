@@ -8,7 +8,6 @@ export const AI_CHAT_FAILED = "AI chat failed";
 export const DATA_DIR_CONFIG_ERROR = "Data directory is not configured";
 
 const MAX_MESSAGE_LENGTH = 2000;
-const MAX_CONTEXT_TASKS = 30;
 const MAX_CONTEXT_HABITS = 20;
 
 type Repositories = ReturnType<typeof createRepositories>;
@@ -56,15 +55,15 @@ export async function buildAiWorkspaceContext(repositories: Repositories): Promi
   return {
     today,
     tasks: tasks
-      .filter((task) => task.status !== "completed")
-      .slice(0, MAX_CONTEXT_TASKS)
       .map((task) => ({
+        id: task.id,
         title: task.title,
         description: task.description,
         status: task.status,
         priority: task.priority,
         dueDate: task.dueDate,
-        parentTaskId: task.parentTaskId
+        parentTaskId: task.parentTaskId,
+        completedAt: task.completedAt
       })),
     habits: habits
       .filter((habit) => habit.isActive)

@@ -2,7 +2,7 @@
 
 博士工作台是一个轻量级个人博士工作台，用于管理科研任务、每日健康习惯、心灵关怀打卡，并通过页面内 AI 助手辅助梳理和维护任务体系。
 
-当前项目处于 MVP 增量开发阶段，已包含 versioned data foundation、auth routes、login shell、protected task API、任务管理 UI MVP、每日健康习惯 MVP、AI 心灵关怀生成、AI API 测试入口和右侧 AI 基础聊天。
+当前项目处于 MVP 增量开发阶段，已包含 versioned data foundation、auth routes、login shell、protected task API、任务管理 UI MVP、每日健康习惯 MVP、AI 心灵关怀生成、AI API 测试入口、右侧 AI 聊天、AI 操作建议确认和 AI 操作日志。
 普通非 AI 操作使用页面级同步状态提示：页面日期旁显示 `Synced`、`Saving...` 或 `Sync failed`。高频编辑会先更新界面，再在后台同步到本地 JSON API；任务完成和习惯打卡会先显示短暂 pending 高亮，再进入最终完成/置底/隐藏状态。
 
 ## MVP Scope
@@ -13,7 +13,7 @@ P0 功能：
 - 心灵关怀模块：每日 AI 生成内容、刷新、打卡、失败 fallback。
 - 每日健康习惯模块：创建、编辑、停用、完成/未完成打卡。
 - 任务模块：一级任务、一层子任务、状态、优先级、截止日期、完成隐藏、接近截止/逾期高亮。
-- 右侧常驻 AI 助手：聊天、API 测试、任务拆解、操作建议、确认后写入。
+- 右侧常驻 AI 助手：聊天、API 测试、任务拆解、操作建议、勾选确认后写入。
 - 单一访问口令，不做账号系统。
 - 服务器本地多 JSON 文件存储。
 
@@ -202,7 +202,7 @@ git remote add origin https://github.com/<your-user>/<your-repo>.git
 
 ## Development Status
 
-The project is in MVP implementation. Current dev status includes a versioned data foundation, auth routes, a login shell, protected task APIs, task management UI, daily habit management UI, an AI-backed mental care refresh with fallback, AI API testing, and a read-only AI chat slice. Stage A added the first tested server-side modules, Stage B added the first runnable Next.js app shell, the task slice connects the shell to local JSON task data, Stage C adds daily health habits, Stage D starts mental care, Stage E adds AI configuration testing, Stage F starts real AI care generation, and Stage G adds basic AI chat:
+The project is in MVP implementation. Current dev status includes a versioned data foundation, auth routes, a login shell, protected task APIs, task management UI, daily habit management UI, an AI-backed mental care refresh with fallback, AI API testing, AI chat, selectable AI operation proposals, confirmed AI writes, and AI action logging. Stage A added the first tested server-side modules, Stage B added the first runnable Next.js app shell, the task slice connects the shell to local JSON task data, Stage C adds daily health habits, Stage D starts mental care, Stage E adds AI configuration testing, Stage F starts real AI care generation, and Stage G adds AI chat plus confirmed proposal execution:
 
 - `AGENT.md`: maintainer context and confirmed decisions.
 - `architecture.md`: planned directory layout and file placement rules.
@@ -215,7 +215,7 @@ The project is in MVP implementation. Current dev status includes a versioned da
 - `app/page.tsx`: single-page workspace shell with care, habit, task, AI assistant regions, and the current habit business date in the page header.
 - `components/sync/SyncStatusProvider.tsx`: client-side sync status provider and badge for optimistic UI feedback.
 - `components/care/CarePanel.tsx`: compact mental care panel connected to `/api/care/today`, `/api/care/generate`, and `/api/care/update`, with AI-backed daily quote refresh, local fallback content, stable title-row energy icons and status pill, bright level-5 amber badge feedback, small retry/favorite icon actions, and an editable "today focus" field.
-- `components/assistant/AiAssistantPanel.tsx`: right-side assistant shell with a compact `Test AI` control connected to `/api/ai/test` and a compact chat area connected to `/api/ai/chat`. On desktop the panel is sticky, message history scrolls independently, and the input stays at the panel bottom.
+- `components/assistant/AiAssistantPanel.tsx`: right-side assistant shell with a compact `Test AI` control connected to `/api/ai/test`, chat connected to `/api/ai/chat`, and selectable proposal cards that confirm selected writes through `/api/ai/actions/confirm`. On desktop the panel is sticky, message history scrolls independently, and the input stays at the panel bottom.
 - `components/tasks/TaskManager.tsx`: compact hierarchical task table connected to `/api/tasks`, including top-level task create/delete, one-layer subtask create/delete, expandable subtasks, small row-level complete/reopen controls, two-step select-then-edit title editing with blur save, priority color-dot editing, due-date calendar editing, readable English status labels, completed top-level task hiding, and due-date highlighting.
 - `components/habits/HabitManager.tsx`: compact daily habit list connected to `/api/habits`, including a panel-level edit mode, bottom-only new-habit form, row-wide name/target maintenance in edit mode, clickable progress fractions for target changes in normal mode, trash-icon deactivation, compact circular complete/cancel controls, checked-count-over-target header progress, and multi-check cancellation behavior. Check-in counts and the header progress bar update immediately before the background sync finishes. Completed habits are greyed out, struck through, and sorted after incomplete habits.
 - `app/globals.css`: Tailwind entry point and base page styles.
@@ -232,10 +232,12 @@ The project is in MVP implementation. Current dev status includes a versioned da
 - `app/api/habits/**/route.ts`: protected habit list, create, update, deactivate, check-in, and check-in cancellation endpoints.
 - `app/api/care/**/route.ts`: protected today's care, AI-backed refresh with fallback, care update, and legacy care check-in endpoints.
 - `app/api/ai/test/route.ts`: protected AI connectivity test endpoint. It returns only availability state and never returns the configured API key.
-- `app/api/ai/chat/route.ts`: protected read-only AI chat endpoint. It sends a concise workspace context of current tasks, active habits with today's progress, and today's care summary to the configured model, but does not execute writes.
+- `app/api/ai/chat/route.ts`: protected AI chat endpoint. It sends workspace context including all task records, active habits with today's progress, and today's care summary to the configured model. It may return structured operation proposals but does not execute writes.
+- `app/api/ai/actions/confirm/route.ts`: protected endpoint that validates and executes selected AI proposals after user confirmation.
+- `app/api/ai/logs/route.ts`: protected endpoint for reading `ai-logs.json`.
 - `tests/`: unit tests for task and habit domain rules, JSON data layer, auth, task and habit routes, workspace page shell, and task/habit manager UI behavior.
 
-The app has the first login/session shell, protected task APIs, task management UI, protected habit APIs, daily habit UI, AI-backed care refresh with fallback, an AI connectivity test, and basic read-only AI chat. AI proposal and confirmation workflows are still being added.
+The app has the first login/session shell, protected task APIs, task management UI, protected habit APIs, daily habit UI, AI-backed care refresh with fallback, an AI connectivity test, AI chat, selectable AI proposal cards, confirmed AI writes, and action logs.
 
 ## Documentation Maintenance
 

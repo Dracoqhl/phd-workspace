@@ -1,8 +1,12 @@
+import { randomUUID } from "node:crypto";
+
 import type { AiConfig } from "@/lib/ai/config";
+import type { AiActionProposal, AiActionRiskLevel, AiActionType } from "@/types/assistant";
 
 export interface AiAssistantContext {
   today: string;
   tasks: Array<{
+    id: string;
     title: string;
     description: string;
     status: string;
@@ -23,10 +27,15 @@ export interface AiAssistantContext {
   } | null;
 }
 
+export interface AiAssistantResult {
+  reply: string;
+  proposals: AiActionProposal[];
+}
+
 export async function generateAiAssistantReply(
   config: AiConfig,
   input: { userMessage: string; context: AiAssistantContext }
-): Promise<string | null> {
+): Promise<AiAssistantResult | null> {
   try {
     const response = await fetch(`${config.baseUrl}/chat/completions`, {
       method: "POST",
@@ -40,7 +49,7 @@ export async function generateAiAssistantReply(
           {
             role: "system",
             content:
-              "You are the AI assistant inside PhD Workspace. Use the provided workspace context to help the user plan, clarify, and break down work. You may suggest edits, but you cannot create, update, delete, or check in data in this phase. Reply in concise Chinese unless the user asks for another language."
+              "You are the AI assistant inside PhD Workspace. Use the provided workspace context to help the user plan, clarify, and break down work. You may read all provided data without asking for confirmation. You must not claim that you executed any write. If the user asks to create, update, delete, or check in workspace data, return JSON only with this shape: {\"reply\":\"concise Chinese response\",\"proposals\":[{\"actionType\":\"create_task|create_subtask|update_task|delete_task|create_habit|update_habit|deactivate_habit|habit_checkin|habit_checkin_cancel\",\"summary\":\"human readable Chinese summary\",\"payload\":{}}]}. If no write proposal is needed, return plain concise Chinese."
           },
           {
             role: "user",
@@ -62,7 +71,7 @@ export async function generateAiAssistantReply(
 
     const payload = (await response.json()) as unknown;
     const content = parseChatContent(payload);
-    return content ? sanitizeChatContent(content) : null;
+    return content ? parseAssistantContent(content) : null;
   } catch {
     return null;
   }
@@ -84,6 +93,77 @@ function parseChatContent(payload: unknown): string | null {
 function sanitizeChatContent(content: string): string | null {
   const sanitized = content.trim();
   return sanitized.length > 0 ? sanitized : null;
+}
+
+function parseAssistantContent(content: string): AiAssistantResult | null {
+  const sanitized = sanitizeChatContent(content);
+  if (!sanitized) return null;
+
+  const parsed = parseJsonObject(sanitized);
+  if (!parsed) {
+    return { reply: sanitized, proposals: [] };
+  }
+
+  const reply = typeof parsed.reply === "string" && parsed.reply.trim() ? parsed.reply.trim() : sanitized;
+  const proposals = Array.isArray(parsed.proposals) ? parsed.proposals.map(parseProposal).filter(isProposal) : [];
+
+  return { reply, proposals };
+}
+
+function parseProposal(value: unknown): AiActionProposal | null {
+  if (!isRecord(value)) return null;
+  const actionType = parseActionType(value.actionType);
+  const summary = typeof value.summary === "string" ? value.summary.trim() : "";
+  const payload = isRecord(value.payload) ? value.payload : null;
+  if (!actionType || !summary || !payload) return null;
+
+  return {
+    id: typeof value.id === "string" && value.id.trim() ? value.id.trim() : `proposal-${randomUUID()}`,
+    actionType,
+    summary,
+    payload,
+    riskLevel: parseRiskLevel(value.riskLevel) ?? riskLevelForAction(actionType)
+  };
+}
+
+function parseJsonObject(content: string): Record<string, unknown> | null {
+  const normalized = content
+    .trim()
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/, "");
+
+  try {
+    const parsed = JSON.parse(normalized) as unknown;
+    return isRecord(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function parseActionType(value: unknown): AiActionType | null {
+  return value === "create_task" ||
+    value === "create_subtask" ||
+    value === "update_task" ||
+    value === "delete_task" ||
+    value === "create_habit" ||
+    value === "update_habit" ||
+    value === "deactivate_habit" ||
+    value === "habit_checkin" ||
+    value === "habit_checkin_cancel"
+    ? value
+    : null;
+}
+
+function parseRiskLevel(value: unknown): AiActionRiskLevel | null {
+  return value === "low" || value === "medium" || value === "high" ? value : null;
+}
+
+function riskLevelForAction(actionType: AiActionType): AiActionRiskLevel {
+  return actionType === "delete_task" || actionType === "deactivate_habit" ? "high" : "low";
+}
+
+function isProposal(value: AiActionProposal | null): value is AiActionProposal {
+  return value !== null;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

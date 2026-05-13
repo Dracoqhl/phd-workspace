@@ -1,7 +1,9 @@
 "use client";
 
-import { PlugZap, Send } from "lucide-react";
+import { CheckCircle2, PlugZap, Send, XCircle } from "lucide-react";
 import { useState } from "react";
+
+import type { AiActionProposal, AiActionStatus } from "@/types/assistant";
 
 interface AiTestResponse {
   ok: boolean;
@@ -12,6 +14,7 @@ interface AiTestResponse {
 interface AiChatResponse {
   ok: boolean;
   reply?: string;
+  proposals?: AiActionProposal[];
   error?: string;
 }
 
@@ -19,6 +22,16 @@ interface ChatMessage {
   id: string;
   role: "user" | "assistant";
   content: string;
+  proposals?: AiActionProposal[];
+  proposalUserMessage?: string;
+  actionState?: "pending" | "executed" | "rejected" | "failed";
+  actionStatus?: string;
+}
+
+interface AiActionConfirmResponse {
+  ok: boolean;
+  results?: Array<{ proposalId: string; status: AiActionStatus; error?: string }>;
+  error?: string;
 }
 
 let fallbackMessageIdCounter = 0;
@@ -79,7 +92,9 @@ export function AiAssistantPanel() {
       const assistantMessage: ChatMessage = {
         id: createChatMessageId(),
         role: "assistant",
-        content: payload.ok ? payload.reply ?? "" : payload.error ?? "AI chat failed"
+        content: payload.ok ? payload.reply ?? "" : payload.error ?? "AI chat failed",
+        proposals: payload.ok ? payload.proposals ?? [] : [],
+        proposalUserMessage: content
       };
 
       setChatMessages((messages) => [...messages, assistantMessage]);
@@ -131,16 +146,17 @@ export function AiAssistantPanel() {
             <p className="text-sm leading-6 text-slate-500">可以问我如何安排今天、拆解任务或整理当前任务。</p>
           ) : (
             chatMessages.map((chatMessage) => (
-              <div
-                className={`max-w-[92%] rounded-md px-3 py-2 text-sm leading-6 ${
-                  chatMessage.role === "user"
-                    ? "ml-auto bg-ink text-white"
-                    : "mr-auto border border-slate-200 bg-white text-slate-700"
-                }`}
+              <ChatMessageBubble
+                chatMessage={chatMessage}
                 key={chatMessage.id}
-              >
-                {chatMessage.content}
-              </div>
+                onActionStateChange={(actionState, actionStatus) => {
+                  setChatMessages((messages) =>
+                    messages.map((message) =>
+                      message.id === chatMessage.id ? { ...message, actionState, actionStatus } : message
+                    )
+                  );
+                }}
+              />
             ))
           )}
         </div>
@@ -177,6 +193,140 @@ export function AiAssistantPanel() {
     </aside>
   );
 }
+
+function ChatMessageBubble({
+  chatMessage,
+  onActionStateChange
+}: {
+  chatMessage: ChatMessage;
+  onActionStateChange: (actionState: ChatMessage["actionState"], actionStatus: string) => void;
+}) {
+  return (
+    <div
+      className={`max-w-[92%] rounded-md px-3 py-2 text-sm leading-6 ${
+        chatMessage.role === "user"
+          ? "ml-auto bg-ink text-white"
+          : "mr-auto border border-slate-200 bg-white text-slate-700"
+      }`}
+    >
+      <p>{chatMessage.content}</p>
+      {chatMessage.role === "assistant" && chatMessage.proposals && chatMessage.proposals.length > 0 ? (
+        <ProposalCard
+          actionState={chatMessage.actionState ?? "pending"}
+          actionStatus={chatMessage.actionStatus}
+          onActionStateChange={onActionStateChange}
+          proposals={chatMessage.proposals}
+          userMessage={chatMessage.proposalUserMessage ?? ""}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function ProposalCard({
+  proposals,
+  userMessage,
+  actionState,
+  actionStatus,
+  onActionStateChange
+}: {
+  proposals: AiActionProposal[];
+  userMessage: string;
+  actionState: NonNullable<ChatMessage["actionState"]>;
+  actionStatus?: string;
+  onActionStateChange: (actionState: ChatMessage["actionState"], actionStatus: string) => void;
+}) {
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set(proposals.map((proposal) => proposal.id)));
+  const [submitting, setSubmitting] = useState(false);
+
+  async function submitDecision(decision: "confirm" | "reject") {
+    const selected = decision === "reject" ? proposals : proposals.filter((proposal) => selectedIds.has(proposal.id));
+    if (selected.length === 0) return;
+
+    setSubmitting(true);
+    try {
+      const response = await fetch("/api/ai/actions/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ decision, userMessage, proposals: selected })
+      });
+      const payload = (await response.json()) as AiActionConfirmResponse;
+      if (!response.ok || !payload.ok || !payload.results) {
+        throw new Error(payload.error ?? "AI action failed");
+      }
+
+      if (decision === "reject") {
+        onActionStateChange("rejected", "已取消这些建议。");
+        return;
+      }
+
+      const executedCount = payload.results.filter((result) => result.status === "confirmed_executed").length;
+      const failedCount = payload.results.filter((result) => result.status === "failed").length;
+      onActionStateChange(
+        failedCount > 0 ? "failed" : "executed",
+        failedCount > 0 ? `已执行 ${executedCount} 项，${failedCount} 项失败。` : `已执行 ${executedCount} 项建议。`
+      );
+    } catch (caught) {
+      onActionStateChange("failed", caught instanceof Error ? caught.message : "AI action failed");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-slate-700">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <span className="font-semibold text-amber-800">操作建议</span>
+        {actionState !== "pending" ? <span className="text-slate-600">{actionStatus}</span> : null}
+      </div>
+      <div className="grid gap-1.5">
+        {proposals.map((proposal) => (
+          <label className="flex items-start gap-2 rounded border border-amber-100 bg-white px-2 py-1.5" key={proposal.id}>
+            <input
+              aria-label={`Select ${proposal.summary}`}
+              checked={selectedIds.has(proposal.id)}
+              className="mt-1"
+              disabled={actionState !== "pending" || submitting}
+              onChange={(event) => {
+                setSelectedIds((current) => {
+                  const next = new Set(current);
+                  if (event.target.checked) next.add(proposal.id);
+                  else next.delete(proposal.id);
+                  return next;
+                });
+              }}
+              type="checkbox"
+            />
+            <span className="leading-5">{proposal.summary}</span>
+          </label>
+        ))}
+      </div>
+      {actionState === "pending" ? (
+        <div className="mt-2 flex gap-2">
+          <button
+            className="inline-flex h-7 items-center gap-1 rounded-md bg-ink px-2 text-xs font-semibold text-white disabled:opacity-50"
+            disabled={submitting || selectedIds.size === 0}
+            onClick={() => void submitDecision("confirm")}
+            type="button"
+          >
+            <CheckCircle2 aria-hidden="true" size={13} />
+            Confirm selected actions
+          </button>
+          <button
+            className="inline-flex h-7 items-center gap-1 rounded-md border border-slate-200 px-2 text-xs font-semibold text-slate-600 disabled:opacity-50"
+            disabled={submitting}
+            onClick={() => void submitDecision("reject")}
+            type="button"
+          >
+            <XCircle aria-hidden="true" size={13} />
+            Cancel suggestions
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 
 function createChatMessageId(): string {
   const randomUUID = globalThis.crypto?.randomUUID?.bind(globalThis.crypto);
