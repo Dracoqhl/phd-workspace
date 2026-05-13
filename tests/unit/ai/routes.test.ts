@@ -442,6 +442,38 @@ describe("AI action confirm route", () => {
     );
   });
 
+  it("accepts model delete task proposals that use id instead of taskId", async () => {
+    dataDir = await mkdtemp(join(tmpdir(), "phd-ai-actions-"));
+    vi.stubEnv("DATA_DIR", dataDir);
+    const repositories = createRepositories(dataDir);
+    const task = await repositories.tasks.create({
+      title: "Model id task",
+      description: "",
+      status: "not_started",
+      priority: "medium",
+      dueDate: null,
+      parentTaskId: null
+    });
+
+    const response = await confirmActions(
+      authRequest(`${baseUrl}/api/ai/actions/confirm`, {
+        method: "POST",
+        body: JSON.stringify({
+          userMessage: "删除 Model id task",
+          proposals: [{ id: "delete_id_alias", actionType: "delete_task", summary: "删除任务", payload: { id: task.id } }]
+        })
+      })
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      ok: true,
+      results: [{ proposalId: "delete_id_alias", actionType: "delete_task", status: "confirmed_executed" }]
+    });
+    await expect(repositories.tasks.get(task.id)).resolves.toBeNull();
+    await expect(repositories.trash.list()).resolves.toMatchObject([{ deletedType: "task", originalId: task.id }]);
+  });
+
   it("lists AI action logs without exposing model secrets", async () => {
     dataDir = await mkdtemp(join(tmpdir(), "phd-ai-actions-"));
     vi.stubEnv("DATA_DIR", dataDir);

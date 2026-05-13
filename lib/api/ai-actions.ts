@@ -105,7 +105,7 @@ async function executeProposal(
   }
 
   if (proposal.actionType === "update_task") {
-    const taskId = parseRequiredString(proposal.payload.taskId);
+    const taskId = parseEntityId(proposal.payload, "taskId");
     const input = parseUpdateTaskPayload(proposal.payload);
     const updated = await repositories.tasks.update(taskId, input);
     if (!updated) throw new Error("Task not found");
@@ -113,7 +113,7 @@ async function executeProposal(
   }
 
   if (proposal.actionType === "delete_task") {
-    const taskId = parseRequiredString(proposal.payload.taskId);
+    const taskId = parseEntityId(proposal.payload, "taskId");
     const existing = await repositories.tasks.get(taskId);
     if (!existing) throw new Error("Task not found");
     await repositories.tasks.delete(taskId);
@@ -126,7 +126,7 @@ async function executeProposal(
   }
 
   if (proposal.actionType === "update_habit") {
-    const habitId = parseRequiredString(proposal.payload.habitId);
+    const habitId = parseEntityId(proposal.payload, "habitId");
     const input = parseUpdateHabitPayload(proposal.payload);
     const updated = await repositories.habits.update(habitId, input);
     if (!updated) throw new Error("Habit not found");
@@ -134,14 +134,14 @@ async function executeProposal(
   }
 
   if (proposal.actionType === "deactivate_habit") {
-    const habitId = parseRequiredString(proposal.payload.habitId);
+    const habitId = parseEntityId(proposal.payload, "habitId");
     const updated = await repositories.habits.deactivate(habitId);
     if (!updated) throw new Error("Habit not found");
     return;
   }
 
   if (proposal.actionType === "habit_checkin" || proposal.actionType === "habit_checkin_cancel") {
-    const habitId = parseRequiredString(proposal.payload.habitId);
+    const habitId = parseEntityId(proposal.payload, "habitId");
     const habit = await repositories.habits.get(habitId);
     if (!habit) throw new Error("Habit not found");
     if (proposal.actionType === "habit_checkin") {
@@ -150,6 +150,14 @@ async function executeProposal(
       await repositories.habitCheckins.decrement(habitId, getHabitBusinessDate(), habit.targetCount);
     }
   }
+}
+
+function parseEntityId(payload: Record<string, unknown>, preferredKey: "taskId" | "habitId"): string {
+  if (typeof payload[preferredKey] === "string" && payload[preferredKey].trim()) {
+    return payload[preferredKey].trim();
+  }
+
+  return parseRequiredString(payload.id);
 }
 
 function resolveSubtaskParentTaskId(payload: Record<string, unknown>, context: AiActionExecutionContext): string {

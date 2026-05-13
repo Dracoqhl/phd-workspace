@@ -31,6 +31,7 @@ This file stores maintainer context for future development sessions.
 - AI may propose create/update/delete/check-in operations for tasks and habits, but every write must be explicitly confirmed by the user before data is written.
 - AI write proposals use a selectable confirmation card in the assistant panel. Users can confirm a checked subset or reject the suggestions. The chat route must never write data; the confirm route is the only AI write path.
 - When AI proposes a new parent task and subtasks in the same batch, subtasks should use `parentProposalId`; the confirmation route also falls back to the most recently created top-level task in that batch so task splitting does not partially fail.
+- For compatibility with real model output, AI confirmation accepts `id` as an alias for `taskId` or `habitId` on update/delete/check-in proposals, but prompts should still ask the model to emit explicit `taskId`/`habitId`.
 - Parent task completion and child task completion are independent.
 - Completing a parent task does not complete subtasks.
 - Completing all subtasks does not complete the parent task.
