@@ -243,7 +243,7 @@ function energyButtonClass(currentLevel: CareRecord["energyLevel"]): string {
 
 function EnergyIcon({ currentLevel, index }: { currentLevel: CareRecord["energyLevel"]; index: number }) {
   if (currentLevel === 5) {
-    return <EnergySparkle />;
+    return <EnergyBrightBadge />;
   }
 
   if (currentLevel === 1 && index === 1) {
@@ -257,24 +257,21 @@ function EnergyIcon({ currentLevel, index }: { currentLevel: CareRecord["energyL
   return <Heart aria-hidden="true" size={18} />;
 }
 
-function EnergySparkle() {
+function EnergyBrightBadge() {
   return (
     <svg
       aria-hidden="true"
       className="drop-shadow-sm"
-      data-testid="energy-sparkle"
+      data-testid="energy-bright-badge"
       height="18"
       viewBox="0 0 24 24"
       width="18"
       xmlns="http://www.w3.org/2000/svg"
     >
-      <path
-        d="M12 1.8l2.05 5.55L19.6 9.4l-5.55 2.05L12 17l-2.05-5.55L4.4 9.4l5.55-2.05L12 1.8z"
-        fill="#f59e0b"
-      />
-      <path d="M19 14.5l.95 2.55 2.55.95-2.55.95L19 21.5l-.95-2.55-2.55-.95 2.55-.95L19 14.5z" fill="#fbbf24" />
-      <path d="M6 12.5l.75 2 .75-2 2-.75-2-.75-.75-2-.75 2-2 .75 2 .75z" fill="#fde68a" />
-      <circle cx="12" cy="9.3" fill="#fff7ed" opacity="0.8" r="1.4" />
+      <circle cx="12" cy="12" fill="#f59e0b" r="10.4" />
+      <circle cx="12" cy="12" fill="#fbbf24" r="8.2" />
+      <path d="M12 4.9l1.45 3.8 3.85 1.4-3.85 1.45L12 15.35l-1.45-3.8-3.85-1.45 3.85-1.4L12 4.9z" fill="#fff7ed" />
+      <path d="M17.8 14.2l.55 1.45 1.45.55-1.45.55-.55 1.45-.55-1.45-1.45-.55 1.45-.55.55-1.45z" fill="#fff7ed" opacity="0.9" />
     </svg>
   );
 }

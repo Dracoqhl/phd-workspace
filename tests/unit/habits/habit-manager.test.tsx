@@ -254,6 +254,42 @@ describe("HabitManager", () => {
     );
   });
 
+  it("updates habit progress immediately while check-in sync is pending", async () => {
+    const pending = deferred<Response>();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+
+        if (url === "/api/habits" && method === "GET") {
+          return Response.json({
+            date: "2026-05-08",
+            habits: [{ habit: habit({ id: "habit_1", name: "Walk", targetCount: 3 }), checkin: null, isCompleted: false }]
+          });
+        }
+
+        if (url === "/api/habits/habit_1/checkins" && method === "POST") {
+          return pending.promise;
+        }
+
+        throw new Error(`Unexpected request ${method} ${url}`);
+      })
+    );
+
+    render(<HabitManager />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Mark Walk complete" }));
+
+    expect(screen.getByText("1/3")).toBeInTheDocument();
+    expect(screen.getByText("1/3 checked")).toBeInTheDocument();
+    expect(screen.getByRole("progressbar", { name: "Habit check-in progress" })).toHaveAttribute("aria-valuenow", "1");
+    expect(screen.getAllByRole("listitem")[0]).toHaveAttribute("aria-busy", "true");
+
+    pending.resolve(Response.json({ checkin: checkin({ completedCount: 1, isCompleted: false }) }));
+    await waitFor(() => expect(screen.getAllByRole("listitem")[0]).toHaveAttribute("aria-busy", "false"));
+  });
+
   it("edits by clicking text and deactivates with a trash button", async () => {
     const fetchMock = mockFetch([{ habit: habit({ id: "habit_1", name: "Walk" }), checkin: null, isCompleted: false }]);
 
@@ -277,3 +313,14 @@ describe("HabitManager", () => {
     expect(fetchMock).toHaveBeenCalledWith("/api/habits/habit_1/deactivate", expect.objectContaining({ method: "PATCH" }));
   });
 });
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((promiseResolve, promiseReject) => {
+    resolve = promiseResolve;
+    reject = promiseReject;
+  });
+
+  return { promise, resolve, reject };
+}

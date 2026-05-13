@@ -108,11 +108,12 @@ describe("CarePanel", () => {
     fireEvent.click(screen.getByRole("button", { name: "Set energy to 5" }));
 
     expect(await screen.findByText("Bright")).toBeInTheDocument();
-    const sparkles = screen.getAllByTestId("energy-sparkle");
-    expect(sparkles).toHaveLength(5);
-    expect(sparkles[0].tagName).toBe("svg");
-    expect(sparkles[0]).toHaveAttribute("width", "18");
-    expect(sparkles[0]).toHaveAttribute("height", "18");
+    const brightBadges = screen.getAllByTestId("energy-bright-badge");
+    expect(brightBadges).toHaveLength(5);
+    expect(brightBadges[0].tagName).toBe("svg");
+    expect(brightBadges[0]).toHaveAttribute("width", "18");
+    expect(brightBadges[0]).toHaveAttribute("height", "18");
+    expect(brightBadges[0].querySelector("circle")).not.toBeNull();
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/care/update",
       expect.objectContaining({ method: "POST", body: JSON.stringify({ energyLevel: 5 }) })

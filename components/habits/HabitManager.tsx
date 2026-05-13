@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, Pencil, Plus, Trash2 } from "lucide-react";
-import { FormEvent, KeyboardEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
 
 import { useSyncStatus } from "@/components/sync/SyncStatusProvider";
 import { sortHabitListItems } from "@/lib/domain/habits";
@@ -25,6 +25,7 @@ export function HabitManager() {
   const [pendingCheckinHabitIds, setPendingCheckinHabitIds] = useState<Set<string>>(() => new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const checkinMutationSequences = useRef(new Map<string, number>());
 
   useEffect(() => {
     let active = true;
@@ -63,7 +64,15 @@ export function HabitManager() {
     };
   }, []);
 
-  const sortedHabits = useMemo(() => sortHabitListItems(habits, restoredHabitId), [habits, restoredHabitId]);
+  const sortedHabits = useMemo(() => {
+    const sortInput = habits.map((item) =>
+      pendingCheckinHabitIds.has(item.habit.id) ? { ...item, isCompleted: false } : item
+    );
+    const sortedIds = sortHabitListItems(sortInput, restoredHabitId).map((item) => item.habit.id);
+    const itemsById = new Map(habits.map((item) => [item.habit.id, item]));
+
+    return sortedIds.map((id) => itemsById.get(id)).filter((item): item is HabitListItem => Boolean(item));
+  }, [habits, pendingCheckinHabitIds, restoredHabitId]);
   const checkedCount = habits.reduce((sum, item) => sum + (item.checkin?.completedCount ?? 0), 0);
   const targetTotal = habits.reduce((sum, item) => sum + item.habit.targetCount, 0);
   const progressPercent = targetTotal > 0 ? Math.round((checkedCount / targetTotal) * 100) : 0;
@@ -181,11 +190,14 @@ export function HabitManager() {
 
   async function toggleCheckin(item: HabitListItem) {
     const previousHabits = habits;
+    const sequence = nextCheckinSequence(item.habit.id);
     setError(null);
 
     if (item.isCompleted) {
+      const optimisticCheckin = decrementOptimisticCheckin(item);
       setRestoredHabitId(item.habit.id);
       setPendingCheckinHabitIds((current) => addSetValue(current, item.habit.id));
+      setHabits((current) => updateHabitCheckin(current, item, optimisticCheckin));
 
       try {
         const [payload] = await Promise.all([
@@ -197,18 +209,26 @@ export function HabitManager() {
           delay(320)
         ]);
 
-        setHabits((current) => updateHabitCheckin(current, item, payload.checkin ?? null));
+        if (isLatestCheckinSequence(item.habit.id, sequence)) {
+          setHabits((current) => updateHabitCheckin(current, item, payload.checkin ?? null));
+        }
       } catch (caught) {
-        setHabits(previousHabits);
-        setError(caught instanceof Error ? caught.message : "Unable to cancel habit check-in.");
+        if (isLatestCheckinSequence(item.habit.id, sequence)) {
+          setHabits(previousHabits);
+          setError(caught instanceof Error ? caught.message : "Unable to cancel habit check-in.");
+        }
       } finally {
-        setPendingCheckinHabitIds((current) => removeSetValue(current, item.habit.id));
+        if (isLatestCheckinSequence(item.habit.id, sequence)) {
+          setPendingCheckinHabitIds((current) => removeSetValue(current, item.habit.id));
+        }
       }
       return;
     }
 
+    const optimisticCheckin = incrementOptimisticCheckin(item, date);
     setRestoredHabitId(null);
     setPendingCheckinHabitIds((current) => addSetValue(current, item.habit.id));
+    setHabits((current) => updateHabitCheckin(current, item, optimisticCheckin));
 
     try {
       const [payload] = await Promise.all([
@@ -224,19 +244,29 @@ export function HabitManager() {
         throw new Error("Unable to complete habit check-in.");
       }
 
-      setHabits((current) =>
-        current.map((habitItem) =>
-          habitItem.habit.id === item.habit.id
-            ? { ...habitItem, checkin: payload.checkin!, isCompleted: payload.checkin!.completedCount >= habitItem.habit.targetCount }
-            : habitItem
-        )
-      );
+      if (isLatestCheckinSequence(item.habit.id, sequence)) {
+        setHabits((current) => updateHabitCheckin(current, item, payload.checkin!));
+      }
     } catch (caught) {
-      setHabits(previousHabits);
-      setError(caught instanceof Error ? caught.message : "Unable to complete habit check-in.");
+      if (isLatestCheckinSequence(item.habit.id, sequence)) {
+        setHabits(previousHabits);
+        setError(caught instanceof Error ? caught.message : "Unable to complete habit check-in.");
+      }
     } finally {
-      setPendingCheckinHabitIds((current) => removeSetValue(current, item.habit.id));
+      if (isLatestCheckinSequence(item.habit.id, sequence)) {
+        setPendingCheckinHabitIds((current) => removeSetValue(current, item.habit.id));
+      }
     }
+  }
+
+  function nextCheckinSequence(habitId: string): number {
+    const next = (checkinMutationSequences.current.get(habitId) ?? 0) + 1;
+    checkinMutationSequences.current.set(habitId, next);
+    return next;
+  }
+
+  function isLatestCheckinSequence(habitId: string, sequence: number): boolean {
+    return checkinMutationSequences.current.get(habitId) === sequence;
   }
 
   async function writeHabit(url: string, init: RequestInit): Promise<Habit | null> {
@@ -398,6 +428,39 @@ function createOptimisticHabit(name: string, targetCount: number): Habit {
     isActive: true,
     createdAt: now,
     updatedAt: now
+  };
+}
+
+function incrementOptimisticCheckin(item: HabitListItem, date: string): HabitCheckin {
+  const now = new Date().toISOString();
+  const previousCount = item.checkin?.completedCount ?? 0;
+  const completedCount = Math.min(previousCount + 1, item.habit.targetCount);
+
+  return {
+    id: item.checkin?.id ?? `optimistic-checkin-${item.habit.id}-${date}`,
+    habitId: item.habit.id,
+    date,
+    isCompleted: completedCount >= item.habit.targetCount,
+    completedCount,
+    note: item.checkin?.note ?? "",
+    createdAt: item.checkin?.createdAt ?? now,
+    updatedAt: now
+  };
+}
+
+function decrementOptimisticCheckin(item: HabitListItem): HabitCheckin | null {
+  const previousCount = item.checkin?.completedCount ?? item.habit.targetCount;
+  const completedCount = Math.max(previousCount - 1, 0);
+
+  if (completedCount === 0 || !item.checkin) {
+    return null;
+  }
+
+  return {
+    ...item.checkin,
+    completedCount,
+    isCompleted: completedCount >= item.habit.targetCount,
+    updatedAt: new Date().toISOString()
   };
 }
 

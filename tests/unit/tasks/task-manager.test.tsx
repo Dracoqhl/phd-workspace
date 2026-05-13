@@ -253,6 +253,39 @@ describe("TaskManager", () => {
     );
   });
 
+  it("updates task completion immediately while save sync is pending", async () => {
+    const pending = deferred<Response>();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+
+        if (url === "/api/tasks" && method === "GET") {
+          return Response.json({ tasks: [task({ id: "task_1", status: "in_progress" })] });
+        }
+
+        if (url === "/api/tasks/task_1" && method === "PATCH") {
+          return pending.promise;
+        }
+
+        throw new Error(`Unexpected request ${method} ${url}`);
+      })
+    );
+
+    render(<TaskManager />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Mark task Draft dissertation chapter complete" }));
+
+    const row = screen.getByRole("row", { name: /Draft dissertation chapter/ });
+    expect(row).toHaveAttribute("aria-busy", "true");
+    expect(row).toHaveTextContent("Completed");
+    expect(screen.getByRole("button", { name: "Reopen task Draft dissertation chapter" })).toBeInTheDocument();
+
+    pending.resolve(Response.json({ task: task({ id: "task_1", status: "completed", completedAt: now }) }));
+    await waitFor(() => expect(screen.queryByText("Draft dissertation chapter")).not.toBeInTheDocument());
+  });
+
   it("reopens a completed top-level task from the compact row control", async () => {
     const fetchMock = mockFetch([task({ id: "task_1", status: "completed", completedAt: now })]);
 
@@ -336,3 +369,14 @@ describe("TaskManager", () => {
     expect(fetchMock).toHaveBeenCalledWith("/api/tasks/task_1", expect.objectContaining({ method: "DELETE" }));
   });
 });
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((promiseResolve, promiseReject) => {
+    resolve = promiseResolve;
+    reject = promiseReject;
+  });
+
+  return { promise, resolve, reject };
+}

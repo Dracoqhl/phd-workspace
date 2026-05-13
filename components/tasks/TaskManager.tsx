@@ -39,6 +39,7 @@ export function TaskManager() {
   const [subtaskTitle, setSubtaskTitle] = useState("");
   const [pendingCompletionTaskIds, setPendingCompletionTaskIds] = useState<Set<string>>(() => new Set());
   const hasLocalWrites = useRef(false);
+  const taskMutationSequences = useRef(new Map<string, number>());
 
   useEffect(() => {
     let active = true;
@@ -77,8 +78,12 @@ export function TaskManager() {
   }, []);
 
   const topLevelTasks = useMemo(() => {
-    return tasks.filter((task) => task.parentTaskId === null && (showCompleted || task.status !== "completed"));
-  }, [showCompleted, tasks]);
+    return tasks.filter(
+      (task) =>
+        task.parentTaskId === null &&
+        (showCompleted || task.status !== "completed" || pendingCompletionTaskIds.has(task.id))
+    );
+  }, [pendingCompletionTaskIds, showCompleted, tasks]);
 
   async function createTask(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -120,12 +125,13 @@ export function TaskManager() {
     }
 
     const previousTasks = tasks;
+    const sequence = nextTaskSequence(taskId);
     const isCompletionUpdate = "status" in input;
     hasLocalWrites.current = true;
+    setTasks((current) => current.map((task) => (task.id === taskId ? applyOptimisticTaskUpdate(task, input) : task)));
+
     if (isCompletionUpdate) {
       setPendingCompletionTaskIds((current) => addSetValue(current, taskId));
-    } else {
-      setTasks((current) => current.map((task) => (task.id === taskId ? applyOptimisticTaskUpdate(task, input) : task)));
     }
 
     try {
@@ -133,17 +139,29 @@ export function TaskManager() {
         writeTask(`/api/tasks/${taskId}`, { method: "PATCH", body: JSON.stringify(input) }),
         isCompletionUpdate ? delay(320) : Promise.resolve()
       ]);
-      if (updated) {
+      if (updated && isLatestTaskSequence(taskId, sequence)) {
         setTasks((current) => current.map((task) => (task.id === taskId ? updated : task)));
       }
     } catch {
-      setTasks(previousTasks);
-      setError("Unable to save task.");
+      if (isLatestTaskSequence(taskId, sequence)) {
+        setTasks(previousTasks);
+        setError("Unable to save task.");
+      }
     } finally {
-      if (isCompletionUpdate) {
+      if (isCompletionUpdate && isLatestTaskSequence(taskId, sequence)) {
         setPendingCompletionTaskIds((current) => removeSetValue(current, taskId));
       }
     }
+  }
+
+  function nextTaskSequence(taskId: string): number {
+    const next = (taskMutationSequences.current.get(taskId) ?? 0) + 1;
+    taskMutationSequences.current.set(taskId, next);
+    return next;
+  }
+
+  function isLatestTaskSequence(taskId: string, sequence: number): boolean {
+    return taskMutationSequences.current.get(taskId) === sequence;
   }
 
   async function createSubtask(parentTask: Task) {
