@@ -167,6 +167,29 @@ describe("TaskManager", () => {
     );
   });
 
+  it("reloads tasks when an AI confirmation refresh event is dispatched", async () => {
+    let tasks = [task({ id: "task_1", title: "Existing task" })];
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      const method = init?.method ?? "GET";
+
+      if (url === "/api/tasks" && method === "GET") {
+        return Response.json({ tasks });
+      }
+
+      throw new Error(`Unexpected request ${method} ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<TaskManager />);
+
+    expect(await screen.findByText("Existing task")).toBeInTheDocument();
+    tasks = [task({ id: "task_new", title: "AI generated task", status: "not_started" })];
+    window.dispatchEvent(new Event("phd-workspace:tasks-refresh"));
+
+    expect(await screen.findByText("AI generated task")).toBeInTheDocument();
+  });
+
   it("selects a task row on first click, then edits title on second click", async () => {
     const fetchMock = mockFetch([task({ id: "task_1" })]);
 

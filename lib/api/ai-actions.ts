@@ -24,6 +24,11 @@ export interface AiActionResult {
   error?: string;
 }
 
+interface AiActionExecutionContext {
+  createdTaskIdsByProposalId: Map<string, string>;
+  lastCreatedTopLevelTaskId: string | null;
+}
+
 export function dataConfigErrorResponse(): Response {
   return Response.json({ error: DATA_DIR_CONFIG_ERROR }, { status: 500 });
 }
@@ -51,6 +56,10 @@ export function parseAiActionConfirmInput(body: Record<string, unknown>): AiActi
 
 export async function applyAiActionInput(repositories: Repositories, input: AiActionConfirmInput): Promise<AiActionResult[]> {
   const results: AiActionResult[] = [];
+  const context: AiActionExecutionContext = {
+    createdTaskIdsByProposalId: new Map(),
+    lastCreatedTopLevelTaskId: null
+  };
 
   for (const proposal of input.proposals) {
     if (input.decision === "reject") {
@@ -60,7 +69,7 @@ export async function applyAiActionInput(repositories: Repositories, input: AiAc
     }
 
     try {
-      await executeProposal(repositories, proposal);
+      await executeProposal(repositories, proposal, context);
       await addLog(repositories, proposal, input.userMessage, "confirmed_executed");
       results.push({ proposalId: proposal.id, actionType: proposal.actionType, status: "confirmed_executed" });
     } catch (caught) {
@@ -77,14 +86,20 @@ export async function applyAiActionInput(repositories: Repositories, input: AiAc
   return results;
 }
 
-async function executeProposal(repositories: Repositories, proposal: AiActionProposal): Promise<void> {
+async function executeProposal(
+  repositories: Repositories,
+  proposal: AiActionProposal,
+  context: AiActionExecutionContext
+): Promise<void> {
   if (proposal.actionType === "create_task") {
-    await repositories.tasks.create(parseCreateTaskPayload(proposal.payload, null));
+    const task = await repositories.tasks.create(parseCreateTaskPayload(proposal.payload, null));
+    context.createdTaskIdsByProposalId.set(proposal.id, task.id);
+    context.lastCreatedTopLevelTaskId = task.id;
     return;
   }
 
   if (proposal.actionType === "create_subtask") {
-    const parentTaskId = parseRequiredString(proposal.payload.parentTaskId);
+    const parentTaskId = resolveSubtaskParentTaskId(proposal.payload, context);
     await repositories.tasks.create(parseCreateTaskPayload(proposal.payload, parentTaskId));
     return;
   }
@@ -135,6 +150,25 @@ async function executeProposal(repositories: Repositories, proposal: AiActionPro
       await repositories.habitCheckins.decrement(habitId, getHabitBusinessDate(), habit.targetCount);
     }
   }
+}
+
+function resolveSubtaskParentTaskId(payload: Record<string, unknown>, context: AiActionExecutionContext): string {
+  if (typeof payload.parentTaskId === "string" && payload.parentTaskId.trim()) {
+    return payload.parentTaskId.trim();
+  }
+
+  if (typeof payload.parentProposalId === "string" && payload.parentProposalId.trim()) {
+    const parentTaskId = context.createdTaskIdsByProposalId.get(payload.parentProposalId.trim());
+    if (parentTaskId) {
+      return parentTaskId;
+    }
+  }
+
+  if (context.lastCreatedTopLevelTaskId) {
+    return context.lastCreatedTopLevelTaskId;
+  }
+
+  throw new Error("Subtask parent not found");
 }
 
 function parseProposal(value: unknown): AiActionProposal | null {

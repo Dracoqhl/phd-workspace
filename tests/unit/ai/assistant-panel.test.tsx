@@ -66,6 +66,7 @@ describe("AiAssistantPanel", () => {
   });
 
   it("renders selectable proposals and confirms checked actions", async () => {
+    const eventSpy = vi.spyOn(window, "dispatchEvent");
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
 
@@ -113,7 +114,9 @@ describe("AiAssistantPanel", () => {
     expect(screen.getByText("新增习惯：喝水")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("checkbox", { name: "Select 新增习惯：喝水" }));
-    fireEvent.click(screen.getByRole("button", { name: "Confirm selected actions" }));
+    expect(screen.getByRole("button", { name: "Apply" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Cancel" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Apply" }));
 
     expect(await screen.findByText("已执行 1 项建议。")).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith(
@@ -129,6 +132,7 @@ describe("AiAssistantPanel", () => {
         body: expect.stringContaining("proposal_2")
       })
     );
+    expect(eventSpy).toHaveBeenCalledWith(expect.objectContaining({ type: "phd-workspace:tasks-refresh" }));
   });
 
   it("renders a chat failure as an assistant message", async () => {

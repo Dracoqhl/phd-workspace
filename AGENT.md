@@ -30,6 +30,7 @@ This file stores maintainer context for future development sessions.
 - AI may read all current and historical task records in `tasks.json` without extra confirmation, including completed tasks and subtasks. It may also read active habits with today's progress and today's care summary.
 - AI may propose create/update/delete/check-in operations for tasks and habits, but every write must be explicitly confirmed by the user before data is written.
 - AI write proposals use a selectable confirmation card in the assistant panel. Users can confirm a checked subset or reject the suggestions. The chat route must never write data; the confirm route is the only AI write path.
+- When AI proposes a new parent task and subtasks in the same batch, subtasks should use `parentProposalId`; the confirmation route also falls back to the most recently created top-level task in that batch so task splitting does not partially fail.
 - Parent task completion and child task completion are independent.
 - Completing a parent task does not complete subtasks.
 - Completing all subtasks does not complete the parent task.
@@ -68,6 +69,7 @@ This file stores maintainer context for future development sessions.
 - AI assistant: persistent right panel, chat, API test, structured operation proposals, user confirmation cards, operation logs.
 - AI configuration is server-only through `AI_API_KEY`, `AI_MODEL`, and `AI_BASE_URL`. Real values belong in `.env.local` or server environment variables and must not be committed.
 - The AI assistant panel should expose a compact `Test AI` control and a compact chat area. Chat can help plan, break down work, and produce selectable operation proposals. Confirmed proposals may create/update/delete tasks, create/update/deactivate habits, and increment/decrement today's habit check-ins.
+- AI proposal card action buttons should use short labels, currently `Apply` and `Cancel`, to avoid wrapping in the narrow right-side panel.
 - On desktop, the AI assistant panel should stay sticky within the viewport. Its message history scrolls independently, and the text input remains at the bottom of the assistant panel.
 - Local persistence: JSON files with safe write behavior.
 

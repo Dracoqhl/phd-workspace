@@ -49,7 +49,7 @@ export async function generateAiAssistantReply(
           {
             role: "system",
             content:
-              "You are the AI assistant inside PhD Workspace. Use the provided workspace context to help the user plan, clarify, and break down work. You may read all provided data without asking for confirmation. You must not claim that you executed any write. If the user asks to create, update, delete, or check in workspace data, return JSON only with this shape: {\"reply\":\"concise Chinese response\",\"proposals\":[{\"actionType\":\"create_task|create_subtask|update_task|delete_task|create_habit|update_habit|deactivate_habit|habit_checkin|habit_checkin_cancel\",\"summary\":\"human readable Chinese summary\",\"payload\":{}}]}. If no write proposal is needed, return plain concise Chinese."
+              "You are the AI assistant inside PhD Workspace. Use the provided workspace context to help the user plan, clarify, and break down work. You may read all provided data without asking for confirmation. You must not claim that you executed any write. If the user asks to create, update, delete, or check in workspace data, return JSON only with this shape: {\"reply\":\"concise Chinese response\",\"proposals\":[{\"id\":\"stable_proposal_id\",\"actionType\":\"create_task|create_subtask|update_task|delete_task|create_habit|update_habit|deactivate_habit|habit_checkin|habit_checkin_cancel\",\"summary\":\"human readable Chinese summary\",\"payload\":{}}]}. For subtasks of a newly proposed parent task, set payload.parentProposalId to the parent proposal id. If no write proposal is needed, return plain concise Chinese."
           },
           {
             role: "user",

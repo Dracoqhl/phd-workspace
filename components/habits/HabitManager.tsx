@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, Pencil, Plus, Trash2 } from "lucide-react";
-import { FormEvent, KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useSyncStatus } from "@/components/sync/SyncStatusProvider";
 import { sortHabitListItems } from "@/lib/domain/habits";
@@ -27,42 +27,43 @@ export function HabitManager() {
   const [error, setError] = useState<string | null>(null);
   const checkinMutationSequences = useRef(new Map<string, number>());
 
-  useEffect(() => {
-    let active = true;
-
-    async function loadHabits() {
+  const loadHabits = useCallback(async ({ showLoading = true } = {}) => {
+    if (showLoading) {
       setLoading(true);
-      setError(null);
+    }
+    setError(null);
 
-      try {
-        const response = await fetch("/api/habits");
-        const payload = (await response.json()) as { date?: string; habits?: HabitListItem[]; error?: string };
+    try {
+      const response = await fetch("/api/habits");
+      const payload = (await response.json()) as { date?: string; habits?: HabitListItem[]; error?: string };
 
-        if (!response.ok || !payload.date || !payload.habits) {
-          throw new Error(payload.error ?? "Unable to load habits.");
-        }
+      if (!response.ok || !payload.date || !payload.habits) {
+        throw new Error(payload.error ?? "Unable to load habits.");
+      }
 
-        if (active) {
-          setDate(payload.date);
-          setHabits(payload.habits);
-        }
-      } catch (caught) {
-        if (active) {
-          setError(caught instanceof Error ? caught.message : "Unable to load habits.");
-        }
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
+      setDate(payload.date);
+      setHabits(payload.habits);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to load habits.");
+    } finally {
+      if (showLoading) {
+        setLoading(false);
       }
     }
-
-    void loadHabits();
-
-    return () => {
-      active = false;
-    };
   }, []);
+
+  useEffect(() => {
+    void loadHabits();
+  }, [loadHabits]);
+
+  useEffect(() => {
+    function refreshHabits() {
+      void loadHabits({ showLoading: false });
+    }
+
+    window.addEventListener("phd-workspace:habits-refresh", refreshHabits);
+    return () => window.removeEventListener("phd-workspace:habits-refresh", refreshHabits);
+  }, [loadHabits]);
 
   const sortedHabits = useMemo(() => {
     const sortInput = habits.map((item) =>

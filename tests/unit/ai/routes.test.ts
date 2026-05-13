@@ -314,6 +314,79 @@ describe("AI action confirm route", () => {
     ]);
   });
 
+  it("creates a new parent task and following subtask proposals in the same confirmation batch", async () => {
+    dataDir = await mkdtemp(join(tmpdir(), "phd-ai-actions-"));
+    vi.stubEnv("DATA_DIR", dataDir);
+
+    const response = await confirmActions(
+      authRequest(`${baseUrl}/api/ai/actions/confirm`, {
+        method: "POST",
+        body: JSON.stringify({
+          userMessage: "帮我拆分论文任务",
+          proposals: [
+            {
+              id: "parent_proposal",
+              actionType: "create_task",
+              summary: "新增任务：完成论文初稿",
+              payload: {
+                title: "完成论文初稿",
+                description: "",
+                status: "not_started",
+                priority: "high",
+                dueDate: "2026-05-20",
+                parentTaskId: null
+              }
+            },
+            {
+              id: "child_1",
+              actionType: "create_subtask",
+              summary: "新增子任务：整理文献",
+              payload: {
+                parentProposalId: "parent_proposal",
+                title: "整理文献",
+                description: "",
+                status: "not_started",
+                priority: "medium",
+                dueDate: null
+              }
+            },
+            {
+              id: "child_2",
+              actionType: "create_subtask",
+              summary: "新增子任务：写方法部分",
+              payload: {
+                title: "写方法部分",
+                description: "",
+                status: "not_started",
+                priority: "medium",
+                dueDate: null
+              }
+            }
+          ]
+        })
+      })
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      ok: true,
+      results: [
+        { proposalId: "parent_proposal", status: "confirmed_executed" },
+        { proposalId: "child_1", status: "confirmed_executed" },
+        { proposalId: "child_2", status: "confirmed_executed" }
+      ]
+    });
+
+    const repositories = createRepositories(dataDir);
+    const tasks = await repositories.tasks.list();
+    const parent = tasks.find((task) => task.title === "完成论文初稿");
+    expect(parent).toBeDefined();
+    expect(tasks.filter((task) => task.parentTaskId === parent?.id).map((task) => task.title)).toEqual([
+      "整理文献",
+      "写方法部分"
+    ]);
+  });
+
   it("deletes tasks through trash and rejects proposals without writing business data", async () => {
     dataDir = await mkdtemp(join(tmpdir(), "phd-ai-actions-"));
     vi.stubEnv("DATA_DIR", dataDir);

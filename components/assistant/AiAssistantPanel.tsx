@@ -30,7 +30,7 @@ interface ChatMessage {
 
 interface AiActionConfirmResponse {
   ok: boolean;
-  results?: Array<{ proposalId: string; status: AiActionStatus; error?: string }>;
+  results?: Array<{ proposalId: string; actionType?: string; status: AiActionStatus; error?: string }>;
   error?: string;
 }
 
@@ -262,6 +262,18 @@ function ProposalCard({
 
       const executedCount = payload.results.filter((result) => result.status === "confirmed_executed").length;
       const failedCount = payload.results.filter((result) => result.status === "failed").length;
+      const executedActionTypes = new Set(
+        payload.results
+          .filter((result) => result.status === "confirmed_executed")
+          .map((result) => result.actionType ?? selected.find((proposal) => proposal.id === result.proposalId)?.actionType)
+          .filter((actionType): actionType is string => typeof actionType === "string")
+      );
+      if (hasTaskAction(executedActionTypes)) {
+        window.dispatchEvent(new Event("phd-workspace:tasks-refresh"));
+      }
+      if (hasHabitAction(executedActionTypes)) {
+        window.dispatchEvent(new Event("phd-workspace:habits-refresh"));
+      }
       onActionStateChange(
         failedCount > 0 ? "failed" : "executed",
         failedCount > 0 ? `已执行 ${executedCount} 项，${failedCount} 项失败。` : `已执行 ${executedCount} 项建议。`
@@ -310,7 +322,7 @@ function ProposalCard({
             type="button"
           >
             <CheckCircle2 aria-hidden="true" size={13} />
-            Confirm selected actions
+            Apply
           </button>
           <button
             className="inline-flex h-7 items-center gap-1 rounded-md border border-slate-200 px-2 text-xs font-semibold text-slate-600 disabled:opacity-50"
@@ -319,7 +331,7 @@ function ProposalCard({
             type="button"
           >
             <XCircle aria-hidden="true" size={13} />
-            Cancel suggestions
+            Cancel
           </button>
         </div>
       ) : null}
@@ -327,6 +339,15 @@ function ProposalCard({
   );
 }
 
+function hasTaskAction(actionTypes: Set<string>): boolean {
+  return ["create_task", "create_subtask", "update_task", "delete_task"].some((actionType) => actionTypes.has(actionType));
+}
+
+function hasHabitAction(actionTypes: Set<string>): boolean {
+  return ["create_habit", "update_habit", "deactivate_habit", "habit_checkin", "habit_checkin_cancel"].some((actionType) =>
+    actionTypes.has(actionType)
+  );
+}
 
 function createChatMessageId(): string {
   const randomUUID = globalThis.crypto?.randomUUID?.bind(globalThis.crypto);

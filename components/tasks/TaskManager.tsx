@@ -1,7 +1,7 @@
 "use client";
 
 import { Calendar, Check, ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
-import { FormEvent, KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useSyncStatus } from "@/components/sync/SyncStatusProvider";
 import { getTaskDueState, getTaskProgress } from "@/lib/domain/tasks";
@@ -41,41 +41,56 @@ export function TaskManager() {
   const hasLocalWrites = useRef(false);
   const taskMutationSequences = useRef(new Map<string, number>());
 
+  const loadTasks = useCallback(async ({ force = false, showLoading = true } = {}) => {
+    if (showLoading) {
+      setLoading(true);
+    }
+    setError(null);
+
+    try {
+      const response = await fetch("/api/tasks");
+      const payload = (await response.json()) as { tasks?: Task[]; error?: string };
+
+      if (!response.ok || !payload.tasks) {
+        throw new Error(payload.error ?? "Unable to load tasks.");
+      }
+
+      if (force || !hasLocalWrites.current) {
+        setTasks(payload.tasks);
+      }
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Unable to load tasks.");
+    } finally {
+      if (showLoading) {
+        setLoading(false);
+      }
+    }
+  }, []);
+
   useEffect(() => {
     let active = true;
 
-    async function loadTasks() {
-      setLoading(true);
-      setError(null);
-
-      try {
-        const response = await fetch("/api/tasks");
-        const payload = (await response.json()) as { tasks?: Task[]; error?: string };
-
-        if (!response.ok || !payload.tasks) {
-          throw new Error(payload.error ?? "Unable to load tasks.");
-        }
-
-        if (active && !hasLocalWrites.current) {
-          setTasks(payload.tasks);
-        }
-      } catch (caught) {
-        if (active) {
-          setError(caught instanceof Error ? caught.message : "Unable to load tasks.");
-        }
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
+    async function loadInitialTasks() {
+      if (active) {
+        await loadTasks();
       }
     }
 
-    void loadTasks();
+    void loadInitialTasks();
 
     return () => {
       active = false;
     };
-  }, []);
+  }, [loadTasks]);
+
+  useEffect(() => {
+    function refreshTasks() {
+      void loadTasks({ force: true, showLoading: false });
+    }
+
+    window.addEventListener("phd-workspace:tasks-refresh", refreshTasks);
+    return () => window.removeEventListener("phd-workspace:tasks-refresh", refreshTasks);
+  }, [loadTasks]);
 
   const topLevelTasks = useMemo(() => {
     return tasks.filter(

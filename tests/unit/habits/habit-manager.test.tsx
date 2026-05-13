@@ -154,6 +154,32 @@ describe("HabitManager", () => {
     );
   });
 
+  it("reloads habits when an AI confirmation refresh event is dispatched", async () => {
+    let items: HabitListItem[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+
+        if (url === "/api/habits" && method === "GET") {
+          return Response.json({ date: "2026-05-08", habits: items });
+        }
+
+        throw new Error(`Unexpected request ${method} ${url}`);
+      })
+    );
+
+    render(<HabitManager />);
+
+    expect(await screen.findByText("No active habits yet.")).toBeInTheDocument();
+    items = [{ habit: habit({ id: "habit_ai", name: "AI habit" }), checkin: null, isCompleted: false }];
+    window.dispatchEvent(new Event("phd-workspace:habits-refresh"));
+
+    expect(await screen.findByText("AI habit")).toBeInTheDocument();
+  });
+
+
   it("edits all habit rows in panel edit mode and saves changed targets", async () => {
     const fetchMock = mockFetch([{ habit: habit({ id: "habit_1", name: "Walk", targetCount: 2 }), checkin: null, isCompleted: false }]);
 
