@@ -110,6 +110,44 @@ describe("multi-user auth routes", () => {
     });
   });
 
+  it("does not create a user when an invite code has already been consumed", async () => {
+    const adminCookie = await loginAndGetCookie("admin@example.com", "admin-password");
+    const inviteResponse = await createInvite(
+      new Request(`${baseUrl}/api/admin/invites`, {
+        method: "POST",
+        headers: {
+          Cookie: adminCookie
+        }
+      })
+    );
+    const { invite } = (await inviteResponse.json()) as { invite: { code: string } };
+
+    const firstResponse = await register(jsonRequest(`${baseUrl}/api/auth/register`, {
+      email: "first@example.com",
+      password: "student-password",
+      inviteCode: invite.code
+    }));
+    expect(firstResponse.status).toBe(201);
+
+    const secondResponse = await register(jsonRequest(`${baseUrl}/api/auth/register`, {
+      email: "second@example.com",
+      password: "student-password",
+      inviteCode: invite.code
+    }));
+
+    expect(secondResponse.status).toBe(400);
+    await expect(secondResponse.json()).resolves.toEqual({
+      authenticated: false,
+      error: "Invalid invite code"
+    });
+
+    const secondLogin = await login(jsonRequest(`${baseUrl}/api/auth/login`, {
+      email: "second@example.com",
+      password: "student-password"
+    }));
+    expect(secondLogin.status).toBe(401);
+  });
+
   it("redirects to the login page when logging out from a browser form", async () => {
     const cookie = await loginAndGetCookie("admin@example.com", "admin-password");
 

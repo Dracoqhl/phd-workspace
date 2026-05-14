@@ -21,6 +21,7 @@ This file stores maintainer context for future development sessions.
 - Do not sync runtime JSON data, API keys, password config, logs, or build artifacts through Git.
 - Legacy single-user mode can still use one access password through `APP_PASSWORD` when `DATABASE_PATH` is not configured.
 - When `DATABASE_PATH` is configured, use SQLite-backed email/password login with database sessions and one-time invite codes.
+- Invite codes are single-use. Reusing an invite code must fail and must not leave behind a newly-created user account.
 - Login/register must work with both the React fetch flow and native HTML form submission, so mobile browsers can still set the session cookie if client-side JavaScript is delayed or unavailable.
 - Browser form logout must clear the session cookie and redirect back to `/` instead of leaving the user on a JSON API response.
 - Registration failures should surface specific user-facing reasons such as invalid email, short password, missing invite code, reused invite code, or duplicate email. Avoid collapsing these into a generic "Unable to register" message.
@@ -33,6 +34,7 @@ This file stores maintainer context for future development sessions.
 - Account identity and logout belong in the right-side global rail above the AI assistant, not mixed with workspace status chips in the main header.
 - Use `YYYY-MM-DD` for date-only fields.
 - AI may read all current and historical task records for the current authenticated user without extra confirmation, including completed tasks and subtasks. It may also read that user's active habits with today's progress and today's care summary. It must never read another user's data.
+- AI context must contain only current-user workspace data needed for assistance. It must not include environment variables, API keys, password hashes, session tokens, admin credentials, database paths, filesystem contents, or server configuration.
 - AI may propose create/update/delete/check-in operations for tasks and habits, but every write must be explicitly confirmed by the user before data is written.
 - AI write proposals use a selectable confirmation card in the assistant panel. Users can confirm a checked subset or reject the suggestions. The chat route must never write data; the confirm route is the only AI write path.
 - When AI proposes a new parent task and subtasks in the same batch, subtasks should use `parentProposalId`; the confirmation route also falls back to the most recently created top-level task in that batch so task splitting does not partially fail.

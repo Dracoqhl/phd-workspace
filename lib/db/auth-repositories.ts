@@ -149,22 +149,22 @@ export class InviteRepository {
   }
 
   consume(code: string, consumeWithUser: () => User): User | null {
-    const transaction = this.db.transaction(() => {
-      const invite = this.db
-        .prepare("SELECT * FROM invite_codes WHERE code = ? AND consumed_by_user_id IS NULL")
-        .get(code.trim()) as InviteRow | undefined;
-      if (!invite) {
-        return null;
-      }
+    const user = consumeWithUser();
+    const consumed = this.db
+      .prepare(
+        `UPDATE invite_codes
+         SET consumed_by_user_id = ?, consumed_at = ?
+         WHERE code = ? AND consumed_by_user_id IS NULL
+         RETURNING id`
+      )
+      .get(user.id, new Date().toISOString(), code.trim()) as { id: string } | undefined;
 
-      const user = consumeWithUser();
-      this.db
-        .prepare("UPDATE invite_codes SET consumed_by_user_id = ?, consumed_at = ? WHERE id = ?")
-        .run(user.id, new Date().toISOString(), invite.id);
-      return user;
-    });
+    if (!consumed) {
+      this.db.prepare("DELETE FROM users WHERE id = ?").run(user.id);
+      return null;
+    }
 
-    return transaction();
+    return user;
   }
 }
 
