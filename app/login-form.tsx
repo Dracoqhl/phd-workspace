@@ -180,6 +180,9 @@ function normalizeAuthError(error: string | undefined, mode: "login" | "register
   if (error === "Invalid password") return "Invalid password";
   if (error === "Invalid credentials") return "Invalid credentials";
   if (error === "Invalid invite code") return "Invalid invite code";
+  if (error === "Invalid email") return "Invalid email";
+  if (error === "Password must be at least 8 characters") return "Password must be at least 8 characters";
+  if (error === "Invite code is required") return "Invite code is required";
   if (error === "Email already exists") return "Email already exists";
   return mode === "register" ? "Unable to register" : "Unable to log in";
 }

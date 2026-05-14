@@ -22,8 +22,16 @@ export async function POST(request: Request): Promise<Response> {
   const password = typeof body.password === "string" ? body.password : "";
   const inviteCode = typeof body.inviteCode === "string" ? body.inviteCode.trim() : "";
 
-  if (!isValidEmail(email) || password.length < 8 || !inviteCode) {
-    return Response.json(INVALID_REQUEST_RESPONSE, { status: 400 });
+  if (!isValidEmail(email)) {
+    return Response.json({ authenticated: false, error: "Invalid email" }, { status: 400 });
+  }
+
+  if (password.length < 8) {
+    return Response.json({ authenticated: false, error: "Password must be at least 8 characters" }, { status: 400 });
+  }
+
+  if (!inviteCode) {
+    return Response.json({ authenticated: false, error: "Invite code is required" }, { status: 400 });
   }
 
   let db;
@@ -51,6 +59,16 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   const session = new SessionRepository(db).create(user.id);
+  if (body.source === "native_form") {
+    return new Response(null, {
+      status: 303,
+      headers: {
+        Location: "/",
+        "Set-Cookie": serializeSessionCookie(session.token)
+      }
+    });
+  }
+
   return Response.json(
     { authenticated: true, user: toPublicUser(user) },
     {
@@ -73,7 +91,8 @@ async function readJsonObject(request: Request): Promise<Record<string, unknown>
       return {
         email: typeof email === "string" ? email : "",
         password: typeof password === "string" ? password : "",
-        inviteCode: typeof inviteCode === "string" ? inviteCode : ""
+        inviteCode: typeof inviteCode === "string" ? inviteCode : "",
+        source: "native_form"
       };
     }
 

@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { POST as createInvite } from "@/app/api/admin/invites/route";
 import { POST as login } from "@/app/api/auth/login/route";
+import { POST as logout } from "@/app/api/auth/logout/route";
 import { POST as register } from "@/app/api/auth/register/route";
 import { GET as session } from "@/app/api/auth/session/route";
 import { SESSION_COOKIE_NAME } from "@/lib/auth/session";
@@ -106,6 +107,50 @@ describe("multi-user auth routes", () => {
     await expect(reusedInviteResponse.json()).resolves.toEqual({
       authenticated: false,
       error: "Invalid invite code"
+    });
+  });
+
+  it("redirects to the login page when logging out from a browser form", async () => {
+    const cookie = await loginAndGetCookie("admin@example.com", "admin-password");
+
+    const response = await logout(
+      new Request(`${baseUrl}/api/auth/logout`, {
+        method: "POST",
+        headers: {
+          Cookie: cookie,
+          Accept: "text/html"
+        }
+      })
+    );
+
+    expect(response.status).toBe(303);
+    expect(response.headers.get("location")).toBe("/");
+    expect(response.headers.get("set-cookie")).toContain(`${SESSION_COOKIE_NAME}=`);
+    expect(response.headers.get("set-cookie")).toContain("Max-Age=0");
+  });
+
+  it("returns a specific registration error when the password is too short", async () => {
+    const adminCookie = await loginAndGetCookie("admin@example.com", "admin-password");
+    const inviteResponse = await createInvite(
+      new Request(`${baseUrl}/api/admin/invites`, {
+        method: "POST",
+        headers: {
+          Cookie: adminCookie
+        }
+      })
+    );
+    const { invite } = (await inviteResponse.json()) as { invite: { code: string } };
+
+    const response = await register(jsonRequest(`${baseUrl}/api/auth/register`, {
+      email: "student@example.com",
+      password: "short",
+      inviteCode: invite.code
+    }));
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      authenticated: false,
+      error: "Password must be at least 8 characters"
     });
   });
 });

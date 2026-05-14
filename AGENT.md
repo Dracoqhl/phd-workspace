@@ -22,6 +22,8 @@ This file stores maintainer context for future development sessions.
 - Legacy single-user mode can still use one access password through `APP_PASSWORD` when `DATABASE_PATH` is not configured.
 - When `DATABASE_PATH` is configured, use SQLite-backed email/password login with database sessions and one-time invite codes.
 - Login/register must work with both the React fetch flow and native HTML form submission, so mobile browsers can still set the session cookie if client-side JavaScript is delayed or unavailable.
+- Browser form logout must clear the session cookie and redirect back to `/` instead of leaving the user on a JSON API response.
+- Registration failures should surface specific user-facing reasons such as invalid email, short password, missing invite code, reused invite code, or duplicate email. Avoid collapsing these into a generic "Unable to register" message.
 - Legacy mode stores data in multiple local JSON files configured by `DATA_DIR`. Multi-user mode stores runtime data in SQLite configured by `DATABASE_PATH`.
 - Existing JSON data migrates to the initialized admin user through `pnpm migrate:sqlite`; old JSON files remain as backup and must not be deleted automatically.
 - Use server timezone for all "today" behavior and daily check-ins.

@@ -15,12 +15,23 @@ export function POST(request: Request): Response {
     }
   }
 
+  const cookie = clearSessionCookie();
+  if (prefersHtmlRedirect(request)) {
+    return new Response(null, {
+      status: 303,
+      headers: {
+        Location: "/",
+        "Set-Cookie": cookie
+      }
+    });
+  }
+
   return Response.json(
     { authenticated: false },
     {
       status: 200,
       headers: {
-        "Set-Cookie": clearSessionCookie()
+        "Set-Cookie": cookie
       }
     }
   );
@@ -34,6 +45,12 @@ function clearSessionCookie(): string {
   return [`${SESSION_COOKIE_NAME}=`, "HttpOnly", "SameSite=Lax", "Path=/", "Max-Age=0"].join(
     "; "
   );
+}
+
+function prefersHtmlRedirect(request: Request): boolean {
+  const accept = request.headers.get("accept") ?? "";
+  const contentType = request.headers.get("content-type") ?? "";
+  return accept.includes("text/html") || contentType.includes("application/x-www-form-urlencoded");
 }
 
 function getCookieValue(cookieHeader: string | null, name: string): string | undefined {
