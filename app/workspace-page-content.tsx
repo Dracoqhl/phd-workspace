@@ -43,23 +43,11 @@ function WorkspaceShell({ authenticated, businessDate, multiUserEnabled = false,
                   当前是最小可运行页面壳，用于确认 Next.js、React、Tailwind 和构建流程已经连通。
                 </p>
               </div>
-              <div className="flex flex-wrap items-center gap-2">
+              <div aria-label="Workspace status" className="flex shrink-0 flex-wrap items-center gap-2">
                 {authenticated ? <SyncStatusBadge /> : null}
-                {authenticated && user ? (
-                  <span className="w-fit rounded-md bg-white px-3 py-1.5 text-sm font-medium text-slate-600 shadow-sm ring-1 ring-slate-200">
-                    {user.email}
-                  </span>
-                ) : null}
                 <span className="w-fit rounded-md bg-white px-3 py-1.5 text-sm font-medium text-slate-600 shadow-sm ring-1 ring-slate-200">
                   {businessDate}
                 </span>
-                {authenticated ? (
-                  <form action="/api/auth/logout" method="post">
-                    <button className="rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 shadow-sm transition hover:border-slate-300" type="submit">
-                      Logout
-                    </button>
-                  </form>
-                ) : null}
               </div>
             </div>
           </header>
@@ -67,7 +55,7 @@ function WorkspaceShell({ authenticated, businessDate, multiUserEnabled = false,
           {authenticated ? <WorkspaceSections user={user} /> : <LoginForm multiUserEnabled={multiUserEnabled} />}
         </section>
 
-        {authenticated ? <AiAssistantAside /> : null}
+        {authenticated ? <AiAssistantAside user={user} /> : null}
       </div>
     </main>
   );
@@ -86,6 +74,33 @@ function WorkspaceSections({ user }: { user: PublicUser | null }) {
   );
 }
 
-function AiAssistantAside() {
-  return <AiAssistantPanel />;
+function AiAssistantAside({ user }: { user: PublicUser | null }) {
+  return (
+    <aside className="flex min-h-48 flex-col gap-3 lg:sticky lg:top-6 lg:h-[calc(100vh-3rem)] lg:w-[30%] lg:self-start">
+      {user ? <AccountControls user={user} /> : null}
+      <AiAssistantPanel />
+    </aside>
+  );
+}
+
+function AccountControls({ user }: { user: PublicUser }) {
+  return (
+    <div
+      aria-label="Account controls"
+      className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm"
+    >
+      <div className="min-w-0">
+        <p className="truncate text-sm font-semibold text-ink">{user.email}</p>
+        <p className="mt-0.5 text-xs capitalize text-slate-500">{user.role}</p>
+      </div>
+      <form action="/api/auth/logout" method="post">
+        <button
+          className="rounded-md border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-slate-300 hover:bg-slate-50"
+          type="submit"
+        >
+          Logout
+        </button>
+      </form>
+    </div>
+  );
 }

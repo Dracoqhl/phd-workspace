@@ -29,6 +29,8 @@ This file stores maintainer context for future development sessions.
 - Use server timezone for all "today" behavior and daily check-ins.
 - Daily habit check-ins refresh at 02:00 server time; 00:00-01:59 belongs to the previous habit business date.
 - Normal non-AI writes should feel immediate but not abrupt. Use optimistic UI for high-frequency row edits, habit target changes, deletions, and care status updates. Completion/check-in actions must update local state and header progress immediately, then show a short pending highlight while the background sync finishes. Row movement, hiding, or final settling can be briefly delayed, but counts and status should not wait for the network. Show a compact global sync badge near the page date.
+- Header status controls should be visually stable. Keep workspace date and sync state grouped in the main header, with the sync badge using fixed width and short labels so it does not shift nearby UI when state changes.
+- Account identity and logout belong in the right-side global rail above the AI assistant, not mixed with workspace status chips in the main header.
 - Use `YYYY-MM-DD` for date-only fields.
 - AI may read all current and historical task records for the current authenticated user without extra confirmation, including completed tasks and subtasks. It may also read that user's active habits with today's progress and today's care summary. It must never read another user's data.
 - AI may propose create/update/delete/check-in operations for tasks and habits, but every write must be explicitly confirmed by the user before data is written.

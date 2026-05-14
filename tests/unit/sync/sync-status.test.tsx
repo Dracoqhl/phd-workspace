@@ -33,17 +33,27 @@ describe("SyncStatusProvider", () => {
     expect(screen.getByRole("status", { name: "Data sync status" })).toHaveTextContent("Synced");
 
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    expect(screen.getByRole("status", { name: "Data sync status" })).toHaveTextContent("Saving...");
+    expect(screen.getByRole("status", { name: "Data sync status" })).toHaveTextContent("Saving");
 
     success.resolve("ok");
     expect(await screen.findByText(/Synced/)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Fail" }));
-    expect(screen.getByRole("status", { name: "Data sync status" })).toHaveTextContent("Saving...");
+    expect(screen.getByRole("status", { name: "Data sync status" })).toHaveTextContent("Saving");
 
     failure.reject(new Error("Disk write failed"));
-    expect(await screen.findByText("Sync failed")).toBeInTheDocument();
+    expect(await screen.findByText("Failed")).toBeInTheDocument();
     expect(screen.getByRole("status", { name: "Data sync status" })).toHaveAttribute("title", "Disk write failed");
+  });
+
+  it("uses a stable width so status changes do not shift nearby controls", () => {
+    render(
+      <SyncStatusProvider>
+        <SyncStatusBadge />
+      </SyncStatusProvider>
+    );
+
+    expect(screen.getByRole("status", { name: "Data sync status" })).toHaveClass("w-28", "justify-center");
   });
 });
 

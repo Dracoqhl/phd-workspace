@@ -118,7 +118,7 @@ export function AiAssistantPanel() {
   return (
     <aside
       aria-label="AI 助手"
-      className="flex min-h-48 flex-col rounded-lg border border-slate-200 bg-white p-5 shadow-sm lg:sticky lg:top-6 lg:h-[calc(100vh-3rem)] lg:w-[30%] lg:self-start"
+      className="flex min-h-48 flex-1 flex-col rounded-lg border border-slate-200 bg-white p-5 shadow-sm"
     >
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-base font-semibold text-ink">AI 助手</h2>

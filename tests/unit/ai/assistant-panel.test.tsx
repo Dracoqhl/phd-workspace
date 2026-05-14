@@ -19,7 +19,7 @@ describe("AiAssistantPanel", () => {
     expect(screen.getByRole("button", { name: "Test AI" })).toBeInTheDocument();
     expect(screen.getByLabelText("AI message")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Send" })).toBeInTheDocument();
-    expect(screen.getByRole("complementary", { name: "AI 助手" })).toHaveClass("lg:sticky");
+    expect(screen.getByRole("complementary", { name: "AI 助手" })).toHaveClass("flex-1");
     expect(screen.getByRole("log", { name: "AI conversation history" })).toHaveClass("overflow-y-auto", "overscroll-contain");
     expect(screen.getByText("Not tested")).toBeInTheDocument();
   });

@@ -64,11 +64,16 @@ describe("workspace page shell", () => {
   });
 
   it("renders the workspace regions when authenticated", () => {
-    render(<WorkspacePageContent authenticated={true} />);
+    render(<WorkspacePageContent authenticated={true} user={{ email: "admin@example.com", role: "admin" }} />);
 
     expect(screen.getByRole("heading", { name: "博士工作台" })).toBeInTheDocument();
     expect(screen.getByText("2026-05-08")).toBeInTheDocument();
     expect(screen.getByRole("status", { name: "Data sync status" })).toHaveTextContent("Synced");
+    expect(screen.getByLabelText("Workspace status")).toContainElement(
+      screen.getByRole("status", { name: "Data sync status" })
+    );
+    expect(screen.getByLabelText("Account controls")).toHaveTextContent("admin@example.com");
+    expect(screen.getByLabelText("Account controls")).toContainElement(screen.getByRole("button", { name: "Logout" }));
     expect(screen.getByRole("region", { name: "任务管理" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "每日健康习惯" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "心灵关怀" })).toBeInTheDocument();

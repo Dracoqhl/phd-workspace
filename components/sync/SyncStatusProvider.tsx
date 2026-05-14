@@ -59,15 +59,8 @@ export function useSyncStatus() {
 export function SyncStatusBadge() {
   const { status, lastSyncedAt, error } = useSyncStatus();
 
-  const label =
-    status === "saving"
-      ? "Saving..."
-      : status === "failed"
-        ? "Sync failed"
-        : lastSyncedAt
-          ? `Synced ${formatTime(lastSyncedAt)}`
-          : "Synced";
-  const title = status === "failed" ? error ?? "Sync failed" : label;
+  const label = status === "saving" ? "Saving" : status === "failed" ? "Failed" : "Synced";
+  const title = status === "failed" ? error ?? "Sync failed" : lastSyncedAt ? `Synced ${formatTime(lastSyncedAt)}` : label;
   const className =
     status === "saving"
       ? "border-amber-200 bg-amber-50 text-amber-700"
@@ -78,7 +71,7 @@ export function SyncStatusBadge() {
   return (
     <span
       aria-label="Data sync status"
-      className={`inline-flex h-8 items-center rounded-md border px-2.5 text-xs font-semibold ${className}`}
+      className={`inline-flex h-8 w-28 items-center justify-center rounded-md border px-2.5 text-xs font-semibold ${className}`}
       role="status"
       title={title}
     >
