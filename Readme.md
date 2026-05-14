@@ -163,8 +163,6 @@ Each runtime JSON file is a versioned collection:
 }
 ```
 
-The same empty example shapes are stored in `data.example/`.
-
 For multi-user mode, set `DATABASE_PATH` to an absolute SQLite file path outside this repo. Back up this SQLite file regularly.
 
 To migrate existing single-user JSON data into the admin account:
@@ -197,22 +195,23 @@ Git should include:
 - tests
 - project documentation
 - example config such as `.env.example`
-- example data shapes under `data.example/`
 
 Git must not include:
 
 - real runtime JSON data
+- runtime SQLite databases
 - `.env` secret files
 - API keys
 - access passwords
 - logs
 - build output
+- local agent or planning artifacts such as `AGENT.md`, `docs/superpowers/`, `.agents/`, `.codex/`, and `.superpowers/`
 
 Recommended first-time setup after creating the GitHub repository:
 
 ```bash
 git init
-git add AGENT.md Readme.md architecture.md .gitignore .env.example
+git add Readme.md architecture.md .gitignore .env.example
 git commit -m "Initialize project documentation"
 git branch -M main
 git remote add origin git@github.com:<your-user>/<your-repo>.git
@@ -229,12 +228,10 @@ git remote add origin https://github.com/<your-user>/<your-repo>.git
 
 The project is in MVP implementation. Current dev status includes a versioned data foundation, auth routes, a login shell, protected task APIs, task management UI, daily habit management UI, an AI-backed mental care refresh with fallback, AI API testing, AI chat, selectable AI operation proposals, confirmed AI writes, and AI action logging. Stage A added the first tested server-side modules, Stage B added the first runnable Next.js app shell, the task slice connects the shell to local JSON task data, Stage C adds daily health habits, Stage D starts mental care, Stage E adds AI configuration testing, Stage F starts real AI care generation, and Stage G adds AI chat plus confirmed proposal execution:
 
-- `AGENT.md`: maintainer context and confirmed decisions.
 - `architecture.md`: planned directory layout and file placement rules.
 - `Readme.md`: project overview, MVP scope, and setup expectations.
 - `.gitignore`: Git ignore rules for dependencies, secrets, build output, logs, and runtime data.
 - `.env.example`: example environment variable names without real secrets.
-- `data.example/`: versioned empty collection JSON examples for all runtime data files.
 - `.eslintrc.cjs`: ESLint configuration for the current TypeScript-only scaffolding stage.
 - `app/layout.tsx`: root App Router layout and metadata.
 - `app/page.tsx`: single-page workspace shell with care, habit, task, AI assistant regions, and the current habit business date in the page header.
@@ -270,4 +267,4 @@ Every development change should keep documentation current:
 
 - Update `Readme.md` when setup, scripts, environment variables, deployment, or user-facing scope changes.
 - Update `architecture.md` when directories, file placement rules, module boundaries, or dependency rules change.
-- Update `AGENT.md` when important product or implementation decisions are confirmed.
+- Update local `AGENT.md` when important product or implementation decisions are confirmed. It is intentionally ignored by Git.

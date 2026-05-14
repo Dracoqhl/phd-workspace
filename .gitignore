@@ -25,8 +25,12 @@ tsconfig.tsbuildinfo
 # Non-standard Git metadata workaround directories, if ever used in restricted environments.
 .gitdir/
 
-# Local brainstorming/mockup artifacts.
-.superpowers/
+# Local agent and planning artifacts.
+AGENT.md
+/docs/superpowers/
+/.agents/
+/.codex/
+/.superpowers/
 
 # Logs
 npm-debug.log*

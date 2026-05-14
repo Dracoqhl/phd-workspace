@@ -6,7 +6,6 @@ This document defines the intended project layout and file placement rules for å
 
 ```text
 phd-workspace/
-  AGENT.md
   Readme.md
   architecture.md
   package.json
@@ -121,14 +120,6 @@ phd-workspace/
     care.ts
     assistant.ts
     trash.ts
-
-  data.example/
-    tasks.json
-    habits.json
-    habit-checkins.json
-    care-records.json
-    ai-logs.json
-    trash.json
 
   docs/
     prd.md
@@ -279,20 +270,13 @@ Owns shared TypeScript types.
 - Types here should describe domain entities and API payloads.
 - Avoid importing runtime modules from `types/`.
 
-### `data.example/`
-
-Contains example JSON file shapes only.
-
-- Each example file is a versioned collection with `{ "schemaVersion": 1, "items": [] }`.
-- Real runtime data must live outside the repo in `DATA_DIR`.
-- Do not commit real personal data.
-
 ### `docs/`
 
 Stores product and planning documents.
 
 - The PRD should live in `docs/prd.md` once formalized.
 - Architecture changes belong in root `architecture.md`.
+- Local Superpowers planning artifacts under `docs/superpowers/` are developer-local and intentionally ignored by Git.
 
 ### `tests/`
 
@@ -335,27 +319,27 @@ Recommended responsibilities:
 
 ## Git Boundaries
 
-Git is used for source code, project documentation, tests, and example data shapes only.
+Git is used for source code, project documentation, tests, scripts, and non-secret configuration examples only.
 
 Commit these:
 
 - application source code
 - tests
-- `AGENT.md`
 - `Readme.md`
 - `architecture.md`
 - product docs under `docs/`
-- example JSON shapes under `data.example/`
 - `.env.example`
 
 Do not commit these:
 
 - real runtime data under `DATA_DIR`
+- runtime SQLite databases under `data/`
 - `.env` or `.env.*` secret files, except `.env.example`
 - AI API keys
 - access passwords
 - build output such as `.next/`, `dist/`, `build/`, `coverage/`
 - logs
+- local agent or planning artifacts such as `AGENT.md`, `docs/superpowers/`, `.agents/`, `.codex/`, and `.superpowers/`
 
 If a new generated directory or runtime file appears during development, add it to `.gitignore` before committing.
 
@@ -404,4 +388,4 @@ Trash entries should include:
 - Update this file when changing dependency rules or module ownership.
 - Update this file when Git boundaries or ignored runtime paths change.
 - Update `Readme.md` when setup, scripts, environment variables, deployment, or user-facing scope changes.
-- Update `AGENT.md` when important project decisions are confirmed.
+- Update local `AGENT.md` when important project decisions are confirmed. It is intentionally ignored by Git.
