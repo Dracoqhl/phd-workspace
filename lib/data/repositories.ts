@@ -539,7 +539,15 @@ function isAiActionLog(value: unknown): value is AiActionLog {
 }
 
 function isTaskStatus(value: unknown): value is Task["status"] {
-  return value === "not_started" || value === "in_progress" || value === "paused" || value === "completed";
+  return (
+    value === "not_started" ||
+    value === "next" ||
+    value === "in_progress" ||
+    value === "waiting" ||
+    value === "blocked" ||
+    value === "paused" ||
+    value === "completed"
+  );
 }
 
 function isTaskPriority(value: unknown): value is Task["priority"] {

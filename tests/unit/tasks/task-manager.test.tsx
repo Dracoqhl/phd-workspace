@@ -253,13 +253,30 @@ describe("TaskManager", () => {
 
     render(<TaskManager />);
 
-    const priority = await screen.findByLabelText("Priority for Draft dissertation chapter: High");
+    const priorityButton = await screen.findByRole("button", { name: "High priority for Draft dissertation chapter" });
+    fireEvent.click(priorityButton);
+    const priority = screen.getByLabelText("Priority for Draft dissertation chapter");
     fireEvent.change(priority, { target: { value: "low" } });
 
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/tasks/task_1",
       expect.objectContaining({ method: "PATCH", body: JSON.stringify({ priority: "low" }) })
     );
+  });
+
+  it("updates status from the colored status control", async () => {
+    const fetchMock = mockFetch([task({ id: "task_1", status: "in_progress" })]);
+
+    render(<TaskManager />);
+
+    const status = await screen.findByLabelText("Status for Draft dissertation chapter");
+    fireEvent.change(status, { target: { value: "blocked" } });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/tasks/task_1",
+      expect.objectContaining({ method: "PATCH", body: JSON.stringify({ status: "blocked" }) })
+    );
+    expect(await screen.findByText("Blocked")).toBeInTheDocument();
   });
 
   it("marks a top-level task complete from the compact row control", async () => {
@@ -302,7 +319,7 @@ describe("TaskManager", () => {
 
     const row = screen.getByRole("row", { name: /Draft dissertation chapter/ });
     expect(row).toHaveAttribute("aria-busy", "true");
-    expect(row).toHaveTextContent("Completed");
+    expect(row).toHaveTextContent("Done");
     expect(screen.getByRole("button", { name: "Reopen task Draft dissertation chapter" })).toBeInTheDocument();
 
     pending.resolve(Response.json({ task: task({ id: "task_1", status: "completed", completedAt: now }) }));
@@ -325,10 +342,13 @@ describe("TaskManager", () => {
 
   it("shows a calendar icon when due date is empty and saves a selected date", async () => {
     const fetchMock = mockFetch([task({ id: "task_1", dueDate: null })]);
+    const showPicker = vi.fn();
+    HTMLInputElement.prototype.showPicker = showPicker;
 
     render(<TaskManager />);
 
     fireEvent.click(await screen.findByRole("button", { name: "Set due date for Draft dissertation chapter" }));
+    expect(showPicker).toHaveBeenCalledTimes(1);
     fireEvent.change(screen.getByLabelText("Due date for Draft dissertation chapter"), {
       target: { value: "2026-05-18" }
     });
@@ -341,10 +361,13 @@ describe("TaskManager", () => {
 
   it("clicks an existing due date to edit it", async () => {
     const fetchMock = mockFetch([task({ id: "task_1", dueDate: "2026-05-09" })]);
+    const showPicker = vi.fn();
+    HTMLInputElement.prototype.showPicker = showPicker;
 
     render(<TaskManager />);
 
     fireEvent.click(await screen.findByRole("button", { name: "Edit due date for Draft dissertation chapter" }));
+    expect(showPicker).toHaveBeenCalledTimes(1);
     fireEvent.change(screen.getByLabelText("Due date for Draft dissertation chapter"), {
       target: { value: "2026-05-20" }
     });

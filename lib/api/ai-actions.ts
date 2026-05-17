@@ -269,7 +269,15 @@ function parseActionType(value: unknown): AiActionType | null {
 
 function parseStatus(value: unknown, fallback?: TaskStatus): TaskStatus {
   if (value === undefined && fallback) return fallback;
-  if (value === "not_started" || value === "in_progress" || value === "paused" || value === "completed") return value;
+  if (
+    value === "not_started" ||
+    value === "next" ||
+    value === "in_progress" ||
+    value === "waiting" ||
+    value === "blocked" ||
+    value === "paused" ||
+    value === "completed"
+  ) return value;
   throw new Error("Invalid task status");
 }
 

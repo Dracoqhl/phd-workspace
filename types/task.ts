@@ -1,4 +1,4 @@
-export type TaskStatus = "not_started" | "in_progress" | "paused" | "completed";
+export type TaskStatus = "not_started" | "next" | "in_progress" | "waiting" | "blocked" | "paused" | "completed";
 
 export type TaskPriority = "low" | "medium" | "high";
 

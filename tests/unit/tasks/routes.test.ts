@@ -72,14 +72,14 @@ describe("task routes", () => {
     const patchResponse = await updateTask(
       authRequest(`${baseUrl}/api/tasks/${task.id}`, {
         method: "PATCH",
-        body: JSON.stringify({ status: "completed", priority: "medium" })
+        body: JSON.stringify({ status: "blocked", priority: "medium" })
       }),
       { params: { id: task.id } }
     );
     const patched = (await patchResponse.json()) as { task: { status: string; completedAt: string | null } };
     expect(patchResponse.status).toBe(200);
-    expect(patched.task.status).toBe("completed");
-    expect(patched.task.completedAt).toEqual(expect.any(String));
+    expect(patched.task.status).toBe("blocked");
+    expect(patched.task.completedAt).toBeNull();
 
     const deleteResponse = await deleteTask(authRequest(`${baseUrl}/api/tasks/${task.id}`, { method: "DELETE" }), {
       params: { id: task.id }

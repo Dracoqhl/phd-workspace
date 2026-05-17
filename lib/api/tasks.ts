@@ -119,7 +119,13 @@ function parseStatus(value: unknown, fallback?: TaskStatus): TaskStatus | null {
     return fallback ?? null;
   }
 
-  return value === "not_started" || value === "in_progress" || value === "paused" || value === "completed"
+  return value === "not_started" ||
+    value === "next" ||
+    value === "in_progress" ||
+    value === "waiting" ||
+    value === "blocked" ||
+    value === "paused" ||
+    value === "completed"
     ? value
     : null;
 }
