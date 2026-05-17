@@ -5,12 +5,15 @@ import { join } from "node:path";
 
 import { POST as chat } from "@/app/api/ai/chat/route";
 import { POST as confirmActions } from "@/app/api/ai/actions/confirm/route";
+import { DELETE as clearChatHistory, GET as getChatHistory } from "@/app/api/ai/chat/history/route";
 import { GET as getAiLogs } from "@/app/api/ai/logs/route";
 import { POST as login } from "@/app/api/auth/login/route";
 import { POST as testAi } from "@/app/api/ai/test/route";
 import { createFallbackCareRecord } from "@/lib/domain/care";
 import { getHabitBusinessDate } from "@/lib/domain/habits";
 import { createRepositories } from "@/lib/data/repositories";
+import { closeDatabase, getDatabase } from "@/lib/db/database";
+import { ensureDatabaseSchema } from "@/lib/db/schema";
 
 const appPassword = "correct-password";
 const sessionSecret = "session-secret";
@@ -31,6 +34,7 @@ afterEach(() => {
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
   vi.useRealTimers();
+  closeDatabase();
 
   if (dataDir) {
     const dir = dataDir;
@@ -262,6 +266,95 @@ describe("AI chat route", () => {
     const repositories = createRepositories(dataDir);
     await expect(repositories.tasks.list()).resolves.toEqual([]);
     await expect(repositories.aiLogs.list()).resolves.toHaveLength(1);
+  });
+
+  it("persists multi-user chat messages and returns only the current user's recent history", async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), "phd-ai-history-"));
+    dataDir = tempDir;
+    vi.stubEnv("DATABASE_PATH", join(tempDir, "workspace.sqlite"));
+    vi.stubEnv("ADMIN_EMAIL", "admin@example.com");
+    vi.stubEnv("ADMIN_PASSWORD", "admin-password");
+    ensureDatabaseSchema(getDatabase());
+    const adminCookie = await loginAndGetCookie("admin@example.com", "admin-password");
+
+    vi.stubEnv("AI_API_KEY", "secret-key");
+    vi.stubEnv("AI_MODEL", "test-model");
+    vi.stubEnv("AI_BASE_URL", "https://example.test/v1/");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(Response.json({ choices: [{ message: { content: "这是你的历史回复。" } }] }))
+    );
+
+    const response = await chat(
+      authRequest(`${baseUrl}/api/ai/chat`, {
+        method: "POST",
+        headers: { Cookie: adminCookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ message: "请记住这段对话" })
+      })
+    );
+    expect(response.status).toBe(200);
+
+    const historyResponse = await getChatHistory(authRequest(`${baseUrl}/api/ai/chat/history`, { headers: { Cookie: adminCookie } }));
+    expect(historyResponse.status).toBe(200);
+    await expect(historyResponse.json()).resolves.toMatchObject({
+      messages: [
+        { role: "user", content: "请记住这段对话" },
+        { role: "assistant", content: "这是你的历史回复。" }
+      ]
+    });
+
+    const otherCookie = await registerAndGetCookie("other@example.com", "other-password");
+    const otherHistoryResponse = await getChatHistory(authRequest(`${baseUrl}/api/ai/chat/history`, { headers: { Cookie: otherCookie } }));
+    expect(otherHistoryResponse.status).toBe(200);
+    await expect(otherHistoryResponse.json()).resolves.toEqual({ messages: [] });
+  });
+
+  it("clears only the current user's chat history", async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), "phd-ai-history-"));
+    dataDir = tempDir;
+    vi.stubEnv("DATABASE_PATH", join(tempDir, "workspace.sqlite"));
+    vi.stubEnv("ADMIN_EMAIL", "admin@example.com");
+    vi.stubEnv("ADMIN_PASSWORD", "admin-password");
+    ensureDatabaseSchema(getDatabase());
+    const adminCookie = await loginAndGetCookie("admin@example.com", "admin-password");
+    const otherCookie = await registerAndGetCookie("other@example.com", "other-password");
+
+    vi.stubEnv("AI_API_KEY", "secret-key");
+    vi.stubEnv("AI_MODEL", "test-model");
+    vi.stubEnv("AI_BASE_URL", "https://example.test/v1/");
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(Response.json({ choices: [{ message: { content: "管理员回复" } }] }))
+      .mockResolvedValueOnce(Response.json({ choices: [{ message: { content: "其他用户回复" } }] }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await chat(authRequest(`${baseUrl}/api/ai/chat`, {
+      method: "POST",
+      headers: { Cookie: adminCookie, "Content-Type": "application/json" },
+      body: JSON.stringify({ message: "管理员消息" })
+    }));
+    await chat(authRequest(`${baseUrl}/api/ai/chat`, {
+      method: "POST",
+      headers: { Cookie: otherCookie, "Content-Type": "application/json" },
+      body: JSON.stringify({ message: "其他用户消息" })
+    }));
+
+    const clearResponse = await clearChatHistory(authRequest(`${baseUrl}/api/ai/chat/history`, {
+      method: "DELETE",
+      headers: { Cookie: adminCookie }
+    }));
+    expect(clearResponse.status).toBe(200);
+    await expect(clearResponse.json()).resolves.toEqual({ ok: true });
+
+    const adminHistory = await getChatHistory(authRequest(`${baseUrl}/api/ai/chat/history`, { headers: { Cookie: adminCookie } }));
+    await expect(adminHistory.json()).resolves.toEqual({ messages: [] });
+
+    const otherHistory = await getChatHistory(authRequest(`${baseUrl}/api/ai/chat/history`, { headers: { Cookie: otherCookie } }));
+    await expect(otherHistory.json()).resolves.toMatchObject({
+      messages: [
+        { role: "user", content: "其他用户消息" },
+        { role: "assistant", content: "其他用户回复" }
+      ]
+    });
   });
 });
 
@@ -524,6 +617,23 @@ function jsonRequest(url: string, body: unknown): Request {
     },
     body: JSON.stringify(body)
   });
+}
+
+async function loginAndGetCookie(email: string, password: string): Promise<string> {
+  const response = await login(jsonRequest(`${baseUrl}/api/auth/login`, { email, password }));
+  expect(response.status).toBe(200);
+  return getSessionCookie(response);
+}
+
+async function registerAndGetCookie(email: string, password: string): Promise<string> {
+  const { POST: createInvite } = await import("@/app/api/admin/invites/route");
+  const { POST: register } = await import("@/app/api/auth/register/route");
+  const adminCookie = await loginAndGetCookie("admin@example.com", "admin-password");
+  const inviteResponse = await createInvite(new Request(`${baseUrl}/api/admin/invites`, { method: "POST", headers: { Cookie: adminCookie } }));
+  const { invite } = (await inviteResponse.json()) as { invite: { code: string } };
+  const response = await register(jsonRequest(`${baseUrl}/api/auth/register`, { email, password, inviteCode: invite.code }));
+  expect(response.status).toBe(201);
+  return getSessionCookie(response);
 }
 
 function getSessionCookie(response: Response): string {

@@ -29,8 +29,57 @@ describe("AiAssistantPanel", () => {
     expect(screen.getByText("Not tested")).toBeInTheDocument();
   });
 
+  it("loads saved chat history when the assistant opens", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        Response.json({
+          messages: [
+            { id: "history_user", role: "user", content: "昨天的计划", createdAt: "2026-05-18T08:00:00.000Z" },
+            { id: "history_assistant", role: "assistant", content: "继续完成实验记录。", createdAt: "2026-05-18T08:00:01.000Z" }
+          ]
+        })
+      )
+    );
+
+    render(<AiAssistantPanel />);
+
+    expect(await screen.findByText("昨天的计划")).toBeInTheDocument();
+    expect(screen.getByText("继续完成实验记录。")).toBeInTheDocument();
+    expect(fetch).toHaveBeenCalledWith("/api/ai/chat/history");
+  });
+
+  it("clears saved chat history from the assistant panel", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input) === "/api/ai/chat/history" && init?.method === "DELETE") {
+        return Response.json({ ok: true });
+      }
+
+      return Response.json({
+        messages: [{ id: "history_user", role: "user", content: "需要清空的历史", createdAt: "2026-05-18T08:00:00.000Z" }]
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<AiAssistantPanel />);
+
+    expect(await screen.findByText("需要清空的历史")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Clear chat history" }));
+
+    await waitFor(() => expect(screen.queryByText("需要清空的历史")).not.toBeInTheDocument());
+    expect(screen.getByText("可以问我如何安排今天、拆解任务或整理当前任务。")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith("/api/ai/chat/history", { method: "DELETE" });
+  });
+
   it("shows a successful API test result", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json({ ok: true, model: "test-model" })));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) =>
+        String(input) === "/api/ai/chat/history"
+          ? Response.json({ messages: [] })
+          : Response.json({ ok: true, model: "test-model" })
+      )
+    );
 
     render(<AiAssistantPanel />);
 
@@ -41,7 +90,14 @@ describe("AiAssistantPanel", () => {
   });
 
   it("shows a clear unavailable result", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json({ ok: false, error: "AI is not configured" })));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) =>
+        String(input) === "/api/ai/chat/history"
+          ? Response.json({ messages: [] })
+          : Response.json({ ok: false, error: "AI is not configured" })
+      )
+    );
 
     render(<AiAssistantPanel />);
 
@@ -51,7 +107,11 @@ describe("AiAssistantPanel", () => {
   });
 
   it("sends a chat message and renders the assistant reply", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(Response.json({ ok: true, reply: "先完成一个最小任务。" }));
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) =>
+      String(input) === "/api/ai/chat/history"
+        ? Response.json({ messages: [] })
+        : Response.json({ ok: true, reply: "先完成一个最小任务。" })
+    );
     vi.stubGlobal("fetch", fetchMock);
 
     render(<AiAssistantPanel />);
@@ -71,7 +131,9 @@ describe("AiAssistantPanel", () => {
   });
 
   it("sends the chat message with Ctrl or Command plus Enter while plain Enter keeps editing", async () => {
-    const fetchMock = vi.fn().mockResolvedValue(Response.json({ ok: true, reply: "收到。" }));
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) =>
+      String(input) === "/api/ai/chat/history" ? Response.json({ messages: [] }) : Response.json({ ok: true, reply: "收到。" })
+    );
     vi.stubGlobal("fetch", fetchMock);
 
     render(<AiAssistantPanel />);
@@ -79,7 +141,7 @@ describe("AiAssistantPanel", () => {
     const input = screen.getByLabelText("AI message");
     fireEvent.change(input, { target: { value: "第一行\n第二行" } });
     fireEvent.keyDown(input, { key: "Enter" });
-    expect(fetchMock).not.toHaveBeenCalled();
+    expect(fetchMock).toHaveBeenCalledWith("/api/ai/chat/history");
 
     fireEvent.keyDown(input, { key: "Enter", ctrlKey: true });
     expect(await screen.findByText("收到。")).toBeInTheDocument();
@@ -95,11 +157,13 @@ describe("AiAssistantPanel", () => {
   it("preserves user line breaks and renders assistant markdown", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue(
-        Response.json({
-          ok: true,
-          reply: "**建议**\n\n- 先完成引言\n- 再整理实验"
-        })
+      vi.fn(async (input: RequestInfo | URL) =>
+        String(input) === "/api/ai/chat/history"
+          ? Response.json({ messages: [] })
+          : Response.json({
+              ok: true,
+              reply: "**建议**\n\n- 先完成引言\n- 再整理实验"
+            })
       )
     );
 
@@ -122,7 +186,12 @@ describe("AiAssistantPanel", () => {
     const pendingResponse = new Promise<Response>((resolve) => {
       resolveFetch = resolve;
     });
-    vi.stubGlobal("fetch", vi.fn().mockReturnValue(pendingResponse));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((input: RequestInfo | URL) =>
+        String(input) === "/api/ai/chat/history" ? Promise.resolve(Response.json({ messages: [] })) : pendingResponse
+      )
+    );
 
     render(<AiAssistantPanel />);
 
@@ -165,6 +234,10 @@ describe("AiAssistantPanel", () => {
             }
           ]
         });
+      }
+
+      if (url === "/api/ai/chat/history") {
+        return Response.json({ messages: [] });
       }
 
       if (url === "/api/ai/actions/confirm") {
@@ -211,7 +284,14 @@ describe("AiAssistantPanel", () => {
   });
 
   it("renders a chat failure as an assistant message", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json({ ok: false, error: "AI is not configured" })));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) =>
+        String(input) === "/api/ai/chat/history"
+          ? Response.json({ messages: [] })
+          : Response.json({ ok: false, error: "AI is not configured" })
+      )
+    );
 
     render(<AiAssistantPanel />);
 
@@ -224,7 +304,12 @@ describe("AiAssistantPanel", () => {
 
   it("can send chat messages when crypto.randomUUID is unavailable", async () => {
     vi.stubGlobal("crypto", {});
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json({ ok: true, reply: "收到。" })));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) =>
+        String(input) === "/api/ai/chat/history" ? Response.json({ messages: [] }) : Response.json({ ok: true, reply: "收到。" })
+      )
+    );
 
     render(<AiAssistantPanel />);
 

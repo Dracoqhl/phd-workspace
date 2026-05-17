@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import type { AiConfig } from "@/lib/ai/config";
 import type { AiActionProposal, AiActionRiskLevel, AiActionType } from "@/types/assistant";
+import type { AiChatMessage } from "@/types/ai-chat";
 
 export interface AiAssistantContext {
   today: string;
@@ -34,7 +35,7 @@ export interface AiAssistantResult {
 
 export async function generateAiAssistantReply(
   config: AiConfig,
-  input: { userMessage: string; context: AiAssistantContext }
+  input: { userMessage: string; context: AiAssistantContext; history?: AiChatMessage[] }
 ): Promise<AiAssistantResult | null> {
   try {
     const response = await fetch(`${config.baseUrl}/chat/completions`, {
@@ -55,6 +56,18 @@ export async function generateAiAssistantReply(
             role: "user",
             content: `Current workspace context:\n${JSON.stringify(input.context, null, 2)}`
           },
+          ...(input.history && input.history.length > 0
+            ? [
+                {
+                  role: "user",
+                  content: `Recent chat history:\n${JSON.stringify(
+                    input.history.map((message) => ({ role: message.role, content: message.content })),
+                    null,
+                    2
+                  )}`
+                }
+              ]
+            : []),
           {
             role: "user",
             content: input.userMessage

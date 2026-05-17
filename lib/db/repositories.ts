@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import type { SqliteDatabase } from "@/lib/db/database";
 import type { AiActionLog } from "@/types/assistant";
+import type { AiChatMessage } from "@/types/ai-chat";
 import type { CareRecord } from "@/types/care";
 import type { CreateHabitInput, Habit, HabitCheckin, UpdateHabitInput } from "@/types/habit";
 import type { CreateTaskInput, Task, UpdateTaskInput } from "@/types/task";
@@ -15,7 +16,8 @@ export function createSqliteRepositories(db: SqliteDatabase, userId: string) {
     habits: new SqliteHabitRepository(db, userId),
     habitCheckins: new SqliteHabitCheckinRepository(db, userId),
     careRecords: new SqliteCareRecordRepository(db, userId),
-    aiLogs: new SqliteAiLogRepository(db, userId)
+    aiLogs: new SqliteAiLogRepository(db, userId),
+    aiChatMessages: new SqliteAiChatMessageRepository(db, userId)
   };
 }
 
@@ -292,6 +294,49 @@ class SqliteAiLogRepository {
   }
 }
 
+class SqliteAiChatMessageRepository {
+  constructor(
+    private readonly db: SqliteDatabase,
+    private readonly userId: string
+  ) {}
+
+  async listRecent(limit = 50): Promise<AiChatMessage[]> {
+    const normalizedLimit = Math.min(Math.max(Math.trunc(limit), 1), 100);
+    const rows = this.db
+      .prepare(
+        `SELECT * FROM (
+           SELECT * FROM ai_chat_messages
+           WHERE user_id = ?
+           ORDER BY created_at DESC
+           LIMIT ?
+         )
+         ORDER BY created_at ASC`
+      )
+      .all(this.userId, normalizedLimit) as AiChatMessageRow[];
+    return rows.map(mapAiChatMessage);
+  }
+
+  async add(input: Pick<AiChatMessage, "role" | "content">): Promise<AiChatMessage> {
+    const message: AiChatMessage = {
+      id: randomUUID(),
+      role: input.role,
+      content: input.content,
+      createdAt: new Date().toISOString()
+    };
+    this.db
+      .prepare(
+        `INSERT INTO ai_chat_messages (id, user_id, role, content, created_at)
+         VALUES (@id, @userId, @role, @content, @createdAt)`
+      )
+      .run({ ...message, userId: this.userId });
+    return message;
+  }
+
+  async clear(): Promise<void> {
+    this.db.prepare("DELETE FROM ai_chat_messages WHERE user_id = ?").run(this.userId);
+  }
+}
+
 class SqliteTrashRepository {
   constructor(
     private readonly db: SqliteDatabase,
@@ -379,6 +424,13 @@ interface AiLogRow {
   created_at: string;
 }
 
+interface AiChatMessageRow {
+  id: string;
+  role: AiChatMessage["role"];
+  content: string;
+  created_at: string;
+}
+
 interface TrashRow {
   id: string;
   deleted_type: string;
@@ -459,6 +511,15 @@ function mapAiLog(row: AiLogRow): AiActionLog {
     actionType: row.action_type,
     actionPayload: JSON.parse(row.action_payload) as Record<string, unknown>,
     status: row.status,
+    createdAt: row.created_at
+  };
+}
+
+function mapAiChatMessage(row: AiChatMessageRow): AiChatMessage {
+  return {
+    id: row.id,
+    role: row.role,
+    content: row.content,
     createdAt: row.created_at
   };
 }

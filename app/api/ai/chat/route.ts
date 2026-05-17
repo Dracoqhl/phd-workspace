@@ -44,11 +44,19 @@ export async function POST(request: Request): Promise<Response> {
     return dataConfigErrorResponse();
   }
 
-  const context = await buildAiWorkspaceContext(repositories);
-  const result = await generateAiAssistantReply(config, { userMessage: input.message, context });
+  const [context, history] = await Promise.all([
+    buildAiWorkspaceContext(repositories),
+    "aiChatMessages" in repositories ? repositories.aiChatMessages.listRecent(20) : Promise.resolve([])
+  ]);
+  const result = await generateAiAssistantReply(config, { userMessage: input.message, context, history });
 
   if (!result) {
     return Response.json({ ok: false, error: AI_CHAT_FAILED });
+  }
+
+  if ("aiChatMessages" in repositories) {
+    await repositories.aiChatMessages.add({ role: "user", content: input.message });
+    await repositories.aiChatMessages.add({ role: "assistant", content: result.reply });
   }
 
   await Promise.all(

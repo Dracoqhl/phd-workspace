@@ -1,7 +1,7 @@
 "use client";
 
 import { CheckCircle2, PlugZap, Send, XCircle } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 
 import type { AiActionProposal, AiActionStatus } from "@/types/assistant";
@@ -17,6 +17,15 @@ interface AiChatResponse {
   reply?: string;
   proposals?: AiActionProposal[];
   error?: string;
+}
+
+interface AiChatHistoryResponse {
+  messages?: Array<{
+    id: string;
+    role: "user" | "assistant";
+    content: string;
+    createdAt: string;
+  }>;
 }
 
 interface ChatMessage {
@@ -45,6 +54,34 @@ export function AiAssistantPanel() {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
+  const [clearingHistory, setClearingHistory] = useState(false);
+
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadHistory() {
+      try {
+        const response = await fetch("/api/ai/chat/history");
+        if (!response.ok) return;
+        const payload = (await response.json()) as AiChatHistoryResponse;
+        if (ignore || !Array.isArray(payload.messages)) return;
+        const historyMessages: ChatMessage[] = payload.messages.map((message) => ({
+            id: message.id,
+            role: message.role,
+            content: message.content,
+            status: "done"
+        }));
+        setChatMessages((current) => (current.length > 0 ? current : historyMessages));
+      } catch {
+        // History is a convenience; chat remains usable if loading fails.
+      }
+    }
+
+    void loadHistory();
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   async function testAi() {
     setTesting(true);
@@ -122,6 +159,20 @@ export function AiAssistantPanel() {
     }
   }
 
+  async function clearChatHistory() {
+    if (clearingHistory || chatMessages.length === 0) return;
+
+    setClearingHistory(true);
+    try {
+      const response = await fetch("/api/ai/chat/history", { method: "DELETE" });
+      if (response.ok) {
+        setChatMessages([]);
+      }
+    } finally {
+      setClearingHistory(false);
+    }
+  }
+
   const statusClass =
     isConnected === true
       ? "border-emerald-200 bg-emerald-50 text-emerald-700"
@@ -136,15 +187,28 @@ export function AiAssistantPanel() {
     >
       <div className="flex items-center justify-between gap-3">
         <h2 className="text-base font-semibold text-ink">AI 助手</h2>
-        <button
-          className="inline-flex h-8 items-center gap-1.5 rounded-md border border-slate-200 px-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
-          disabled={testing}
-          onClick={() => void testAi()}
-          type="button"
-        >
-          <PlugZap aria-hidden="true" size={14} />
-          Test AI
-        </button>
+        <div className="flex items-center gap-2">
+          {chatMessages.length > 0 ? (
+            <button
+              aria-label="Clear chat history"
+              className="inline-flex h-8 items-center rounded-md border border-slate-200 px-2 text-xs font-semibold text-slate-500 hover:bg-slate-50 disabled:opacity-60"
+              disabled={clearingHistory}
+              onClick={() => void clearChatHistory()}
+              type="button"
+            >
+              Clear
+            </button>
+          ) : null}
+          <button
+            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-slate-200 px-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+            disabled={testing}
+            onClick={() => void testAi()}
+            type="button"
+          >
+            <PlugZap aria-hidden="true" size={14} />
+            Test AI
+          </button>
+        </div>
       </div>
       <p className={`mt-3 rounded-md border px-3 py-2 text-sm ${statusClass}`} role="status">
         {message}

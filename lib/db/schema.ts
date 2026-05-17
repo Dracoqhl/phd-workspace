@@ -96,6 +96,14 @@ export function ensureDatabaseSchema(db: SqliteDatabase): void {
       created_at TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS ai_chat_messages (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      role TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
+      content TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS trash_entries (
       id TEXT PRIMARY KEY,
       user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -109,6 +117,7 @@ export function ensureDatabaseSchema(db: SqliteDatabase): void {
     CREATE INDEX IF NOT EXISTS idx_habits_user_id ON habits(user_id);
     CREATE INDEX IF NOT EXISTS idx_care_records_user_id ON care_records(user_id);
     CREATE INDEX IF NOT EXISTS idx_ai_action_logs_user_id ON ai_action_logs(user_id);
+    CREATE INDEX IF NOT EXISTS idx_ai_chat_messages_user_created_at ON ai_chat_messages(user_id, created_at);
   `);
 
   ensureAdminUser(db);
