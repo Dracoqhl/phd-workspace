@@ -353,12 +353,12 @@ export function TaskManager() {
       {!loading && topLevelTasks.length > 0 ? (
         <div aria-label="Task list" className="mt-5 overflow-hidden rounded-lg border border-slate-200" role="table">
           <div className="grid grid-cols-[2rem_minmax(0,1fr)_6.5rem_4.5rem_5.5rem_4.5rem] items-center gap-2 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-500" role="row">
-            <div aria-label="Expand" role="columnheader" />
-            <div role="columnheader">Task</div>
-            <div role="columnheader">Status</div>
-            <div role="columnheader">Priority</div>
-            <div role="columnheader">Due</div>
-            <div aria-label="Actions" role="columnheader" />
+            <div aria-label="Expand" className="text-center" role="columnheader" />
+            <div className="text-center" role="columnheader">Task</div>
+            <div className="text-center" role="columnheader">Status</div>
+            <div className="text-center" role="columnheader">Priority</div>
+            <div className="text-center" role="columnheader">Due</div>
+            <div aria-label="Actions" className="text-center" role="columnheader" />
           </div>
           {topLevelTasks.map((task) => {
             const children = tasks.filter((item) => item.parentTaskId === task.id);
@@ -557,37 +557,20 @@ function EditableTitle({ task, indent, selectedTaskId, onSelect, onSave }: { tas
 }
 
 function PrioritySelect({ task, onChange }: { task: Task; onChange: (taskId: string, priority: TaskPriority) => Promise<void> }) {
-  const [editing, setEditing] = useState(false);
   const priority = priorityOptions.find((option) => option.value === task.priority) ?? priorityOptions[1];
 
-  if (editing) {
-    return (
+  return (
+    <label className="relative inline-flex h-7 w-10 items-center justify-center rounded-md hover:bg-slate-100">
+      <span className={`h-3 w-3 rounded-full ${priorityDotClass(task.priority)}`} data-testid={`priority-dot-${task.id}`} />
       <select
-        aria-label={`Priority for ${task.title}`}
-        autoFocus
-        className={`h-7 w-[4.25rem] rounded-full border px-2 text-xs font-semibold outline-none focus:border-moss ${prioritySelectClass(task.priority)}`}
-        onBlur={() => setEditing(false)}
-        onChange={(event) => {
-          setEditing(false);
-          void onChange(task.id, event.target.value as TaskPriority);
-        }}
+        aria-label={`Priority for ${task.title}: ${priority.label}`}
+        className="absolute inset-0 cursor-pointer appearance-none opacity-0"
+        onChange={(event) => void onChange(task.id, event.target.value as TaskPriority)}
         value={task.priority}
       >
-        {priorityOptions.map((option) => <option key={option.value} value={option.value}>{priorityShortLabel(option.value)}</option>)}
+        {priorityOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
       </select>
-    );
-  }
-
-  return (
-    <button
-      aria-label={`${priority.label} priority for ${task.title}`}
-      className={`inline-flex h-7 w-[4.25rem] items-center justify-center gap-1 rounded-full border px-2 text-xs font-semibold ${priorityButtonClass(task.priority)}`}
-      onClick={() => setEditing(true)}
-      type="button"
-    >
-      <span className={`h-2 w-2 rounded-full ${priorityDotClass(task.priority)}`} />
-      {priorityShortLabel(task.priority)}
-    </button>
+    </label>
   );
 }
 
@@ -595,7 +578,7 @@ function StatusSelect({ task, onChange }: { task: Task; onChange: (taskId: strin
   return (
     <select
       aria-label={`Status for ${task.title}`}
-      className={`h-7 w-[6.25rem] rounded-full border px-2 text-xs font-semibold outline-none focus:border-moss ${statusSelectClass(task.status)}`}
+      className={`h-7 w-[6.25rem] appearance-none rounded-full border px-2 text-center text-xs font-semibold outline-none focus:border-moss ${statusSelectClass(task.status)}`}
       onChange={(event) => void onChange(task.id, event.target.value as TaskStatus)}
       value={task.status}
     >
@@ -650,7 +633,7 @@ function SubtaskInput({ parentTitle, title, onTitleChange, onCreate, onCancel }:
         <input aria-label={`New subtask for ${parentTitle}`} autoFocus className="ml-5 h-8 w-full rounded-md border border-slate-300 px-2 text-sm text-ink outline-none focus:border-moss" onChange={(event) => onTitleChange(event.target.value)} onKeyDown={handleKeyDown} value={title} />
       </div>
       <div className="text-xs text-slate-500" role="cell">Todo</div>
-      <div role="cell"><span className="inline-flex h-7 w-[4.25rem] items-center justify-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 text-xs font-semibold text-amber-700"><span className="h-2 w-2 rounded-full bg-amber-500" />Med</span></div>
+      <div role="cell"><span className="inline-block h-3 w-3 rounded-full bg-amber-500" /></div>
       <div role="cell"><Calendar aria-hidden="true" className="text-slate-400" size={16} /></div>
       <div role="cell" />
     </div>
@@ -661,24 +644,6 @@ function priorityDotClass(priority: TaskPriority): string {
   if (priority === "high") return "bg-red-500";
   if (priority === "medium") return "bg-amber-500";
   return "bg-green-500";
-}
-
-function priorityShortLabel(priority: TaskPriority): string {
-  if (priority === "high") return "High";
-  if (priority === "medium") return "Med";
-  return "Low";
-}
-
-function priorityButtonClass(priority: TaskPriority): string {
-  if (priority === "high") return "border-red-200 bg-red-50 text-red-700 hover:bg-red-100";
-  if (priority === "medium") return "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100";
-  return "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100";
-}
-
-function prioritySelectClass(priority: TaskPriority): string {
-  if (priority === "high") return "border-red-200 bg-red-50 text-red-700";
-  if (priority === "medium") return "border-amber-200 bg-amber-50 text-amber-700";
-  return "border-emerald-200 bg-emerald-50 text-emerald-700";
 }
 
 function statusSelectClass(status: TaskStatus): string {

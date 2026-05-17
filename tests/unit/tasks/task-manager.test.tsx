@@ -115,6 +115,10 @@ describe("TaskManager", () => {
     expect(screen.getByRole("columnheader", { name: "Status" })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "Priority" })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "Due" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Task" })).toHaveClass("text-center");
+    expect(screen.getByRole("columnheader", { name: "Status" })).toHaveClass("text-center");
+    expect(screen.getByRole("columnheader", { name: "Priority" })).toHaveClass("text-center");
+    expect(screen.getByRole("columnheader", { name: "Due" })).toHaveClass("text-center");
     expect(screen.getByRole("row", { name: /Draft dissertation chapter/ })).toBeInTheDocument();
     expect(screen.getByText("1/2")).toBeInTheDocument();
     expect(screen.queryByText("Collect figures")).not.toBeInTheDocument();
@@ -248,14 +252,13 @@ describe("TaskManager", () => {
     expect(fetchMock).not.toHaveBeenCalledWith("/api/tasks/task_1", expect.objectContaining({ method: "PATCH" }));
   });
 
-  it("updates priority from the compact swatch control", async () => {
-    const fetchMock = mockFetch([task({ id: "task_1", priority: "high" })]);
+  it("updates priority from the compact dot control", async () => {
+    const fetchMock = mockFetch([task({ id: "task_1", priority: "medium" })]);
 
     render(<TaskManager />);
 
-    const priorityButton = await screen.findByRole("button", { name: "High priority for Draft dissertation chapter" });
-    fireEvent.click(priorityButton);
-    const priority = screen.getByLabelText("Priority for Draft dissertation chapter");
+    const priority = await screen.findByLabelText("Priority for Draft dissertation chapter: Medium");
+    expect(screen.getByTestId("priority-dot-task_1")).toHaveClass("bg-amber-500");
     fireEvent.change(priority, { target: { value: "low" } });
 
     expect(fetchMock).toHaveBeenCalledWith(
@@ -270,6 +273,7 @@ describe("TaskManager", () => {
     render(<TaskManager />);
 
     const status = await screen.findByLabelText("Status for Draft dissertation chapter");
+    expect(status).toHaveClass("appearance-none");
     fireEvent.change(status, { target: { value: "blocked" } });
 
     expect(fetchMock).toHaveBeenCalledWith(
