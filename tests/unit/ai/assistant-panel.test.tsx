@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AiAssistantPanel } from "@/components/assistant/AiAssistantPanel";
@@ -18,9 +18,14 @@ describe("AiAssistantPanel", () => {
     expect(screen.getByRole("heading", { name: "AI 助手" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Test AI" })).toBeInTheDocument();
     expect(screen.getByLabelText("AI message")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Send" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Send message" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Send" })).not.toBeInTheDocument();
     expect(screen.getByRole("complementary", { name: "AI 助手" })).toHaveClass("flex-1");
-    expect(screen.getByRole("log", { name: "AI conversation history" })).toHaveClass("overflow-y-auto", "overscroll-contain");
+    expect(screen.getByRole("log", { name: "AI conversation history" })).toHaveClass(
+      "custom-scrollbar",
+      "overflow-y-auto",
+      "overscroll-contain"
+    );
     expect(screen.getByText("Not tested")).toBeInTheDocument();
   });
 
@@ -52,7 +57,7 @@ describe("AiAssistantPanel", () => {
     render(<AiAssistantPanel />);
 
     fireEvent.change(screen.getByLabelText("AI message"), { target: { value: "今天应该先做什么？" } });
-    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    fireEvent.click(screen.getByRole("button", { name: "Send message" }));
 
     expect(await screen.findByText("今天应该先做什么？")).toBeInTheDocument();
     expect(await screen.findByText("先完成一个最小任务。")).toBeInTheDocument();
@@ -63,6 +68,28 @@ describe("AiAssistantPanel", () => {
         body: JSON.stringify({ message: "今天应该先做什么？" })
       })
     );
+  });
+
+  it("shows a pending assistant status immediately while waiting for the reply", async () => {
+    let resolveFetch: (response: Response) => void = () => undefined;
+    const pendingResponse = new Promise<Response>((resolve) => {
+      resolveFetch = resolve;
+    });
+    vi.stubGlobal("fetch", vi.fn().mockReturnValue(pendingResponse));
+
+    render(<AiAssistantPanel />);
+
+    fireEvent.change(screen.getByLabelText("AI message"), { target: { value: "帮我拆解任务" } });
+    fireEvent.click(screen.getByRole("button", { name: "Send message" }));
+
+    expect(screen.getByText("帮我拆解任务")).toBeInTheDocument();
+    expect(screen.getByText("Thinking...")).toBeInTheDocument();
+    expect(screen.getByRole("status", { name: "AI response status" })).toHaveTextContent("Thinking...");
+
+    resolveFetch(Response.json({ ok: true, reply: "可以，先列出三步。" }));
+
+    expect(await screen.findByText("可以，先列出三步。")).toBeInTheDocument();
+    await waitFor(() => expect(screen.queryByText("Thinking...")).not.toBeInTheDocument());
   });
 
   it("renders selectable proposals and confirms checked actions", async () => {
@@ -107,11 +134,12 @@ describe("AiAssistantPanel", () => {
     render(<AiAssistantPanel />);
 
     fireEvent.change(screen.getByLabelText("AI message"), { target: { value: "帮我安排一下" } });
-    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    fireEvent.click(screen.getByRole("button", { name: "Send message" }));
 
     expect(await screen.findByText("我整理了两个建议。")).toBeInTheDocument();
     expect(screen.getByText("新增任务：整理实验数据")).toBeInTheDocument();
     expect(screen.getByText("新增习惯：喝水")).toBeInTheDocument();
+    expect(screen.getByTestId("ai-proposal-list")).toHaveClass("custom-scrollbar");
 
     fireEvent.click(screen.getByRole("checkbox", { name: "Select 新增习惯：喝水" }));
     expect(screen.getByRole("button", { name: "Apply" })).toBeInTheDocument();
@@ -141,9 +169,10 @@ describe("AiAssistantPanel", () => {
     render(<AiAssistantPanel />);
 
     fireEvent.change(screen.getByLabelText("AI message"), { target: { value: "测试" } });
-    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    fireEvent.click(screen.getByRole("button", { name: "Send message" }));
 
     expect(await screen.findByText("AI is not configured")).toBeInTheDocument();
+    expect(screen.queryByText("Thinking...")).not.toBeInTheDocument();
   });
 
   it("can send chat messages when crypto.randomUUID is unavailable", async () => {
@@ -153,7 +182,7 @@ describe("AiAssistantPanel", () => {
     render(<AiAssistantPanel />);
 
     fireEvent.change(screen.getByLabelText("AI message"), { target: { value: "公网环境测试" } });
-    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    fireEvent.click(screen.getByRole("button", { name: "Send message" }));
 
     expect(await screen.findByText("公网环境测试")).toBeInTheDocument();
     expect(await screen.findByText("收到。")).toBeInTheDocument();

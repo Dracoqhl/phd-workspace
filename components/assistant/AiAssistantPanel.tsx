@@ -22,6 +22,7 @@ interface ChatMessage {
   id: string;
   role: "user" | "assistant";
   content: string;
+  status?: "pending" | "error" | "done";
   proposals?: AiActionProposal[];
   proposalUserMessage?: string;
   actionState?: "pending" | "executed" | "rejected" | "failed";
@@ -75,8 +76,16 @@ export function AiAssistantPanel() {
       return;
     }
 
-    const userMessage: ChatMessage = { id: createChatMessageId(), role: "user", content };
-    setChatMessages((messages) => [...messages, userMessage]);
+    const userMessage: ChatMessage = { id: createChatMessageId(), role: "user", content, status: "done" };
+    const assistantMessageId = createChatMessageId();
+    const pendingAssistantMessage: ChatMessage = {
+      id: assistantMessageId,
+      role: "assistant",
+      content: "Thinking...",
+      status: "pending",
+      proposalUserMessage: content
+    };
+    setChatMessages((messages) => [...messages, userMessage, pendingAssistantMessage]);
     setDraft("");
     setSending(true);
 
@@ -90,19 +99,23 @@ export function AiAssistantPanel() {
       });
       const payload = (await response.json()) as AiChatResponse;
       const assistantMessage: ChatMessage = {
-        id: createChatMessageId(),
+        id: assistantMessageId,
         role: "assistant",
         content: payload.ok ? payload.reply ?? "" : payload.error ?? "AI chat failed",
+        status: payload.ok ? "done" : "error",
         proposals: payload.ok ? payload.proposals ?? [] : [],
         proposalUserMessage: content
       };
 
-      setChatMessages((messages) => [...messages, assistantMessage]);
+      setChatMessages((messages) => messages.map((message) => (message.id === assistantMessageId ? assistantMessage : message)));
     } catch {
-      setChatMessages((messages) => [
-        ...messages,
-        { id: createChatMessageId(), role: "assistant", content: "AI chat failed" }
-      ]);
+      setChatMessages((messages) =>
+        messages.map((message) =>
+          message.id === assistantMessageId
+            ? { ...message, content: "AI chat failed", status: "error", proposals: [] }
+            : message
+        )
+      );
     } finally {
       setSending(false);
     }
@@ -139,7 +152,7 @@ export function AiAssistantPanel() {
       <div className="mt-4 flex min-h-0 flex-1 flex-col gap-3">
         <div
           aria-label="AI conversation history"
-          className="flex min-h-40 flex-1 flex-col gap-2 overflow-y-auto overscroll-contain rounded-md border border-slate-100 bg-slate-50 p-3"
+          className="custom-scrollbar flex min-h-40 flex-1 flex-col gap-2 overflow-y-auto overscroll-contain rounded-md border border-slate-100 bg-slate-50 p-3 pr-2"
           role="log"
         >
           {chatMessages.length === 0 ? (
@@ -181,12 +194,12 @@ export function AiAssistantPanel() {
             value={draft}
           />
           <button
-            className="inline-flex h-9 items-center gap-1.5 rounded-md bg-ink px-3 text-xs font-semibold text-white hover:bg-slate-700 disabled:opacity-50"
+            aria-label="Send message"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-ink text-white hover:bg-slate-700 disabled:opacity-50"
             disabled={sending || draft.trim().length === 0}
             type="submit"
           >
-            <Send aria-hidden="true" size={14} />
-            Send
+            <Send aria-hidden="true" size={15} />
           </button>
         </form>
       </div>
@@ -209,7 +222,22 @@ function ChatMessageBubble({
           : "mr-auto border border-slate-200 bg-white text-slate-700"
       }`}
     >
-      <p>{chatMessage.content}</p>
+      {chatMessage.status === "pending" ? (
+        <div
+          aria-label="AI response status"
+          className="inline-flex items-center gap-2 text-slate-500"
+          role="status"
+        >
+          <span>{chatMessage.content}</span>
+          <span className="inline-flex gap-1" aria-hidden="true">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-slate-400" />
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-slate-400 [animation-delay:120ms]" />
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-slate-400 [animation-delay:240ms]" />
+          </span>
+        </div>
+      ) : (
+        <p className={chatMessage.status === "error" ? "text-red-700" : undefined}>{chatMessage.content}</p>
+      )}
       {chatMessage.role === "assistant" && chatMessage.proposals && chatMessage.proposals.length > 0 ? (
         <ProposalCard
           actionState={chatMessage.actionState ?? "pending"}
@@ -291,7 +319,7 @@ function ProposalCard({
         <span className="font-semibold text-amber-800">操作建议</span>
         {actionState !== "pending" ? <span className="text-slate-600">{actionStatus}</span> : null}
       </div>
-      <div className="grid gap-1.5">
+      <div className="custom-scrollbar grid max-h-64 gap-1.5 overflow-y-auto pr-1" data-testid="ai-proposal-list">
         {proposals.map((proposal) => (
           <label className="flex items-start gap-2 rounded border border-amber-100 bg-white px-2 py-1.5" key={proposal.id}>
             <input
