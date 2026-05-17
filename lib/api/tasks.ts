@@ -43,7 +43,7 @@ export function parseCreateTaskInput(body: Record<string, unknown>, parentTaskId
 
   const description = typeof body.description === "string" ? body.description : "";
   const status = parseStatus(body.status, "not_started");
-  const priority = parsePriority(body.priority, "medium");
+  const priority = parsePriority(body.priority, "low");
   const dueDate = parseDateOrNull(body.dueDate);
 
   if (!status || !priority || dueDate === undefined) {

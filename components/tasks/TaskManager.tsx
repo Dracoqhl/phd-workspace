@@ -25,7 +25,7 @@ const priorityOptions: Array<{ value: TaskPriority; label: string }> = [
 
 const emptyForm = {
   title: "",
-  priority: "medium" as TaskPriority,
+  priority: "low" as TaskPriority,
   dueDate: ""
 };
 
@@ -136,7 +136,11 @@ export function TaskManager() {
     }
   }
 
-  async function updateTask(taskId: string, input: Partial<Pick<Task, "title" | "status" | "priority" | "dueDate">>) {
+  async function updateTask(
+    taskId: string,
+    input: Partial<Pick<Task, "title" | "status" | "priority" | "dueDate">>,
+    options: { completionFeedback?: boolean } = {}
+  ) {
     if ("title" in input && input.title?.trim().length === 0) {
       setError("Task title is required.");
       return;
@@ -144,18 +148,18 @@ export function TaskManager() {
 
     const previousTasks = tasks;
     const sequence = nextTaskSequence(taskId);
-    const isCompletionUpdate = "status" in input;
+    const useCompletionFeedback = options.completionFeedback === true;
     hasLocalWrites.current = true;
     setTasks((current) => current.map((task) => (task.id === taskId ? applyOptimisticTaskUpdate(task, input) : task)));
 
-    if (isCompletionUpdate) {
+    if (useCompletionFeedback) {
       setPendingCompletionTaskIds((current) => addSetValue(current, taskId));
     }
 
     try {
       const [updated] = await Promise.all([
         writeTask(`/api/tasks/${taskId}`, { method: "PATCH", body: JSON.stringify(input) }),
-        isCompletionUpdate ? delay(320) : Promise.resolve()
+        useCompletionFeedback ? delay(120) : Promise.resolve()
       ]);
       if (updated && isLatestTaskSequence(taskId, sequence)) {
         setTasks((current) => current.map((task) => (task.id === taskId ? updated : task)));
@@ -166,7 +170,7 @@ export function TaskManager() {
         setError("Unable to save task.");
       }
     } finally {
-      if (isCompletionUpdate && isLatestTaskSequence(taskId, sequence)) {
+      if (useCompletionFeedback && isLatestTaskSequence(taskId, sequence)) {
         setPendingCompletionTaskIds((current) => removeSetValue(current, taskId));
       }
     }
@@ -198,7 +202,7 @@ export function TaskManager() {
           title,
           description: "",
           status: "not_started",
-          priority: "medium",
+          priority: "low",
           dueDate: null
         })
       });
@@ -374,7 +378,7 @@ export function TaskManager() {
                   onDelete={deleteTask}
                   onPriorityChange={(taskId, priority) => updateTask(taskId, { priority })}
                   onStatusChange={(taskId, status) => updateTask(taskId, { status })}
-                  onStatusToggle={(taskToToggle) => updateTask(taskToToggle.id, { status: taskToToggle.status === "completed" ? "not_started" : "completed" })}
+                  onStatusToggle={(taskToToggle) => updateTask(taskToToggle.id, { status: taskToToggle.status === "completed" ? "not_started" : "completed" }, { completionFeedback: true })}
                   onTitleSave={(taskId, title) => updateTask(taskId, { title })}
                   onToggleExpanded={toggleExpanded}
                   onDueDateChange={(taskId, dueDate) => updateTask(taskId, { dueDate })}
@@ -397,7 +401,7 @@ export function TaskManager() {
                     onDelete={deleteSubtask}
                     onPriorityChange={(taskId, priority) => updateTask(taskId, { priority })}
                     onStatusChange={(taskId, status) => updateTask(taskId, { status })}
-                    onStatusToggle={(taskToToggle) => updateTask(taskToToggle.id, { status: taskToToggle.status === "completed" ? "not_started" : "completed" })}
+                    onStatusToggle={(taskToToggle) => updateTask(taskToToggle.id, { status: taskToToggle.status === "completed" ? "not_started" : "completed" }, { completionFeedback: true })}
                     onTitleSave={(taskId, title) => updateTask(taskId, { title })}
                     onDueDateChange={(taskId, dueDate) => updateTask(taskId, { dueDate })}
                     selected={selectedTaskId === child.id}
@@ -438,7 +442,7 @@ interface TaskRowProps {
 function TaskRow({ task, isSubtask, canExpand, expanded, progress, selected, pendingCompletion, selectedTaskId, onToggleExpanded, onSelect, onAddSubtask, onTitleSave, onStatusToggle, onStatusChange, onPriorityChange, onDueDateChange, onDelete }: TaskRowProps) {
   const dueState = getTaskDueState(task);
   const rowClass = pendingCompletion
-    ? "bg-emerald-50"
+    ? "bg-emerald-50/40"
     : dueState === "overdue"
       ? "bg-red-50"
       : dueState === "near_due"
@@ -448,7 +452,7 @@ function TaskRow({ task, isSubtask, canExpand, expanded, progress, selected, pen
           : "bg-white";
 
   return (
-    <div aria-busy={pendingCompletion} aria-selected={selected} className={`grid grid-cols-[2rem_minmax(0,1fr)_6.5rem_4.5rem_5.5rem_4.5rem] items-center gap-2 border-t border-slate-200 px-3 py-2 text-sm transition-colors duration-300 ${rowClass} ${selected ? "ring-1 ring-inset ring-moss" : ""} ${pendingCompletion ? "ring-1 ring-inset ring-emerald-200" : ""} ${task.status === "completed" ? "text-slate-400" : "text-slate-700"}`} role="row">
+    <div aria-busy={pendingCompletion} aria-selected={selected} className={`grid grid-cols-[2rem_minmax(0,1fr)_6.5rem_4.5rem_5.5rem_4.5rem] items-center gap-2 border-t border-slate-200 px-3 py-2 text-sm transition-colors duration-150 ${rowClass} ${selected ? "ring-1 ring-inset ring-moss" : ""} ${pendingCompletion ? "ring-1 ring-inset ring-emerald-100" : ""} ${task.status === "completed" ? "text-slate-400" : "text-slate-700"}`} role="row">
       <div className="flex items-center" role="cell">
         {!isSubtask && canExpand ? (
           <button aria-label={`${expanded ? "Collapse" : "Expand"} subtasks for ${task.title}`} className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100" onClick={() => onToggleExpanded?.(task.id)} type="button">
@@ -463,9 +467,9 @@ function TaskRow({ task, isSubtask, canExpand, expanded, progress, selected, pen
           {!isSubtask && progress ? <span className="shrink-0 text-xs text-slate-500">{progress.completed}/{progress.total}</span> : null}
         </div>
       </div>
-      <div role="cell"><StatusSelect onChange={onStatusChange} task={task} /></div>
-      <div role="cell"><PrioritySelect onChange={onPriorityChange} task={task} /></div>
-      <div role="cell"><DueDateCell onChange={onDueDateChange} task={task} /></div>
+      <div className="flex justify-center" data-testid={`status-cell-${task.id}`} role="cell"><StatusSelect onChange={onStatusChange} task={task} /></div>
+      <div className="flex justify-center" data-testid={`priority-cell-${task.id}`} role="cell"><PrioritySelect onChange={onPriorityChange} task={task} /></div>
+      <div className="flex justify-center" data-testid={`due-cell-${task.id}`} role="cell"><DueDateCell onChange={onDueDateChange} task={task} /></div>
       <div className="flex justify-end gap-1" role="cell">
         {!isSubtask ? (
           <button aria-label={`Add subtask to ${task.title}`} className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100" onClick={() => onAddSubtask?.(task.id)} type="button">
@@ -486,7 +490,7 @@ function TaskCompletionButton({ task, pending, onToggle }: { task: Task; pending
   return (
     <button
       aria-label={completed ? `Reopen task ${task.title}` : `Mark task ${task.title} complete`}
-      className={`inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition-colors ${pending ? "animate-pulse border-emerald-500 bg-emerald-100" : completed ? "border-emerald-600 bg-emerald-600 text-white" : "border-slate-300 bg-white hover:border-emerald-500"}`}
+      className={`inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition-colors ${pending ? "border-emerald-400 bg-emerald-50" : completed ? "border-emerald-600 bg-emerald-600 text-white" : "border-slate-300 bg-white hover:border-emerald-500"}`}
       onClick={() => void onToggle(task)}
       type="button"
     >
@@ -633,7 +637,7 @@ function SubtaskInput({ parentTitle, title, onTitleChange, onCreate, onCancel }:
         <input aria-label={`New subtask for ${parentTitle}`} autoFocus className="ml-5 h-8 w-full rounded-md border border-slate-300 px-2 text-sm text-ink outline-none focus:border-moss" onChange={(event) => onTitleChange(event.target.value)} onKeyDown={handleKeyDown} value={title} />
       </div>
       <div className="text-xs text-slate-500" role="cell">Todo</div>
-      <div role="cell"><span className="inline-block h-3 w-3 rounded-full bg-amber-500" /></div>
+      <div className="flex justify-center" role="cell"><span className="inline-block h-3 w-3 rounded-full bg-green-500" /></div>
       <div role="cell"><Calendar aria-hidden="true" className="text-slate-400" size={16} /></div>
       <div role="cell" />
     </div>
@@ -642,7 +646,7 @@ function SubtaskInput({ parentTitle, title, onTitleChange, onCreate, onCancel }:
 
 function priorityDotClass(priority: TaskPriority): string {
   if (priority === "high") return "bg-red-500";
-  if (priority === "medium") return "bg-amber-500";
+  if (priority === "medium") return "bg-yellow-400";
   return "bg-green-500";
 }
 

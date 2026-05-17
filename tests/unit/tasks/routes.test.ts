@@ -62,6 +62,12 @@ describe("task routes", () => {
     await expect(response.json()).resolves.toEqual({ tasks: [created] });
   });
 
+  it("defaults task priority to low", async () => {
+    const created = await createTaskJson({ title: "Read default priority paper" });
+
+    expect(created.priority).toBe("low");
+  });
+
   it("gets, updates, and deletes a task", async () => {
     const task = await createTaskJson({ title: "Draft intro" });
 

@@ -203,7 +203,7 @@ function parseCreateTaskPayload(payload: Record<string, unknown>, parentTaskId: 
     title: parseRequiredString(payload.title),
     description: typeof payload.description === "string" ? payload.description : "",
     status: parseStatus(payload.status, "not_started"),
-    priority: parsePriority(payload.priority, "medium"),
+    priority: parsePriority(payload.priority, "low"),
     dueDate: parseDateOrNull(payload.dueDate),
     parentTaskId
   };

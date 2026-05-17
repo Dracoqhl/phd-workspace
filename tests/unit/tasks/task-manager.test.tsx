@@ -58,7 +58,7 @@ function mockFetch(tasks: Task[]) {
           title: String(body.title),
           description: "",
           status: "not_started",
-          priority: "medium",
+          priority: "low",
           dueDate: null,
           parentTaskId: "task_1"
         })
@@ -119,6 +119,9 @@ describe("TaskManager", () => {
     expect(screen.getByRole("columnheader", { name: "Status" })).toHaveClass("text-center");
     expect(screen.getByRole("columnheader", { name: "Priority" })).toHaveClass("text-center");
     expect(screen.getByRole("columnheader", { name: "Due" })).toHaveClass("text-center");
+    expect(screen.getByTestId("status-cell-task_1")).toHaveClass("justify-center");
+    expect(screen.getByTestId("priority-cell-task_1")).toHaveClass("justify-center");
+    expect(screen.getByTestId("due-cell-task_1")).toHaveClass("justify-center");
     expect(screen.getByRole("row", { name: /Draft dissertation chapter/ })).toBeInTheDocument();
     expect(screen.getByText("1/2")).toBeInTheDocument();
     expect(screen.queryByText("Collect figures")).not.toBeInTheDocument();
@@ -167,6 +170,24 @@ describe("TaskManager", () => {
           dueDate: null,
           parentTaskId: null
         })
+      })
+    );
+  });
+
+  it("uses low priority as the default for new tasks", async () => {
+    const fetchMock = mockFetch([]);
+
+    render(<TaskManager />);
+
+    fireEvent.change(screen.getByLabelText("Task title"), { target: { value: "Default priority task" } });
+    fireEvent.click(screen.getByRole("button", { name: "Create Task" }));
+
+    expect(await screen.findByText("Default priority task")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/tasks",
+      expect.objectContaining({
+        method: "POST",
+        body: expect.stringContaining('"priority":"low"')
       })
     );
   });
@@ -258,7 +279,7 @@ describe("TaskManager", () => {
     render(<TaskManager />);
 
     const priority = await screen.findByLabelText("Priority for Draft dissertation chapter: Medium");
-    expect(screen.getByTestId("priority-dot-task_1")).toHaveClass("bg-amber-500");
+    expect(screen.getByTestId("priority-dot-task_1")).toHaveClass("bg-yellow-400");
     fireEvent.change(priority, { target: { value: "low" } });
 
     expect(fetchMock).toHaveBeenCalledWith(
@@ -281,6 +302,7 @@ describe("TaskManager", () => {
       expect.objectContaining({ method: "PATCH", body: JSON.stringify({ status: "blocked" }) })
     );
     expect(await screen.findByText("Blocked")).toBeInTheDocument();
+    expect(screen.getByRole("row", { name: /Draft dissertation chapter/ })).toHaveAttribute("aria-busy", "false");
   });
 
   it("marks a top-level task complete from the compact row control", async () => {
