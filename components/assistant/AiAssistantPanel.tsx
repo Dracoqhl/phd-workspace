@@ -2,6 +2,7 @@
 
 import { CheckCircle2, PlugZap, Send, XCircle } from "lucide-react";
 import { useState } from "react";
+import ReactMarkdown from "react-markdown";
 
 import type { AiActionProposal, AiActionStatus } from "@/types/assistant";
 
@@ -190,6 +191,12 @@ export function AiAssistantPanel() {
             disabled={sending}
             id="ai-message"
             onChange={(event) => setDraft(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
+                event.preventDefault();
+                void sendMessage();
+              }
+            }}
             placeholder="Ask about today's plan..."
             value={draft}
           />
@@ -236,7 +243,7 @@ function ChatMessageBubble({
           </span>
         </div>
       ) : (
-        <p className={chatMessage.status === "error" ? "text-red-700" : undefined}>{chatMessage.content}</p>
+        <MessageContent chatMessage={chatMessage} />
       )}
       {chatMessage.role === "assistant" && chatMessage.proposals && chatMessage.proposals.length > 0 ? (
         <ProposalCard
@@ -247,6 +254,42 @@ function ChatMessageBubble({
           userMessage={chatMessage.proposalUserMessage ?? ""}
         />
       ) : null}
+    </div>
+  );
+}
+
+function MessageContent({ chatMessage }: { chatMessage: ChatMessage }) {
+  const commonClass = `whitespace-pre-wrap ${
+    chatMessage.status === "error" ? "text-red-700" : ""
+  }`;
+
+  if (chatMessage.role === "user") {
+    return (
+      <div className={commonClass} data-testid="chat-message-user">
+        {chatMessage.content}
+      </div>
+    );
+  }
+
+  return (
+    <div className={`markdown-message ${commonClass}`} data-testid="chat-message-assistant">
+      <ReactMarkdown
+        components={{
+          p: ({ children }) => <p className="my-1 first:mt-0 last:mb-0">{children}</p>,
+          strong: ({ children }) => <strong className="font-semibold text-slate-800">{children}</strong>,
+          em: ({ children }) => <em className="italic">{children}</em>,
+          ul: ({ children }) => <ul className="my-1 list-disc space-y-1 pl-4">{children}</ul>,
+          ol: ({ children }) => <ol className="my-1 list-decimal space-y-1 pl-4">{children}</ol>,
+          li: ({ children }) => <li className="pl-0.5">{children}</li>,
+          code: ({ children }) => <code className="rounded bg-slate-100 px-1 py-0.5 font-mono text-[0.92em]">{children}</code>,
+          pre: ({ children }) => (
+            <pre className="custom-scrollbar my-2 overflow-x-auto rounded bg-slate-100 p-2 text-xs leading-5">{children}</pre>
+          )
+        }}
+        skipHtml
+      >
+        {chatMessage.content}
+      </ReactMarkdown>
     </div>
   );
 }

@@ -70,6 +70,53 @@ describe("AiAssistantPanel", () => {
     );
   });
 
+  it("sends the chat message with Ctrl or Command plus Enter while plain Enter keeps editing", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(Response.json({ ok: true, reply: "收到。" }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<AiAssistantPanel />);
+
+    const input = screen.getByLabelText("AI message");
+    fireEvent.change(input, { target: { value: "第一行\n第二行" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    fireEvent.keyDown(input, { key: "Enter", ctrlKey: true });
+    expect(await screen.findByText("收到。")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/ai/chat",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ message: "第一行\n第二行" })
+      })
+    );
+  });
+
+  it("preserves user line breaks and renders assistant markdown", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        Response.json({
+          ok: true,
+          reply: "**建议**\n\n- 先完成引言\n- 再整理实验"
+        })
+      )
+    );
+
+    render(<AiAssistantPanel />);
+
+    fireEvent.change(screen.getByLabelText("AI message"), { target: { value: "第一行\n第二行" } });
+    fireEvent.keyDown(screen.getByLabelText("AI message"), { key: "Enter", metaKey: true });
+
+    const userMessage = await screen.findByTestId("chat-message-user");
+    expect(userMessage).toHaveClass("whitespace-pre-wrap");
+    expect(userMessage.textContent).toBe("第一行\n第二行");
+
+    expect(await screen.findByText("建议")).toHaveClass("font-semibold");
+    expect(screen.getByText("先完成引言").closest("li")).not.toBeNull();
+    expect(screen.getByText("再整理实验").closest("li")).not.toBeNull();
+  });
+
   it("shows a pending assistant status immediately while waiting for the reply", async () => {
     let resolveFetch: (response: Response) => void = () => undefined;
     const pendingResponse = new Promise<Response>((resolve) => {
