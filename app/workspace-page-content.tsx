@@ -10,11 +10,12 @@ import type { PublicUser } from "@/types/user";
 
 interface WorkspacePageContentProps {
   authenticated: boolean;
+  initialAuthMode?: "login" | "register";
   multiUserEnabled?: boolean;
   user?: PublicUser | null;
 }
 
-export function WorkspacePageContent({ authenticated, multiUserEnabled = false, user = null }: WorkspacePageContentProps) {
+export function WorkspacePageContent({ authenticated, initialAuthMode = "login", multiUserEnabled = false, user = null }: WorkspacePageContentProps) {
   const businessDate = getHabitBusinessDate();
 
   if (authenticated) {
@@ -25,10 +26,24 @@ export function WorkspacePageContent({ authenticated, multiUserEnabled = false, 
     );
   }
 
-  return <WorkspaceShell authenticated={false} businessDate={businessDate} multiUserEnabled={multiUserEnabled} user={user} />;
+  return (
+    <WorkspaceShell
+      authenticated={false}
+      businessDate={businessDate}
+      initialAuthMode={initialAuthMode}
+      multiUserEnabled={multiUserEnabled}
+      user={user}
+    />
+  );
 }
 
-function WorkspaceShell({ authenticated, businessDate, multiUserEnabled = false, user = null }: WorkspacePageContentProps & { businessDate: string }) {
+function WorkspaceShell({
+  authenticated,
+  businessDate,
+  initialAuthMode = "login",
+  multiUserEnabled = false,
+  user = null
+}: WorkspacePageContentProps & { businessDate: string }) {
 
   return (
     <main className="min-h-screen bg-paper text-ink">
@@ -37,10 +52,10 @@ function WorkspaceShell({ authenticated, businessDate, multiUserEnabled = false,
           <header className="border-b border-slate-200 pb-5">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <p className="text-sm font-medium text-moss">PhD Workspace MVP</p>
+                <p className="text-sm font-medium text-moss">PhD Workspace</p>
                 <h1 className="mt-2 text-3xl font-semibold tracking-normal text-ink">博士工作台</h1>
                 <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
-                  当前是最小可运行页面壳，用于确认 Next.js、React、Tailwind 和构建流程已经连通。
+                  管理科研任务、每日习惯、心灵关怀和 AI 辅助整理的个人工作台。
                 </p>
               </div>
               <div aria-label="Workspace status" className="flex shrink-0 flex-wrap items-center gap-2">
@@ -52,7 +67,11 @@ function WorkspaceShell({ authenticated, businessDate, multiUserEnabled = false,
             </div>
           </header>
 
-          {authenticated ? <WorkspaceSections user={user} /> : <LoginForm multiUserEnabled={multiUserEnabled} />}
+          {authenticated ? (
+            <WorkspaceSections user={user} />
+          ) : (
+            <LoginForm initialMode={initialAuthMode} multiUserEnabled={multiUserEnabled} />
+          )}
         </section>
 
         {authenticated ? <AiAssistantAside user={user} /> : null}

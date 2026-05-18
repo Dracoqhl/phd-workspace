@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { MVP_DATA_FILES } from "@/lib/data/data-dir";
+import { RUNTIME_DATA_FILES } from "@/lib/data/data-dir";
 import { JsonStore } from "@/lib/data/json-store";
 import type { AiActionLog, AiActionStatus } from "@/types/assistant";
 import type { CareQuotePreference, CareRecord, CareSource } from "@/types/care";
@@ -9,7 +9,7 @@ import type { CreateTaskInput, Task, UpdateTaskInput } from "@/types/task";
 import type { TrashEntry } from "@/types/trash";
 
 export async function initializeDataFiles(dataDir: string): Promise<void> {
-  await Promise.all(MVP_DATA_FILES.map((fileName) => new JsonStore<unknown>(dataDir, fileName).read()));
+  await Promise.all(RUNTIME_DATA_FILES.map((fileName) => new JsonStore<unknown>(dataDir, fileName).read()));
 }
 
 export function createRepositories(dataDir: string) {

@@ -3,11 +3,12 @@
 import { FormEvent, useState } from "react";
 
 interface LoginFormProps {
+  initialMode?: "login" | "register";
   multiUserEnabled?: boolean;
 }
 
-export function LoginForm({ multiUserEnabled = false }: LoginFormProps) {
-  const [mode, setMode] = useState<"login" | "register">("login");
+export function LoginForm({ initialMode = "login", multiUserEnabled = false }: LoginFormProps) {
+  const [mode, setMode] = useState<"login" | "register">(initialMode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [inviteCode, setInviteCode] = useState("");
@@ -49,26 +50,28 @@ export function LoginForm({ multiUserEnabled = false }: LoginFormProps) {
     return (
       <form action={mode === "register" ? "/api/auth/register" : "/api/auth/login"} className="mt-6 flex w-full max-w-sm flex-col gap-4" method="post" onSubmit={handleSubmit}>
         <div className="flex rounded-md border border-slate-200 bg-white p-1">
-          <button
+          <a
             className={`flex-1 rounded px-3 py-1.5 text-sm font-semibold ${mode === "login" ? "bg-moss text-white" : "text-slate-600"}`}
-            onClick={() => {
+            href="?mode=login"
+            onClick={(event) => {
+              event.preventDefault();
               setMode("login");
               setError(null);
             }}
-            type="button"
           >
             Log In
-          </button>
-          <button
+          </a>
+          <a
             className={`flex-1 rounded px-3 py-1.5 text-sm font-semibold ${mode === "register" ? "bg-moss text-white" : "text-slate-600"}`}
-            onClick={() => {
+            href="?mode=register"
+            onClick={(event) => {
+              event.preventDefault();
               setMode("register");
               setError(null);
             }}
-            type="button"
           >
             Register
-          </button>
+          </a>
         </div>
 
         <div className="flex flex-col gap-2">

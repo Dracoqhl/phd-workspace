@@ -1,6 +1,6 @@
 import { isAbsolute } from "node:path";
 
-export const MVP_DATA_FILES = [
+export const RUNTIME_DATA_FILES = [
   "tasks.json",
   "habits.json",
   "habit-checkins.json",
@@ -10,7 +10,7 @@ export const MVP_DATA_FILES = [
   "trash.json"
 ] as const;
 
-export type MvpDataFile = (typeof MVP_DATA_FILES)[number];
+export type RuntimeDataFile = (typeof RUNTIME_DATA_FILES)[number];
 
 export function resolveDataDir(value = process.env.DATA_DIR): string {
   if (!value || value.trim() === "") {

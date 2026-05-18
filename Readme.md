@@ -2,10 +2,10 @@
 
 博士工作台是一个轻量级个人博士工作台，用于管理科研任务、每日健康习惯、心灵关怀打卡，并通过页面内 AI 助手辅助梳理和维护任务体系。
 
-当前项目处于 MVP 增量开发阶段，已包含 versioned data foundation、auth routes、login shell、protected task API、任务管理 UI MVP、每日健康习惯 MVP、AI 心灵关怀批量 Quote 缓存、AI API 测试入口、右侧 AI 聊天、AI 对话历史、AI 操作建议确认、AI 操作日志，以及邀请制多用户 SQLite 迁移基础。
+当前项目处于可用的 private beta 阶段，已包含多用户账号、任务管理、每日健康习惯、AI 心灵关怀批量 Quote 缓存、AI API 测试入口、右侧 AI 聊天、AI 对话历史、AI 操作建议确认、AI 操作日志，以及 SQLite 数据存储。
 普通非 AI 操作使用页面级同步状态提示：页面日期旁显示 `Synced`、`Saving...` 或 `Sync failed`。高频编辑会先更新界面，再在后台同步到本地 JSON API；任务完成和习惯打卡会先显示短暂 pending 高亮，再进入最终完成/置底/隐藏状态。
 
-## MVP Scope
+## Product Scope
 
 P0 功能：
 
@@ -225,13 +225,13 @@ git remote add origin https://github.com/<your-user>/<your-repo>.git
 
 ## Development Status
 
-The project is in MVP implementation. Current dev status includes a versioned data foundation, auth routes, a login shell, protected task APIs, task management UI, daily habit management UI, an AI-backed mental care refresh with fallback, AI API testing, AI chat, selectable AI operation proposals, confirmed AI writes, and AI action logging. Stage A added the first tested server-side modules, Stage B added the first runnable Next.js app shell, the task slice connects the shell to local JSON task data, Stage C adds daily health habits, Stage D starts mental care, Stage E adds AI configuration testing, Stage F starts real AI care generation, and Stage G adds AI chat plus confirmed proposal execution:
+The project is in private beta implementation. Current dev status includes a versioned data foundation, auth routes, protected task APIs, task management UI, daily habit management UI, AI-backed mental care with fallback, AI API testing, AI chat, selectable AI operation proposals, confirmed AI writes, and AI action logging.
 
 - `architecture.md`: planned directory layout and file placement rules.
-- `Readme.md`: project overview, MVP scope, and setup expectations.
+- `Readme.md`: project overview, product scope, and setup expectations.
 - `.gitignore`: Git ignore rules for dependencies, secrets, build output, logs, and runtime data.
 - `.env.example`: example environment variable names without real secrets.
-- `.eslintrc.cjs`: ESLint configuration for the current TypeScript-only scaffolding stage.
+- `.eslintrc.cjs`: ESLint configuration for the current TypeScript/React app.
 - `app/layout.tsx`: root App Router layout and metadata.
 - `app/page.tsx`: single-page workspace shell with care, habit, task, AI assistant regions, and the current habit business date in the page header.
 - `components/sync/SyncStatusProvider.tsx`: client-side sync status provider and badge for optimistic UI feedback.

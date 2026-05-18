@@ -5,7 +5,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "博士工作台",
-  description: "个人博士工作台 MVP"
+  description: "个人博士工作台"
 };
 
 interface RootLayoutProps {

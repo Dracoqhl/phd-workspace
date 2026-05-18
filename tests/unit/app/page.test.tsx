@@ -57,10 +57,20 @@ describe("workspace page shell", () => {
     render(<WorkspacePageContent authenticated={false} />);
 
     expect(screen.getByRole("heading", { name: "博士工作台" })).toBeInTheDocument();
+    expect(screen.queryByText(/MVP|最小可运行页面壳/)).not.toBeInTheDocument();
     expect(screen.getByLabelText("Access password")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Log In" })).toBeInTheDocument();
     expect(screen.getByLabelText("Access password").closest("form")).toHaveAttribute("method", "post");
     expect(screen.getByLabelText("Access password").closest("form")).toHaveAttribute("action", "/api/auth/login");
+  });
+
+  it("can render the registration form as the initial auth mode", () => {
+    render(<WorkspacePageContent authenticated={false} initialAuthMode="register" multiUserEnabled={true} />);
+
+    expect(screen.getByRole("button", { name: "Create Account" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Invite code")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Log In" })).toHaveAttribute("href", "?mode=login");
+    expect(screen.getByRole("link", { name: "Register" })).toHaveAttribute("href", "?mode=register");
   });
 
   it("renders the workspace regions when authenticated", () => {

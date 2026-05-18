@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { MVP_DATA_FILES, resolveDataDir } from "@/lib/data/data-dir";
+import { RUNTIME_DATA_FILES, resolveDataDir } from "@/lib/data/data-dir";
 import { createRepositories, initializeDataFiles } from "@/lib/data/repositories";
 
 let tempDir: string | null = null;
@@ -49,12 +49,12 @@ describe("data directory helpers", () => {
 });
 
 describe("repositories", () => {
-  it("initializes all MVP data files as versioned collections", async () => {
+  it("initializes all runtime data files as versioned collections", async () => {
     tempDir = await mkdtemp(join(tmpdir(), "phd-repos-"));
 
     await initializeDataFiles(tempDir);
 
-    for (const fileName of MVP_DATA_FILES) {
+    for (const fileName of RUNTIME_DATA_FILES) {
       const content = JSON.parse(await readFile(join(tempDir, fileName), "utf8"));
       expect(content).toEqual({ schemaVersion: 1, items: [] });
     }
