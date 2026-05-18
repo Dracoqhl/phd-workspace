@@ -67,4 +67,18 @@ describe("generateAiCareQuoteBatch", () => {
       "给自己一点缓冲。"
     ]);
   });
+
+  it("asks for and enforces 50-character quote limits", async () => {
+    const longQuote = "一二三四五六七八九十一二三四五六七八九十一二三四五六七八九十一二三四五六七八九十一二三四五六七八九十一二三四五六七八九十额外内容";
+    const fetchMock = vi.fn().mockResolvedValue(
+      Response.json({
+        choices: [{ message: { content: JSON.stringify([longQuote]) } }]
+      })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(generateAiCareQuoteBatch(config, "励志诗句", 1)).resolves.toEqual([longQuote.slice(0, 50)]);
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(JSON.parse(String(init.body)).messages[1].content).toContain("under 50 Chinese characters");
+  });
 });

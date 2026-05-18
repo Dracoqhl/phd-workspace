@@ -5,6 +5,7 @@ import { CarePanel } from "@/components/care/CarePanel";
 import type { CareRecord, CareTodayResponse } from "@/types/care";
 
 const now = "2026-05-08T08:00:00.000Z";
+const defaultQuotePrompt = "温和、具体、低压力、适合博士科研日常";
 
 function care(overrides: Partial<CareRecord> = {}): CareRecord {
   return {
@@ -124,6 +125,7 @@ describe("CarePanel", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: "Quote settings" }));
     const input = await screen.findByLabelText("Quote prompt");
+    expect(screen.getByText("Quote prompt")).toBeInTheDocument();
     expect(input).toHaveValue("温和、具体、低压力");
     expect(input).not.toHaveAttribute("placeholder");
     fireEvent.change(input, { target: { value: "更短，更有科研感" } });
@@ -135,6 +137,24 @@ describe("CarePanel", () => {
       expect.objectContaining({
         method: "POST",
         body: JSON.stringify({ preferenceText: "更短，更有科研感" })
+      })
+    );
+  });
+
+  it("resets the quote prompt to the default setting", async () => {
+    const fetchMock = mockFetch(care());
+
+    render(<CarePanel />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Quote settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "Reset quote prompt" }));
+
+    expect(await screen.findByDisplayValue(defaultQuotePrompt)).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/care/generate",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ preferenceText: defaultQuotePrompt })
       })
     );
   });

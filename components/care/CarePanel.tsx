@@ -1,10 +1,12 @@
 "use client";
 
-import { Heart, HeartCrack, RefreshCw, Settings } from "lucide-react";
+import { Heart, HeartCrack, RefreshCw, RotateCcw, Settings } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { useSyncStatus } from "@/components/sync/SyncStatusProvider";
 import type { CareRecord, CareTodayResponse, UpdateCareInput } from "@/types/care";
+
+const defaultQuotePrompt = "温和、具体、低压力、适合博士科研日常";
 
 const energyLabels: Record<NonNullable<CareRecord["energyLevel"]>, string> = {
   1: "Low",
@@ -156,6 +158,21 @@ export function CarePanel() {
     setQuotePreference(lastSavedQuotePreference);
   }
 
+  async function resetQuotePreference() {
+    setQuotePreference(defaultQuotePrompt);
+    const payload = await writeCare("/api/care/generate", {
+      method: "POST",
+      body: JSON.stringify({ preferenceText: defaultQuotePrompt })
+    });
+
+    if (payload) {
+      applyCareState(payload);
+      return;
+    }
+
+    setQuotePreference(lastSavedQuotePreference);
+  }
+
   async function writeCare(url: string, init: RequestInit): Promise<CareTodayResponse | null> {
     setSaving(true);
     setError(null);
@@ -246,12 +263,26 @@ export function CarePanel() {
         </div>
         <p className="text-sm leading-6 text-slate-800">{content}</p>
         {showQuoteSettings ? (
-          <label className="mt-3 block">
-            <span className="sr-only">Quote prompt</span>
+          <div className="mt-3">
+            <div className="mb-1 flex items-center justify-between gap-2">
+              <label className="text-xs font-semibold uppercase tracking-wide text-amber-700" htmlFor="quote-prompt">
+                Quote prompt
+              </label>
+              <button
+                aria-label="Reset quote prompt"
+                className="inline-flex h-6 w-6 items-center justify-center rounded-md text-amber-700 hover:bg-amber-100 disabled:opacity-60"
+                disabled={loading || saving}
+                onClick={() => void resetQuotePreference()}
+                type="button"
+              >
+                <RotateCcw aria-hidden="true" size={13} />
+              </button>
+            </div>
             <input
               aria-label="Quote prompt"
               className="h-8 w-full rounded-md border border-amber-200 bg-white/70 px-2 text-xs text-slate-700 outline-none focus:border-amber-400 disabled:opacity-60"
               disabled={loading || saving}
+              id="quote-prompt"
               onBlur={() => void saveQuotePreference()}
               onChange={(event) => setQuotePreference(event.target.value)}
               onKeyDown={(event) => {
@@ -261,7 +292,7 @@ export function CarePanel() {
               }}
               value={quotePreference}
             />
-          </label>
+          </div>
         ) : null}
       </div>
 

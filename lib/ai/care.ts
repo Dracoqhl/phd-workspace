@@ -18,7 +18,7 @@ export async function generateAiCareContent(config: AiConfig): Promise<string | 
           },
           {
             role: "user",
-            content: "Generate one concise Chinese daily care quote for today. Return only the quote, under 60 Chinese characters."
+            content: "Generate one concise Chinese daily care quote for today. Return only the quote, under 50 Chinese characters."
           }
         ],
         max_tokens: 180,
@@ -56,7 +56,7 @@ export async function generateAiCareQuoteBatch(config: AiConfig, preferenceText:
           },
           {
             role: "user",
-            content: `Generate ${count} concise Chinese daily care quotes. User preference: ${preferenceText}. Each quote must be under 60 Chinese characters. Return only a JSON array.`
+            content: `Generate ${count} concise Chinese daily care quotes. User preference: ${preferenceText}. Each quote must be under 50 Chinese characters. Return only a JSON array.`
           }
         ],
         max_tokens: 900,
@@ -91,7 +91,11 @@ function parseChatContent(payload: unknown): string | null {
 
 function sanitizeCareContent(content: string): string | null {
   const sanitized = content.trim().replace(/^["“”]+|["“”]+$/g, "").trim();
-  return sanitized.length > 0 ? sanitized : null;
+  return sanitized.length > 0 ? truncateCareQuote(sanitized) : null;
+}
+
+function truncateCareQuote(content: string): string {
+  return Array.from(content).slice(0, 50).join("");
 }
 
 function parseCareQuoteBatch(content: string, count: number): string[] | null {
