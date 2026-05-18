@@ -23,6 +23,39 @@ interface InviteRow {
   created_at: string;
 }
 
+interface AdminInviteRow extends InviteRow {
+  consumed_by_email: string | null;
+}
+
+interface AdminUserRow {
+  id: string;
+  email: string;
+  role: UserRole;
+  created_at: string;
+  tasks_count: number;
+  habits_count: number;
+}
+
+export interface AdminOverview {
+  stats: {
+    users: number;
+    invites: number;
+    usedInvites: number;
+    unusedInvites: number;
+    tasks: number;
+    habits: number;
+  };
+  invites: Array<InviteCode & { status: "used" | "unused"; consumedByEmail: string | null }>;
+  users: Array<{
+    id: string;
+    email: string;
+    role: UserRole;
+    createdAt: string;
+    tasksCount: number;
+    habitsCount: number;
+  }>;
+}
+
 export interface AuthSession {
   token: string;
   user: User;
@@ -168,6 +201,62 @@ export class InviteRepository {
   }
 }
 
+export class AdminOverviewRepository {
+  constructor(private readonly db: SqliteDatabase) {}
+
+  get(): AdminOverview {
+    const usersCount = getCount(this.db, "SELECT COUNT(*) AS count FROM users");
+    const invitesCount = getCount(this.db, "SELECT COUNT(*) AS count FROM invite_codes");
+    const usedInvitesCount = getCount(this.db, "SELECT COUNT(*) AS count FROM invite_codes WHERE consumed_by_user_id IS NOT NULL");
+    const tasksCount = getCount(this.db, "SELECT COUNT(*) AS count FROM tasks");
+    const habitsCount = getCount(this.db, "SELECT COUNT(*) AS count FROM habits");
+    const invites = this.db
+      .prepare(
+        `SELECT invite_codes.*, users.email AS consumed_by_email
+         FROM invite_codes
+         LEFT JOIN users ON users.id = invite_codes.consumed_by_user_id
+         ORDER BY invite_codes.created_at DESC`
+      )
+      .all() as AdminInviteRow[];
+    const users = this.db
+      .prepare(
+        `SELECT users.id, users.email, users.role, users.created_at,
+                COUNT(DISTINCT tasks.id) AS tasks_count,
+                COUNT(DISTINCT habits.id) AS habits_count
+         FROM users
+         LEFT JOIN tasks ON tasks.user_id = users.id
+         LEFT JOIN habits ON habits.user_id = users.id
+         GROUP BY users.id, users.email, users.role, users.created_at
+         ORDER BY users.created_at ASC`
+      )
+      .all() as AdminUserRow[];
+
+    return {
+      stats: {
+        users: usersCount,
+        invites: invitesCount,
+        usedInvites: usedInvitesCount,
+        unusedInvites: invitesCount - usedInvitesCount,
+        tasks: tasksCount,
+        habits: habitsCount
+      },
+      invites: invites.map((row) => ({
+        ...mapInvite(row),
+        status: row.consumed_by_user_id ? "used" : "unused",
+        consumedByEmail: row.consumed_by_email
+      })),
+      users: users.map((row) => ({
+        id: row.id,
+        email: row.email,
+        role: row.role,
+        createdAt: row.created_at,
+        tasksCount: row.tasks_count,
+        habitsCount: row.habits_count
+      }))
+    };
+  }
+}
+
 export function toPublicUser(user: User): PublicUser {
   return {
     email: user.email,
@@ -177,6 +266,11 @@ export function toPublicUser(user: User): PublicUser {
 
 export function hashSessionToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
+}
+
+function getCount(db: SqliteDatabase, sql: string): number {
+  const row = db.prepare(sql).get() as { count: number } | undefined;
+  return row?.count ?? 0;
 }
 
 function mapUser(row: UserRow): User {

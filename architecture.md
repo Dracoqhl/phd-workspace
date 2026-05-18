@@ -143,9 +143,10 @@ The current foundation slice provides the shared data/auth base:
 - `lib/data/data-dir.ts`: `DATA_DIR` resolver and legacy runtime JSON file list.
 - `lib/auth/password.ts` and `lib/auth/session.ts`: legacy password and 30-day session helpers using `APP_PASSWORD` and `SESSION_SECRET`.
 - `lib/auth/credentials.ts`: SQLite-mode password hashing and email normalization helpers.
-- `lib/db/*`: SQLite path resolution, CLI-backed query wrapper, schema initialization, user/session/invite repositories, and user-scoped business repositories.
+- `lib/db/*`: SQLite path resolution, CLI-backed query wrapper, schema initialization, user/session/invite/admin-overview repositories, and user-scoped business repositories.
 - `app/api/auth/*/route.ts`: login, register, logout, and session route handlers. Login/register accept JSON requests from the React form flow and native `application/x-www-form-urlencoded` form posts for mobile/browser fallback.
 - `app/api/admin/invites/route.ts`: admin-only one-time invite generation and listing.
+- `app/api/admin/overview/route.ts`: admin-only aggregate overview for invite state, registered users, and workspace content counts.
 - `app/api/tasks/**/route.ts`: protected task list, create, detail, update, delete, and subtask creation route handlers.
 - `app/api/habits/**/route.ts`: protected habit list, create, update, deactivate, daily check-in, and daily check-in cancellation route handlers.
 - `app/api/care/**/route.ts`: protected today's care, AI-backed refresh with local fallback, care update, and legacy care check-in route handlers backed by `care-records.json`.
@@ -163,12 +164,13 @@ The App Router shell connects the workspace UI to task, habit, care, auth, and A
 
 - `app/layout.tsx`: root document shell, metadata, and global CSS import.
 - `app/page.tsx`: workspace page entry point.
-- `app/workspace-page-content.tsx`: authenticated workspace layout that composes care, habit, task, and AI assistant regions, with the current habit business date shown in the page header.
+- `app/workspace-page-content.tsx`: authenticated workspace layout that routes admins to the dedicated admin dashboard, routes normal users to care, habit, task, and AI assistant regions, and shows the current habit business date in the page header.
 - `app/globals.css`: Tailwind directives and base page styling.
 - `components/tasks/TaskManager.tsx`: compact hierarchical task table backed by `/api/tasks`, including top-level task create/delete, one-layer subtask create/delete, expandable subtasks, small row-level complete/reopen controls, two-step select-then-edit title editing with blur save, colored status pill editing without a visible dropdown arrow, compact priority dot editing with Low as the default, direct due-date picker access, completed top-level task hiding, and due-state highlighting.
 - `components/habits/HabitManager.tsx`: compact habit list backed by `/api/habits`, including panel-level edit mode, bottom-only habit creation with daily target 1-5, editable name and target fields in edit mode, clickable progress fractions for target edits in normal mode, trash-icon deactivate, compact circular check-in/cancel controls, checked-count-over-target header progress, completed-row grey/strikethrough styling, and completed-row sorting. Check-in increments/decrements update local counts and the header progress immediately while the network request syncs in the background.
 - `components/care/CarePanel.tsx`: compact mental care card backed by `/api/care`, including per-user batch-cached daily quotes, a gear-triggered quote prompt editor, local default prompt + default batch reset without an AI call, instant local quote cycling with background sync, local fallback batch, stable title-row energy icons and status pill, bright level-5 amber badge icons, small retry/settings icon actions, and an editable "today focus" field.
 - `components/assistant/AiAssistantPanel.tsx`: right-side assistant shell with a compact AI connectivity test control, recent-history loading and clearing, chat area, inline pending response state, `Command+Enter` / `Ctrl+Enter` send shortcuts, safe Markdown rendering for assistant replies, preserved user line breaks, icon-only send control, and selectable proposal confirmation cards restored from history after refresh. Confirmed task/habit writes dispatch refresh events so the main panels reload newly written data. The desktop panel is sticky, the message log is the scroll container with subtle custom scrollbar styling, and the input stays anchored at the panel bottom.
+- `components/admin/AdminDashboard.tsx`: admin-only dashboard backed by `/api/admin/overview` and `/api/admin/invites`, showing aggregate stats, one-time invite codes with copy controls, and registered users with task/habit counts.
 - `components/sync/SyncStatusProvider.tsx`: client-side provider and badge for page-level `Synced`, `Saving...`, and `Sync failed` state. Feature components wrap write requests with `trackSync` and keep their own rollback snapshots.
 - `tests/unit/app/page.test.tsx`: verifies that the workspace regions render.
 - `tests/unit/tasks/task-manager.test.tsx`: verifies compact task table loading, expand/collapse, inline title editing, status, priority and due-date editing, completed hiding, subtask creation, and deletion behavior.

@@ -99,7 +99,7 @@ You can also run the underlying dev command directly:
 pnpm dev
 ```
 
-Open `http://localhost:3000`. In multi-user mode, log in with `ADMIN_EMAIL` and `ADMIN_PASSWORD`, then generate invite codes for beta users. In legacy mode, enter `APP_PASSWORD`. The login/register forms support both the normal React flow and native HTML form POST fallback for mobile browsers.
+Open `http://localhost:3000`. In multi-user mode, log in with `ADMIN_EMAIL` and `ADMIN_PASSWORD` to enter the admin dashboard, then generate and copy single-use invite codes for beta users. In legacy mode, enter `APP_PASSWORD`. The login/register forms support both the normal React flow and native HTML form POST fallback for mobile browsers.
 
 ## Environment Variables
 
@@ -225,7 +225,7 @@ git remote add origin https://github.com/<your-user>/<your-repo>.git
 
 ## Development Status
 
-The project is in private beta implementation. Current dev status includes a versioned data foundation, auth routes, protected task APIs, task management UI, daily habit management UI, AI-backed mental care with fallback, AI API testing, AI chat, selectable AI operation proposals, confirmed AI writes, and AI action logging.
+The project is in private beta implementation. Current dev status includes a versioned data foundation, multi-user auth routes, an admin dashboard for invite/user oversight, protected task APIs, task management UI, daily habit management UI, AI-backed mental care with fallback, AI API testing, AI chat, selectable AI operation proposals, confirmed AI writes, and AI action logging.
 
 - `architecture.md`: planned directory layout and file placement rules.
 - `Readme.md`: project overview, product scope, and setup expectations.
@@ -233,7 +233,8 @@ The project is in private beta implementation. Current dev status includes a ver
 - `.env.example`: example environment variable names without real secrets.
 - `.eslintrc.cjs`: ESLint configuration for the current TypeScript/React app.
 - `app/layout.tsx`: root App Router layout and metadata.
-- `app/page.tsx`: single-page workspace shell with care, habit, task, AI assistant regions, and the current habit business date in the page header.
+- `app/page.tsx`: page entry that renders the login/register shell, the normal user workspace, or the admin dashboard depending on authentication state and role.
+- `components/admin/AdminDashboard.tsx`: admin-only dashboard connected to `/api/admin/overview` and `/api/admin/invites`, with aggregate stats, single-use invite-code status, copy controls, and registered-user task/habit counts.
 - `components/sync/SyncStatusProvider.tsx`: client-side sync status provider and badge for optimistic UI feedback.
 - `components/care/CarePanel.tsx`: compact mental care panel connected to `/api/care/today`, `/api/care/generate`, and `/api/care/update`, with per-user batch-cached daily quotes, a gear-triggered quote prompt editor, local default prompt + default batch reset without an AI call, instant local quote cycling, local fallback batch, stable title-row energy icons and status pill, bright level-5 amber badge feedback, small retry/settings icon actions, and an editable "today focus" field. Returned quote items are capped server-side at 50 Chinese characters for stable display.
 - `components/assistant/AiAssistantPanel.tsx`: right-side assistant shell with a compact `Test AI` control connected to `/api/ai/test`, chat connected to `/api/ai/chat`, recent history connected to `/api/ai/chat/history`, and selectable proposal cards that confirm selected writes through `/api/ai/actions/confirm`. Pending proposal cards are restored from saved assistant history after refresh. Confirmed task/habit writes refresh the main panels, the proposal buttons use short `Apply` / `Cancel` labels, sent messages immediately show an inline `Thinking...` assistant state, `Command+Enter` / `Ctrl+Enter` sends multiline input, assistant replies render safe Markdown, and the send control is icon-only for the narrow assistant panel. On desktop the panel is sticky, message history scrolls independently with subtle custom scrollbars, and the input stays at the panel bottom.

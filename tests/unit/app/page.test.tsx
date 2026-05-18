@@ -44,6 +44,10 @@ vi.mock("@/components/assistant/AiAssistantPanel", () => ({
   )
 }));
 
+vi.mock("@/components/admin/AdminDashboard", () => ({
+  AdminDashboard: () => <section aria-label="管理员工作台">Admin dashboard</section>
+}));
+
 const mockedCookies = vi.mocked(cookies);
 const mockedGetSessionSecret = vi.mocked(getSessionSecret);
 const mockedVerifySessionToken = vi.mocked(verifySessionToken);
@@ -74,7 +78,7 @@ describe("workspace page shell", () => {
   });
 
   it("renders the workspace regions when authenticated", () => {
-    render(<WorkspacePageContent authenticated={true} user={{ email: "admin@example.com", role: "admin" }} />);
+    render(<WorkspacePageContent authenticated={true} user={{ email: "student@example.com", role: "user" }} />);
 
     expect(screen.getByRole("heading", { name: "博士工作台" })).toBeInTheDocument();
     expect(screen.getByText("2026-05-08")).toBeInTheDocument();
@@ -82,13 +86,23 @@ describe("workspace page shell", () => {
     expect(screen.getByLabelText("Workspace status")).toContainElement(
       screen.getByRole("status", { name: "Data sync status" })
     );
-    expect(screen.getByLabelText("Account controls")).toHaveTextContent("admin@example.com");
+    expect(screen.getByLabelText("Account controls")).toHaveTextContent("student@example.com");
     expect(screen.getByLabelText("Account controls")).toContainElement(screen.getByRole("button", { name: "Logout" }));
     expect(screen.getByRole("region", { name: "任务管理" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "每日健康习惯" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "心灵关怀" })).toBeInTheDocument();
     expect(screen.getByRole("complementary", { name: "AI 助手" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Test AI" })).toBeInTheDocument();
+  });
+
+  it("renders only the admin dashboard for admin users", () => {
+    render(<WorkspacePageContent authenticated={true} user={{ email: "admin@example.com", role: "admin" }} />);
+
+    expect(screen.getByRole("region", { name: "管理员工作台" })).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "任务管理" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "每日健康习惯" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "心灵关怀" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("complementary", { name: "AI 助手" })).not.toBeInTheDocument();
   });
 
   it("marks the password input invalid and describes it with the login error", async () => {
