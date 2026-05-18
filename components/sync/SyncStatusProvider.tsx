@@ -63,10 +63,10 @@ export function SyncStatusBadge() {
   const title = status === "failed" ? error ?? "Sync failed" : lastSyncedAt ? `Synced ${formatTime(lastSyncedAt)}` : label;
   const className =
     status === "saving"
-      ? "border-amber-200 bg-amber-50 text-amber-700"
+      ? "border-warning bg-warning-soft text-warning-text"
       : status === "failed"
-        ? "border-red-200 bg-red-50 text-red-700"
-        : "border-emerald-200 bg-emerald-50 text-emerald-700";
+        ? "border-danger bg-danger-soft text-danger-text"
+        : "border-success bg-success-soft text-success-text";
 
   return (
     <span

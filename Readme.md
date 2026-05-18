@@ -234,7 +234,7 @@ The project is in private beta implementation. Current dev status includes a ver
 - `.eslintrc.cjs`: ESLint configuration for the current TypeScript/React app.
 - `app/layout.tsx`: root App Router layout and metadata.
 - `app/page.tsx`: page entry that renders the login/register shell, the normal user workspace, or the admin dashboard depending on authentication state and role.
-- `app/globals.css`: Tailwind entry point, CSS variable theme tokens, and theme compatibility overrides.
+- `app/globals.css`: Tailwind entry point, CSS variable theme tokens, semantic state colors, themed custom scrollbars, and theme compatibility overrides.
 - `components/theme/ThemeProvider.tsx`: compact theme selector for `Light`, `Dark`, `Forest`, `Warm`, and `System`. Theme preference is stored locally in the browser and applied before React hydration to reduce theme flash.
 - `components/admin/AdminDashboard.tsx`: admin-only dashboard connected to `/api/admin/overview` and `/api/admin/invites`, with aggregate stats, single-use invite-code status, copy controls, and registered-user task/habit counts.
 - `components/sync/SyncStatusProvider.tsx`: client-side sync status provider and badge for optimistic UI feedback.

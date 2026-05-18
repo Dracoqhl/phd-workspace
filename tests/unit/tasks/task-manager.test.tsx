@@ -279,7 +279,7 @@ describe("TaskManager", () => {
     render(<TaskManager />);
 
     const priority = await screen.findByLabelText("Priority for Draft dissertation chapter: Medium");
-    expect(screen.getByTestId("priority-dot-task_1")).toHaveClass("bg-yellow-400");
+    expect(screen.getByTestId("priority-dot-task_1")).toHaveClass("bg-priority-medium");
     fireEvent.change(priority, { target: { value: "low" } });
 
     expect(fetchMock).toHaveBeenCalledWith(

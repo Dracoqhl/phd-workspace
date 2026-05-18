@@ -15,10 +15,51 @@
   --color-accent-soft: oklch(0.94 0.035 152);
   --color-danger: oklch(0.57 0.17 28);
   --color-danger-soft: oklch(0.95 0.04 28);
+  --color-danger-text: oklch(0.43 0.16 28);
   --color-warning: oklch(0.68 0.13 72);
   --color-warning-soft: oklch(0.95 0.045 72);
+  --color-warning-text: oklch(0.47 0.11 72);
   --color-success: oklch(0.55 0.13 150);
   --color-success-soft: oklch(0.94 0.04 150);
+  --color-success-text: oklch(0.37 0.11 150);
+  --color-info: oklch(0.58 0.12 222);
+  --color-info-soft: oklch(0.94 0.035 222);
+  --color-info-text: oklch(0.39 0.11 222);
+  --color-energy: oklch(0.61 0.15 25);
+  --color-energy-soft: oklch(0.95 0.045 45);
+  --color-energy-text: oklch(0.48 0.13 35);
+  --color-energy-muted: oklch(0.76 0.018 245);
+  --color-delete: oklch(0.54 0.16 28);
+  --color-delete-soft: oklch(0.95 0.04 28);
+  --color-delete-hover: oklch(0.91 0.055 28);
+  --color-priority-low: oklch(0.56 0.14 150);
+  --color-priority-medium: oklch(0.74 0.15 82);
+  --color-priority-high: oklch(0.56 0.18 28);
+  --color-status-todo: var(--color-border);
+  --color-status-todo-soft: var(--color-surface-muted);
+  --color-status-todo-text: var(--color-text-muted);
+  --color-status-next: oklch(0.58 0.12 222);
+  --color-status-next-soft: oklch(0.94 0.035 222);
+  --color-status-next-text: oklch(0.39 0.11 222);
+  --color-status-doing: oklch(0.55 0.12 178);
+  --color-status-doing-soft: oklch(0.93 0.04 178);
+  --color-status-doing-text: oklch(0.36 0.105 178);
+  --color-status-waiting: var(--color-warning);
+  --color-status-waiting-soft: var(--color-warning-soft);
+  --color-status-waiting-text: var(--color-warning-text);
+  --color-status-blocked: var(--color-danger);
+  --color-status-blocked-soft: var(--color-danger-soft);
+  --color-status-blocked-text: var(--color-danger-text);
+  --color-status-paused: oklch(0.55 0.11 298);
+  --color-status-paused-soft: oklch(0.94 0.035 298);
+  --color-status-paused-text: oklch(0.39 0.1 298);
+  --color-status-done: var(--color-success);
+  --color-status-done-soft: var(--color-success-soft);
+  --color-status-done-text: var(--color-success-text);
+  --color-due-near: var(--color-warning);
+  --color-due-near-soft: var(--color-warning-soft);
+  --color-due-over: var(--color-danger);
+  --color-due-over-soft: var(--color-danger-soft);
   --shadow-surface: 0 1px 2px rgb(20 30 42 / 0.06);
   background: var(--color-bg);
   color: var(--color-text);
@@ -37,10 +78,51 @@
   --color-accent-soft: oklch(0.31 0.052 158);
   --color-danger: oklch(0.69 0.16 28);
   --color-danger-soft: oklch(0.31 0.05 28);
+  --color-danger-text: oklch(0.82 0.11 28);
   --color-warning: oklch(0.75 0.12 78);
   --color-warning-soft: oklch(0.34 0.05 78);
+  --color-warning-text: oklch(0.84 0.105 78);
   --color-success: oklch(0.68 0.13 150);
   --color-success-soft: oklch(0.3 0.055 150);
+  --color-success-text: oklch(0.8 0.105 150);
+  --color-info: oklch(0.72 0.11 222);
+  --color-info-soft: oklch(0.31 0.05 222);
+  --color-info-text: oklch(0.82 0.09 222);
+  --color-energy: oklch(0.76 0.13 42);
+  --color-energy-soft: oklch(0.34 0.05 52);
+  --color-energy-text: oklch(0.85 0.1 52);
+  --color-energy-muted: oklch(0.48 0.026 245);
+  --color-delete: oklch(0.75 0.13 28);
+  --color-delete-soft: oklch(0.31 0.05 28);
+  --color-delete-hover: oklch(0.36 0.06 28);
+  --color-priority-low: oklch(0.72 0.13 150);
+  --color-priority-medium: oklch(0.82 0.13 82);
+  --color-priority-high: oklch(0.76 0.15 28);
+  --color-status-todo: var(--color-border);
+  --color-status-todo-soft: var(--color-surface-muted);
+  --color-status-todo-text: var(--color-text-muted);
+  --color-status-next: oklch(0.74 0.105 222);
+  --color-status-next-soft: oklch(0.31 0.05 222);
+  --color-status-next-text: oklch(0.84 0.09 222);
+  --color-status-doing: oklch(0.72 0.11 178);
+  --color-status-doing-soft: oklch(0.31 0.05 178);
+  --color-status-doing-text: oklch(0.83 0.09 178);
+  --color-status-waiting: var(--color-warning);
+  --color-status-waiting-soft: var(--color-warning-soft);
+  --color-status-waiting-text: var(--color-warning-text);
+  --color-status-blocked: var(--color-danger);
+  --color-status-blocked-soft: var(--color-danger-soft);
+  --color-status-blocked-text: var(--color-danger-text);
+  --color-status-paused: oklch(0.73 0.1 298);
+  --color-status-paused-soft: oklch(0.31 0.05 298);
+  --color-status-paused-text: oklch(0.83 0.085 298);
+  --color-status-done: var(--color-success);
+  --color-status-done-soft: var(--color-success-soft);
+  --color-status-done-text: var(--color-success-text);
+  --color-due-near: var(--color-warning);
+  --color-due-near-soft: var(--color-warning-soft);
+  --color-due-over: var(--color-danger);
+  --color-due-over-soft: var(--color-danger-soft);
   --shadow-surface: 0 1px 2px rgb(0 0 0 / 0.24);
 }
 
@@ -55,6 +137,21 @@
   --color-accent: oklch(0.43 0.12 146);
   --color-accent-hover: oklch(0.37 0.115 146);
   --color-accent-soft: oklch(0.89 0.06 146);
+  --color-energy: oklch(0.57 0.12 112);
+  --color-energy-soft: oklch(0.9 0.06 112);
+  --color-energy-text: oklch(0.37 0.1 112);
+  --color-priority-low: oklch(0.48 0.13 146);
+  --color-priority-medium: oklch(0.72 0.13 86);
+  --color-priority-high: oklch(0.52 0.14 34);
+  --color-status-next: oklch(0.47 0.105 190);
+  --color-status-next-soft: oklch(0.89 0.045 190);
+  --color-status-next-text: oklch(0.34 0.09 190);
+  --color-status-doing: oklch(0.45 0.12 146);
+  --color-status-doing-soft: oklch(0.88 0.06 146);
+  --color-status-doing-text: oklch(0.32 0.1 146);
+  --color-status-paused: oklch(0.47 0.08 255);
+  --color-status-paused-soft: oklch(0.9 0.035 255);
+  --color-status-paused-text: oklch(0.35 0.075 255);
 }
 
 :root[data-theme="warm"] {
@@ -68,6 +165,21 @@
   --color-accent: oklch(0.53 0.13 66);
   --color-accent-hover: oklch(0.47 0.12 66);
   --color-accent-soft: oklch(0.91 0.055 66);
+  --color-energy: oklch(0.62 0.14 45);
+  --color-energy-soft: oklch(0.92 0.055 55);
+  --color-energy-text: oklch(0.43 0.12 45);
+  --color-priority-low: oklch(0.52 0.11 135);
+  --color-priority-medium: oklch(0.69 0.14 72);
+  --color-priority-high: oklch(0.55 0.15 30);
+  --color-status-next: oklch(0.5 0.09 205);
+  --color-status-next-soft: oklch(0.91 0.035 205);
+  --color-status-next-text: oklch(0.36 0.085 205);
+  --color-status-doing: oklch(0.52 0.105 150);
+  --color-status-doing-soft: oklch(0.9 0.045 150);
+  --color-status-doing-text: oklch(0.36 0.095 150);
+  --color-status-paused: oklch(0.49 0.09 305);
+  --color-status-paused-soft: oklch(0.92 0.035 305);
+  --color-status-paused-text: oklch(0.37 0.08 305);
 }
 
 * {
@@ -154,12 +266,98 @@ button {
   --tw-ring-color: color-mix(in oklch, var(--color-accent) 35%, transparent);
 }
 
+:root[data-theme] .border-red-200 {
+  border-color: var(--color-danger);
+}
+
+:root[data-theme] .bg-red-50 {
+  background-color: var(--color-danger-soft);
+}
+
+:root[data-theme] .text-red-600,
+:root[data-theme] .text-red-700 {
+  color: var(--color-danger-text);
+}
+
+:root[data-theme] .hover\:bg-red-50:hover {
+  background-color: var(--color-delete-hover);
+}
+
+:root[data-theme] .border-emerald-100,
+:root[data-theme] .border-emerald-200,
+:root[data-theme] .border-emerald-400,
+:root[data-theme] .border-emerald-500,
+:root[data-theme] .border-emerald-600 {
+  border-color: var(--color-success);
+}
+
+:root[data-theme] .bg-emerald-50,
+:root[data-theme] .bg-emerald-100 {
+  background-color: var(--color-success-soft);
+}
+
+:root[data-theme] .bg-emerald-600 {
+  background-color: var(--color-success);
+}
+
+:root[data-theme] .text-emerald-600,
+:root[data-theme] .text-emerald-700,
+:root[data-theme] .text-emerald-800 {
+  color: var(--color-success-text);
+}
+
+:root[data-theme] .border-amber-100,
+:root[data-theme] .border-amber-200,
+:root[data-theme] .border-amber-400 {
+  border-color: var(--color-warning);
+}
+
+:root[data-theme] .bg-amber-50,
+:root[data-theme] .bg-amber-100 {
+  background-color: var(--color-warning-soft);
+}
+
+:root[data-theme] .text-amber-700,
+:root[data-theme] .text-amber-800 {
+  color: var(--color-warning-text);
+}
+
+:root[data-theme] .border-blue-200,
+:root[data-theme] .border-teal-200,
+:root[data-theme] .border-violet-200 {
+  border-color: var(--color-info);
+}
+
+:root[data-theme] .bg-blue-50,
+:root[data-theme] .bg-teal-50,
+:root[data-theme] .bg-violet-50 {
+  background-color: var(--color-info-soft);
+}
+
+:root[data-theme] .text-blue-700,
+:root[data-theme] .text-teal-700,
+:root[data-theme] .text-violet-700 {
+  color: var(--color-info-text);
+}
+
+:root[data-theme] .bg-green-500 {
+  background-color: var(--color-priority-low);
+}
+
+:root[data-theme] .bg-yellow-400 {
+  background-color: var(--color-priority-medium);
+}
+
+:root[data-theme] .bg-red-500 {
+  background-color: var(--color-priority-high);
+}
+
 :root[data-theme] .shadow-sm {
   box-shadow: var(--shadow-surface);
 }
 
 .custom-scrollbar {
-  scrollbar-color: rgb(100 116 139 / 0.35) transparent;
+  scrollbar-color: color-mix(in oklch, var(--color-text-muted) 45%, transparent) transparent;
   scrollbar-width: thin;
 }
 
@@ -173,12 +371,12 @@ button {
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background-color: rgb(100 116 139 / 0.28);
+  background-color: color-mix(in oklch, var(--color-text-muted) 34%, transparent);
   border: 2px solid transparent;
   border-radius: 999px;
   background-clip: content-box;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background-color: rgb(100 116 139 / 0.45);
+  background-color: color-mix(in oklch, var(--color-text-muted) 52%, transparent);
 }

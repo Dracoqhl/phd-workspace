@@ -126,7 +126,7 @@ export function LoginForm({ initialMode = "login", multiUserEnabled = false }: L
         ) : null}
 
         {error ? (
-          <p className="text-sm font-medium text-red-700" id={errorId} role="alert">
+          <p className="text-sm font-medium text-danger-text" id={errorId} role="alert">
             {error}
           </p>
         ) : null}
@@ -163,7 +163,7 @@ export function LoginForm({ initialMode = "login", multiUserEnabled = false }: L
       </div>
 
       {error ? (
-        <p className="text-sm font-medium text-red-700" id={errorId} role="alert">
+        <p className="text-sm font-medium text-danger-text" id={errorId} role="alert">
           {error}
         </p>
       ) : null}

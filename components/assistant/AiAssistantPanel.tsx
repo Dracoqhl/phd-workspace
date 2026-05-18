@@ -185,9 +185,9 @@ export function AiAssistantPanel() {
 
   const statusClass =
     isConnected === true
-      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+      ? "border-success bg-success-soft text-success-text"
       : isConnected === false
-        ? "border-red-200 bg-red-50 text-red-700"
+        ? "border-danger bg-danger-soft text-danger-text"
         : "border-slate-200 bg-slate-50 text-slate-600";
 
   return (
@@ -339,7 +339,7 @@ function ChatMessageBubble({
 
 function MessageContent({ chatMessage }: { chatMessage: ChatMessage }) {
   const commonClass = `whitespace-pre-wrap ${
-    chatMessage.status === "error" ? "text-red-700" : ""
+    chatMessage.status === "error" ? "text-danger-text" : ""
   }`;
 
   if (chatMessage.role === "user") {
@@ -436,14 +436,14 @@ function ProposalCard({
   }
 
   return (
-    <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 p-2 text-xs text-slate-700">
+    <div className="mt-2 rounded-md border border-warning bg-warning-soft p-2 text-xs text-primary">
       <div className="mb-2 flex items-center justify-between gap-2">
-        <span className="font-semibold text-amber-800">操作建议</span>
+        <span className="font-semibold text-warning-text">操作建议</span>
         {actionState !== "pending" ? <span className="text-slate-600">{actionStatus}</span> : null}
       </div>
       <div className="custom-scrollbar grid max-h-64 gap-1.5 overflow-y-auto pr-1" data-testid="ai-proposal-list">
         {proposals.map((proposal) => (
-          <label className="flex items-start gap-2 rounded border border-amber-100 bg-white px-2 py-1.5" key={proposal.id}>
+          <label className="flex items-start gap-2 rounded border border-warning bg-white px-2 py-1.5" key={proposal.id}>
             <input
               aria-label={`Select ${proposal.summary}`}
               checked={selectedIds.has(proposal.id)}

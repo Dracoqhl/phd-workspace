@@ -309,7 +309,7 @@ export function HabitManager() {
           </div>
           <button
             aria-label={isEditingPanel ? "Done editing habits" : "Edit habits"}
-            className={`inline-flex h-8 items-center gap-1 rounded-md border px-2.5 text-xs font-semibold ${isEditingPanel ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-slate-200 text-slate-600 hover:bg-slate-50"}`}
+            className={`inline-flex h-8 items-center gap-1 rounded-md border px-2.5 text-xs font-semibold ${isEditingPanel ? "border-success bg-success-soft text-success-text" : "border-slate-200 text-slate-600 hover:bg-slate-50"}`}
             onClick={() => setIsEditingPanel((current) => !current)}
             type="button"
           >
@@ -323,12 +323,12 @@ export function HabitManager() {
             <span>{progressPercent}%</span>
           </div>
           <div aria-label="Habit check-in progress" aria-valuemax={targetTotal} aria-valuemin={0} aria-valuenow={checkedCount} className="h-1.5 overflow-hidden rounded-full bg-slate-100" role="progressbar">
-            <div className="h-full rounded-full bg-emerald-600 transition-all" style={{ width: `${progressPercent}%` }} />
+            <div className="h-full rounded-full bg-success transition-all" style={{ width: `${progressPercent}%` }} />
           </div>
         </div>
       </div>
 
-      {error ? <p className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">{error}</p> : null}
+      {error ? <p className="mt-3 rounded-md border border-danger bg-danger-soft px-3 py-2 text-sm text-danger-text" role="alert">{error}</p> : null}
       {loading ? <p className="mt-4 text-sm text-slate-600">Loading habits...</p> : null}
 
       {!loading && sortedHabits.length === 0 ? (
@@ -344,7 +344,7 @@ export function HabitManager() {
             const pendingCheckin = pendingCheckinHabitIds.has(item.habit.id);
 
             return (
-              <li aria-busy={pendingCheckin} className={`grid gap-2 px-3 py-2 text-sm transition-colors duration-300 ${isEditingPanel ? "sm:grid-cols-[minmax(0,1fr)_5rem_2.5rem]" : "sm:grid-cols-[1.5rem_minmax(0,1fr)_4rem]"} sm:items-center ${pendingCheckin ? "bg-emerald-50 text-emerald-800 ring-1 ring-inset ring-emerald-200" : rowClass}`} key={item.habit.id}>
+              <li aria-busy={pendingCheckin} className={`grid gap-2 px-3 py-2 text-sm transition-colors duration-300 ${isEditingPanel ? "sm:grid-cols-[minmax(0,1fr)_5rem_2.5rem]" : "sm:grid-cols-[1.5rem_minmax(0,1fr)_4rem]"} sm:items-center ${pendingCheckin ? "bg-success-soft text-success-text ring-1 ring-inset ring-success" : rowClass}`} key={item.habit.id}>
                 {isEditingPanel ? (
                   <>
                     <input
@@ -362,13 +362,13 @@ export function HabitManager() {
                     >
                       {targetOptions.map((count) => <option key={count} value={count}>{count}</option>)}
                     </select>
-                    <button aria-label={`Deactivate ${item.habit.name}`} className="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100" onClick={() => void deactivateHabit(item)} type="button">
+                    <button aria-label={`Deactivate ${item.habit.name}`} className="inline-flex h-8 w-8 items-center justify-center rounded-md text-delete hover:bg-delete-hover" onClick={() => void deactivateHabit(item)} type="button">
                       <Trash2 aria-hidden="true" data-testid="habit-trash-icon" size={14} />
                     </button>
                   </>
                 ) : (
                   <>
-                    <button aria-label={item.isCompleted ? `Cancel check-in for ${item.habit.name}` : itemCompletedCount > 0 ? `Mark ${item.habit.name} progress` : `Mark ${item.habit.name} complete`} className={`inline-flex h-4 w-4 items-center justify-center rounded-full border transition-colors ${pendingCheckin ? "animate-pulse border-emerald-500 bg-emerald-100 text-emerald-700" : item.isCompleted ? "border-emerald-600 bg-emerald-600 text-white" : itemCompletedCount > 0 ? "border-emerald-500 bg-emerald-100 text-emerald-700" : "border-slate-300 bg-white hover:border-emerald-500"}`} onClick={() => void toggleCheckin(item)} type="button">
+                    <button aria-label={item.isCompleted ? `Cancel check-in for ${item.habit.name}` : itemCompletedCount > 0 ? `Mark ${item.habit.name} progress` : `Mark ${item.habit.name} complete`} className={`inline-flex h-4 w-4 items-center justify-center rounded-full border transition-colors ${pendingCheckin ? "animate-pulse border-success bg-success-soft text-success-text" : item.isCompleted ? "border-success bg-success text-white" : itemCompletedCount > 0 ? "border-success bg-success-soft text-success-text" : "border-slate-300 bg-white hover:border-success"}`} onClick={() => void toggleCheckin(item)} type="button">
                       {item.isCompleted ? <Check aria-hidden="true" data-testid="habit-checkmark" size={10} strokeWidth={3} /> : null}
                     </button>
                     <p className={`min-w-0 truncate font-medium ${item.isCompleted ? "line-through" : ""}`}>{item.habit.name}</p>

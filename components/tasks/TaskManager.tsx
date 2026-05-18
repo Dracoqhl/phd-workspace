@@ -347,7 +347,7 @@ export function TaskManager() {
         </button>
       </form>
 
-      {error ? <p className="mt-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">{error}</p> : null}
+      {error ? <p className="mt-4 rounded-md border border-danger bg-danger-soft px-3 py-2 text-sm text-danger-text" role="alert">{error}</p> : null}
       {loading ? <p className="mt-5 text-sm text-slate-600">Loading tasks...</p> : null}
 
       {!loading && topLevelTasks.length === 0 ? (
@@ -442,17 +442,17 @@ interface TaskRowProps {
 function TaskRow({ task, isSubtask, canExpand, expanded, progress, selected, pendingCompletion, selectedTaskId, onToggleExpanded, onSelect, onAddSubtask, onTitleSave, onStatusToggle, onStatusChange, onPriorityChange, onDueDateChange, onDelete }: TaskRowProps) {
   const dueState = getTaskDueState(task);
   const rowClass = pendingCompletion
-    ? "bg-emerald-50/40"
+    ? "bg-success-soft"
     : dueState === "overdue"
-      ? "bg-red-50"
+      ? "bg-due-over-soft"
       : dueState === "near_due"
-        ? "bg-amber-50"
+        ? "bg-due-near-soft"
         : isSubtask
           ? "bg-slate-50/60"
           : "bg-white";
 
   return (
-    <div aria-busy={pendingCompletion} aria-selected={selected} className={`grid grid-cols-[2rem_minmax(0,1fr)_6.5rem_4.5rem_5.5rem_4.5rem] items-center gap-2 border-t border-slate-200 px-3 py-2 text-sm transition-colors duration-150 ${rowClass} ${selected ? "ring-1 ring-inset ring-moss" : ""} ${pendingCompletion ? "ring-1 ring-inset ring-emerald-100" : ""} ${task.status === "completed" ? "text-slate-400" : "text-slate-700"}`} role="row">
+    <div aria-busy={pendingCompletion} aria-selected={selected} className={`grid grid-cols-[2rem_minmax(0,1fr)_6.5rem_4.5rem_5.5rem_4.5rem] items-center gap-2 border-t border-slate-200 px-3 py-2 text-sm transition-colors duration-150 ${rowClass} ${selected ? "ring-1 ring-inset ring-moss" : ""} ${pendingCompletion ? "ring-1 ring-inset ring-success" : ""} ${task.status === "completed" ? "text-slate-400" : "text-slate-700"}`} role="row">
       <div className="flex items-center" role="cell">
         {!isSubtask && canExpand ? (
           <button aria-label={`${expanded ? "Collapse" : "Expand"} subtasks for ${task.title}`} className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100" onClick={() => onToggleExpanded?.(task.id)} type="button">
@@ -476,7 +476,7 @@ function TaskRow({ task, isSubtask, canExpand, expanded, progress, selected, pen
             <Plus aria-hidden="true" size={14} />
           </button>
         ) : null}
-        <button aria-label={`${isSubtask ? "Delete subtask" : "Delete task"} ${task.title}`} className="inline-flex h-7 w-7 items-center justify-center rounded-md text-red-600 hover:bg-red-50" onClick={() => void onDelete(task)} type="button">
+        <button aria-label={`${isSubtask ? "Delete subtask" : "Delete task"} ${task.title}`} className="inline-flex h-7 w-7 items-center justify-center rounded-md text-delete hover:bg-delete-hover" onClick={() => void onDelete(task)} type="button">
           <Trash2 aria-hidden="true" size={14} />
         </button>
       </div>
@@ -490,7 +490,7 @@ function TaskCompletionButton({ task, pending, onToggle }: { task: Task; pending
   return (
     <button
       aria-label={completed ? `Reopen task ${task.title}` : `Mark task ${task.title} complete`}
-      className={`inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition-colors ${pending ? "border-emerald-400 bg-emerald-50" : completed ? "border-emerald-600 bg-emerald-600 text-white" : "border-slate-300 bg-white hover:border-emerald-500"}`}
+      className={`inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition-colors ${pending ? "border-success bg-success-soft text-success-text" : completed ? "border-success bg-success text-white" : "border-slate-300 bg-white hover:border-success"}`}
       onClick={() => void onToggle(task)}
       type="button"
     >
@@ -637,7 +637,7 @@ function SubtaskInput({ parentTitle, title, onTitleChange, onCreate, onCancel }:
         <input aria-label={`New subtask for ${parentTitle}`} autoFocus className="ml-5 h-8 w-full rounded-md border border-slate-300 px-2 text-sm text-ink outline-none focus:border-moss" onChange={(event) => onTitleChange(event.target.value)} onKeyDown={handleKeyDown} value={title} />
       </div>
       <div className="text-xs text-slate-500" role="cell">Todo</div>
-      <div className="flex justify-center" role="cell"><span className="inline-block h-3 w-3 rounded-full bg-green-500" /></div>
+      <div className="flex justify-center" role="cell"><span className="inline-block h-3 w-3 rounded-full bg-priority-low" /></div>
       <div role="cell"><Calendar aria-hidden="true" className="text-slate-400" size={16} /></div>
       <div role="cell" />
     </div>
@@ -645,19 +645,19 @@ function SubtaskInput({ parentTitle, title, onTitleChange, onCreate, onCancel }:
 }
 
 function priorityDotClass(priority: TaskPriority): string {
-  if (priority === "high") return "bg-red-500";
-  if (priority === "medium") return "bg-yellow-400";
-  return "bg-green-500";
+  if (priority === "high") return "bg-priority-high";
+  if (priority === "medium") return "bg-priority-medium";
+  return "bg-priority-low";
 }
 
 function statusSelectClass(status: TaskStatus): string {
-  if (status === "next") return "border-blue-200 bg-blue-50 text-blue-700";
-  if (status === "in_progress") return "border-teal-200 bg-teal-50 text-teal-700";
-  if (status === "waiting") return "border-amber-200 bg-amber-50 text-amber-700";
-  if (status === "blocked") return "border-red-200 bg-red-50 text-red-700";
-  if (status === "paused") return "border-violet-200 bg-violet-50 text-violet-700";
-  if (status === "completed") return "border-emerald-200 bg-emerald-50 text-emerald-700";
-  return "border-slate-200 bg-slate-50 text-slate-600";
+  if (status === "next") return "border-status-next bg-status-next-soft text-status-next-text";
+  if (status === "in_progress") return "border-status-doing bg-status-doing-soft text-status-doing-text";
+  if (status === "waiting") return "border-status-waiting bg-status-waiting-soft text-status-waiting-text";
+  if (status === "blocked") return "border-status-blocked bg-status-blocked-soft text-status-blocked-text";
+  if (status === "paused") return "border-status-paused bg-status-paused-soft text-status-paused-text";
+  if (status === "completed") return "border-status-done bg-status-done-soft text-status-done-text";
+  return "border-status-todo bg-status-todo-soft text-status-todo-text";
 }
 
 function formatShortDate(value: string): string {

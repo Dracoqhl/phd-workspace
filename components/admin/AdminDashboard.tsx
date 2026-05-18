@@ -163,7 +163,7 @@ export function AdminDashboard() {
           </div>
         </div>
 
-        {error ? <p className="mt-3 rounded-md bg-red-50 px-3 py-2 text-sm font-medium text-red-700">{error}</p> : null}
+        {error ? <p className="mt-3 rounded-md bg-danger-soft px-3 py-2 text-sm font-medium text-danger-text">{error}</p> : null}
 
         <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
           {stats.map((stat) => (
@@ -204,7 +204,7 @@ export function AdminDashboard() {
                       className={
                         invite.status === "used"
                           ? "h-fit w-fit rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600"
-                          : "h-fit w-fit rounded-full bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700"
+                          : "h-fit w-fit rounded-full bg-success-soft px-2 py-1 text-xs font-semibold text-success-text"
                       }
                     >
                       {invite.status === "used" ? "Used" : "Unused"}
@@ -216,7 +216,7 @@ export function AdminDashboard() {
                       type="button"
                     >
                       {copiedCode === invite.code ? (
-                        <Check aria-hidden="true" className="h-3.5 w-3.5 text-emerald-600" />
+                        <Check aria-hidden="true" className="h-3.5 w-3.5 text-success" />
                       ) : (
                         <Clipboard aria-hidden="true" className="h-3.5 w-3.5" />
                       )}

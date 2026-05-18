@@ -261,7 +261,7 @@ describe("HabitManager", () => {
     });
 
     const completedButton = screen.getByRole("button", { name: "Cancel check-in for Walk" });
-    expect(completedButton).toHaveClass("bg-emerald-600");
+    expect(completedButton).toHaveClass("bg-success");
     expect(within(completedButton).getByTestId("habit-checkmark")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Cancel check-in for Walk" }));

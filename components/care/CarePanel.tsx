@@ -237,13 +237,13 @@ export function CarePanel() {
         </div>
       </div>
 
-      <div className="mt-3 rounded-md border border-amber-100 bg-amber-50 px-3 py-3" data-testid="care-quote-panel">
+      <div className="mt-3 rounded-md border border-energy bg-energy-soft px-3 py-3" data-testid="care-quote-panel">
         <div className="mb-2 flex items-center justify-between gap-2">
-          <span className="text-xs font-semibold uppercase tracking-wide text-amber-700">Daily quote</span>
+          <span className="text-xs font-semibold uppercase tracking-wide text-energy-text">Daily quote</span>
           <div className="flex items-center gap-1">
             <button
               aria-label="Retry care message"
-              className="inline-flex h-7 w-7 items-center justify-center rounded-md text-amber-700 hover:bg-amber-100 disabled:opacity-60"
+              className="inline-flex h-7 w-7 items-center justify-center rounded-md text-energy-text hover:bg-energy/10 disabled:opacity-60"
               disabled={loading || saving}
               onClick={() => void retryCare()}
               type="button"
@@ -252,7 +252,7 @@ export function CarePanel() {
             </button>
             <button
               aria-label="Quote settings"
-              className="inline-flex h-7 w-7 items-center justify-center rounded-md text-amber-700 hover:bg-amber-100 disabled:opacity-60"
+              className="inline-flex h-7 w-7 items-center justify-center rounded-md text-energy-text hover:bg-energy/10 disabled:opacity-60"
               disabled={loading || saving}
               onClick={() => setShowQuoteSettings((current) => !current)}
               type="button"
@@ -265,12 +265,12 @@ export function CarePanel() {
         {showQuoteSettings ? (
           <div className="mt-3">
             <div className="mb-1 flex items-center justify-between gap-2">
-              <label className="text-xs font-semibold uppercase tracking-wide text-amber-700" htmlFor="quote-prompt">
+              <label className="text-xs font-semibold uppercase tracking-wide text-energy-text" htmlFor="quote-prompt">
                 Quote prompt
               </label>
               <button
                 aria-label="Reset quote prompt"
-                className="inline-flex h-6 items-center gap-1 rounded-md px-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-100 disabled:opacity-60"
+                className="inline-flex h-6 items-center gap-1 rounded-md px-1.5 text-xs font-semibold text-energy-text hover:bg-energy/10 disabled:opacity-60"
                 disabled={loading || saving}
                 onClick={() => void resetQuotePreference()}
                 type="button"
@@ -281,7 +281,7 @@ export function CarePanel() {
             </div>
             <input
               aria-label="Quote prompt"
-              className="h-8 w-full rounded-md border border-amber-200 bg-white/70 px-2 text-xs text-slate-700 outline-none focus:border-amber-400 disabled:opacity-60"
+              className="h-8 w-full rounded-md border border-energy bg-surface/70 px-2 text-xs text-primary outline-none focus:border-energy disabled:opacity-60"
               disabled={loading || saving}
               id="quote-prompt"
               onBlur={() => void saveQuotePreference()}
@@ -316,7 +316,7 @@ export function CarePanel() {
       </label>
 
       {error ? (
-        <p className="mt-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">
+        <p className="mt-2 rounded-md border border-danger bg-danger-soft px-3 py-2 text-sm text-danger-text" role="alert">
           {error}
         </p>
       ) : null}
@@ -337,10 +337,10 @@ function normalizeCareTodayResponse(payload: Partial<CareTodayResponse>): CareTo
 function energyButtonClass(currentLevel: CareRecord["energyLevel"]): string {
   const tone =
     currentLevel === 5
-      ? "text-amber-500 hover:text-orange-500"
+      ? "text-energy hover:text-energy-text"
       : currentLevel
-        ? "text-rose-500 hover:text-rose-600"
-        : "text-slate-300 hover:text-rose-500";
+        ? "text-energy hover:text-energy-text"
+        : "text-energy-muted hover:text-energy";
 
   return `inline-flex h-7 w-7 items-center justify-center rounded-full transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-moss/40 disabled:opacity-60 ${tone}`;
 }
@@ -351,11 +351,11 @@ function EnergyIcon({ currentLevel, index }: { currentLevel: CareRecord["energyL
   }
 
   if (currentLevel === 1 && index === 1) {
-    return <HeartCrack aria-hidden="true" className="text-rose-500" data-testid="energy-broken-heart" size={18} />;
+    return <HeartCrack aria-hidden="true" className="text-energy" data-testid="energy-broken-heart" size={18} />;
   }
 
   if (currentLevel && index <= currentLevel) {
-    return <Heart aria-hidden="true" className="fill-current text-rose-500" size={18} />;
+    return <Heart aria-hidden="true" className="fill-current text-energy" size={18} />;
   }
 
   return <Heart aria-hidden="true" size={18} />;
@@ -372,10 +372,10 @@ function EnergyBrightBadge() {
       width="18"
       xmlns="http://www.w3.org/2000/svg"
     >
-      <circle cx="12" cy="12" fill="#f59e0b" r="10.4" />
-      <circle cx="12" cy="12" fill="#fbbf24" r="8.2" />
-      <path d="M12 4.9l1.45 3.8 3.85 1.4-3.85 1.45L12 15.35l-1.45-3.8-3.85-1.45 3.85-1.4L12 4.9z" fill="#fff7ed" />
-      <path d="M17.8 14.2l.55 1.45 1.45.55-1.45.55-.55 1.45-.55-1.45-1.45-.55 1.45-.55.55-1.45z" fill="#fff7ed" opacity="0.9" />
+      <circle cx="12" cy="12" fill="var(--color-energy)" r="10.4" />
+      <circle cx="12" cy="12" fill="color-mix(in oklch, var(--color-energy) 72%, var(--color-surface))" r="8.2" />
+      <path d="M12 4.9l1.45 3.8 3.85 1.4-3.85 1.45L12 15.35l-1.45-3.8-3.85-1.45 3.85-1.4L12 4.9z" fill="var(--color-surface)" />
+      <path d="M17.8 14.2l.55 1.45 1.45.55-1.45.55-.55 1.45-.55-1.45-1.45-.55 1.45-.55.55-1.45z" fill="var(--color-surface)" opacity="0.9" />
     </svg>
   );
 }
