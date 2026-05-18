@@ -1,4 +1,4 @@
-import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
+import { link, mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 
@@ -91,16 +91,20 @@ export class JsonStore<T> {
     } catch (error) {
       if (isMissingFileError(error)) {
         const directory = dirname(this.filePath);
+        const tempPath = join(directory, `.${basename(this.filePath)}.${randomUUID()}.init.tmp`);
         const content = `${JSON.stringify({ schemaVersion: SCHEMA_VERSION, items: [] }, null, 2)}\n`;
 
         await mkdir(directory, { recursive: true });
 
         try {
-          await writeFile(this.filePath, content, { encoding: "utf8", flag: "wx" });
+          await writeFile(tempPath, content, "utf8");
+          await link(tempPath, this.filePath);
         } catch (writeError) {
           if (!isExistingFileError(writeError)) {
             throw writeError;
           }
+        } finally {
+          await unlinkIfExists(tempPath);
         }
 
         return;

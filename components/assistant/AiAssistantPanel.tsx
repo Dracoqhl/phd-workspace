@@ -213,6 +213,9 @@ export function AiAssistantPanel() {
       <p className={`mt-3 rounded-md border px-3 py-2 text-sm ${statusClass}`} role="status">
         {message}
       </p>
+      <p className="mt-2 text-xs leading-5 text-slate-500">
+        AI 仅用于维护任务、习惯、计划和 Quote 设置。
+      </p>
 
       <div className="mt-4 flex min-h-0 flex-1 flex-col gap-3">
         <div

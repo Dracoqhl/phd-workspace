@@ -236,10 +236,12 @@ Owns AI integration and AI-specific schemas.
 - `config.ts` reads `AI_API_KEY`, `AI_MODEL`, and `AI_BASE_URL` only on the server.
 - `test-client.ts` calls the OpenAI-compatible `/chat/completions` endpoint for connectivity testing without exposing secrets.
 - `care.ts` calls the OpenAI-compatible `/chat/completions` endpoint for mental-care quote batch generation, asks for quotes under 50 Chinese characters, truncates longer returned items to 50 characters, and returns `null` for fallback on any failure. The default quote prompt and default quote batch are local domain constants, so resetting to defaults does not call the AI provider.
-- `chat.ts` calls the OpenAI-compatible `/chat/completions` endpoint for assistant chat, parses optional structured operation proposals, and returns `null` on any failure so route handlers can respond safely.
+- `chat.ts` calls the OpenAI-compatible `/chat/completions` endpoint for project-scoped assistant chat, reinforces that the assistant is not a general chatbot, parses optional structured operation proposals, and returns `null` on any failure so route handlers can respond safely.
 - `prompts.ts` stores prompt builders.
 - `schemas.ts` defines structured AI response schemas.
 - `operations.ts` converts AI responses into pending operation proposals.
+
+`lib/api/ai-chat.ts` owns chat payload parsing, current-user workspace context construction, and route-level input/output boundary guards. The chat route should refuse clearly out-of-scope, abusive, credential, system-prompt, server-configuration, filesystem, hacking, or secret-extraction requests before model calls. If a model reply discusses secrets or permission bypasses, the route replaces it with the standard boundary response and drops any proposals.
 - AI code must never write data directly. It returns proposals that API routes can pass to the UI for confirmation.
 
 ### `lib/api/`

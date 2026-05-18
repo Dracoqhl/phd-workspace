@@ -1,9 +1,12 @@
 import { requireUser } from "@/lib/api/auth";
 import {
   AI_CHAT_FAILED,
+  AI_CHAT_BOUNDARY_REPLY,
   INVALID_AI_CHAT_PAYLOAD,
   buildAiWorkspaceContext,
   dataConfigErrorResponse,
+  isAiChatInputInScope,
+  isAiChatOutputSafe,
   parseAiChatInput,
   readJsonObject
 } from "@/lib/api/ai-chat";
@@ -23,6 +26,10 @@ export async function POST(request: Request): Promise<Response> {
   const input = body ? parseAiChatInput(body) : null;
   if (!input) {
     return Response.json({ error: INVALID_AI_CHAT_PAYLOAD }, { status: 400 });
+  }
+
+  if (!isAiChatInputInScope(input.message)) {
+    return Response.json({ ok: true, reply: AI_CHAT_BOUNDARY_REPLY, boundary: "out_of_scope" });
   }
 
   const config = getAiConfig();
@@ -52,6 +59,10 @@ export async function POST(request: Request): Promise<Response> {
 
   if (!result) {
     return Response.json({ ok: false, error: AI_CHAT_FAILED });
+  }
+
+  if (!isAiChatOutputSafe(result.reply)) {
+    return Response.json({ ok: true, reply: AI_CHAT_BOUNDARY_REPLY, boundary: "unsafe_output" });
   }
 
   if ("aiChatMessages" in repositories) {

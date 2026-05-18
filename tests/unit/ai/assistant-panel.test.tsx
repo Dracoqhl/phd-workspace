@@ -21,6 +21,7 @@ describe("AiAssistantPanel", () => {
     expect(screen.getByRole("button", { name: "Send message" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Send" })).not.toBeInTheDocument();
     expect(screen.getByText(/可以指定 Quote 的内容或类型/)).toBeInTheDocument();
+    expect(screen.getByText("AI 仅用于维护任务、习惯、计划和 Quote 设置。")).toBeInTheDocument();
     expect(screen.queryByText(/励志诗句|名人名言|更短|更温和/)).not.toBeInTheDocument();
     expect(screen.getByRole("complementary", { name: "AI 助手" })).toHaveClass("flex-1");
     expect(screen.getByRole("log", { name: "AI conversation history" })).toHaveClass(

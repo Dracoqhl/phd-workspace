@@ -13,7 +13,7 @@ P0 功能：
 - 心灵关怀模块：每日 Quote、可编辑 Quote 生成提示词、批量预生成缓存、默认提示词与默认 Quote 批次本地重置、即时刷新切换、能量自评、今日 focus、失败 fallback。
 - 每日健康习惯模块：创建、编辑、停用、完成/未完成打卡。
 - 任务模块：一级任务、一层子任务、状态、优先级、截止日期、完成隐藏、接近截止/逾期高亮。
-- 右侧常驻 AI 助手：聊天、历史记录、API 测试、任务拆解、操作建议、勾选确认后写入。
+- 右侧常驻 AI 助手：项目范围内聊天、历史记录、API 测试、任务拆解、操作建议、勾选确认后写入。AI 助手仅用于维护任务、习惯、计划和 Quote 设置；明显无关、恶意或索要密钥/系统信息的请求会在后端拦截。
 - 邀请制多用户账号，邮箱 + 密码登录。
 - SQLite 多用户数据存储；未配置 `DATABASE_PATH` 时仍可使用 legacy 单口令 JSON 模式。
 
@@ -246,7 +246,8 @@ The project is in MVP implementation. Current dev status includes a versioned da
 - `lib/domain/tasks.ts`: task completion, subtask progress, and due-state business rules.
 - `lib/domain/habits.ts`: habit business-date helper using a 02:00 server-time day boundary and habit list sorting rules.
 - `lib/domain/care.ts`: care date helper plus local fallback and AI-generated care record construction.
-- `lib/ai/config.ts`, `lib/ai/test-client.ts`, `lib/ai/care.ts`, and `lib/ai/chat.ts`: server-only OpenAI-compatible AI configuration, connectivity test helper, mental-care generation helper, and read-only assistant chat helper.
+- `lib/ai/config.ts`, `lib/ai/test-client.ts`, `lib/ai/care.ts`, and `lib/ai/chat.ts`: server-only OpenAI-compatible AI configuration, connectivity test helper, mental-care generation helper, and project-scoped assistant chat helper.
+- `lib/api/ai-chat.ts`: AI chat payload parsing, current-user workspace context building, and input/output boundary guards that prevent out-of-scope chat, credential extraction, system-prompt disclosure, and unsafe model replies.
 - `lib/data/json-store.ts`: JSON file initialization, read, update, and atomic write helper.
 - `lib/data/repositories.ts`: versioned repository factory for tasks, trash, habits, habit check-ins, care records, and AI logs.
 - `app/api/tasks/**/route.ts`: protected task list, create, detail, update, delete, and subtask creation endpoints.

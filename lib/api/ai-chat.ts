@@ -7,9 +7,45 @@ import type { AiAssistantContext } from "@/lib/ai/chat";
 export const INVALID_AI_CHAT_PAYLOAD = "Invalid AI chat payload";
 export const AI_CHAT_FAILED = "AI chat failed";
 export const DATA_DIR_CONFIG_ERROR = "Data directory is not configured";
+export const AI_CHAT_BOUNDARY_REPLY =
+  "我只能帮助维护博士工作台中的任务、习惯、今日计划和 Quote 设置。这个请求不在当前 AI 助手的使用范围内。";
 
 const MAX_MESSAGE_LENGTH = 2000;
 const MAX_CONTEXT_HABITS = 20;
+const WORKSPACE_INTENT_PATTERNS = [
+  /任务/,
+  /子任务/,
+  /习惯/,
+  /打卡/,
+  /今日|今天/,
+  /计划|安排/,
+  /quote|金句/i,
+  /心灵|关怀/,
+  /能量|focus/i,
+  /博士|论文|实验|阅读|写作|科研/,
+  /ddl|截止|优先级|状态/i,
+  /工作台/,
+  /拆解|梳理|整理/,
+  /添加|新增|创建|删除|修改/,
+  /对话|历史|消息|回复/
+];
+const UNSAFE_INPUT_PATTERNS = [
+  /api\s*key|apikey|api_key/i,
+  /secret|token|session|cookie/i,
+  /密码|密钥|环境变量|\.env/i,
+  /系统提示|system\s*prompt|developer\s*message/i,
+  /数据库路径|服务器配置|文件系统/i,
+  /绕过权限|越权|破解|攻击服务器|ddos|木马/i,
+  /色情|黄色|裸聊|赌博|毒品|炸弹/i
+];
+const UNSAFE_OUTPUT_PATTERNS = [
+  /api\s*key|apikey|api_key/i,
+  /secret|token|session|cookie/i,
+  /环境变量|\.env/i,
+  /系统提示|system\s*prompt|developer\s*message/i,
+  /数据库路径|服务器配置|文件系统/i,
+  /绕过权限|越权|破解|攻击服务器|ddos/i
+];
 
 type Repositories = ReturnType<typeof createRepositories> | ReturnType<typeof createSqliteRepositories>;
 
@@ -37,6 +73,19 @@ export function parseAiChatInput(body: Record<string, unknown>): { message: stri
   }
 
   return { message };
+}
+
+export function isAiChatInputInScope(message: string): boolean {
+  const normalized = message.trim();
+  if (UNSAFE_INPUT_PATTERNS.some((pattern) => pattern.test(normalized))) {
+    return false;
+  }
+
+  return WORKSPACE_INTENT_PATTERNS.some((pattern) => pattern.test(normalized));
+}
+
+export function isAiChatOutputSafe(reply: string): boolean {
+  return !UNSAFE_OUTPUT_PATTERNS.some((pattern) => pattern.test(reply));
 }
 
 export async function buildAiWorkspaceContext(repositories: Repositories): Promise<AiAssistantContext> {
