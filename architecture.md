@@ -167,7 +167,7 @@ Stage B implemented the first runnable App Router shell and the current task sli
 - `app/globals.css`: Tailwind directives and base page styling.
 - `components/tasks/TaskManager.tsx`: compact hierarchical task table backed by `/api/tasks`, including top-level task create/delete, one-layer subtask create/delete, expandable subtasks, small row-level complete/reopen controls, two-step select-then-edit title editing with blur save, colored status pill editing without a visible dropdown arrow, compact priority dot editing with Low as the default, direct due-date picker access, completed top-level task hiding, and due-state highlighting.
 - `components/habits/HabitManager.tsx`: compact habit list backed by `/api/habits`, including panel-level edit mode, bottom-only habit creation with daily target 1-5, editable name and target fields in edit mode, clickable progress fractions for target edits in normal mode, trash-icon deactivate, compact circular check-in/cancel controls, checked-count-over-target header progress, completed-row grey/strikethrough styling, and completed-row sorting. Check-in increments/decrements update local counts and the header progress immediately while the network request syncs in the background.
-- `components/care/CarePanel.tsx`: compact mental care card backed by `/api/care`, including per-user batch-cached daily quotes, editable quote style preference, instant local quote cycling with background sync, local fallback batch, stable title-row energy icons and status pill, bright level-5 amber badge icons, small retry/favorite icon actions, and an editable "today focus" field.
+- `components/care/CarePanel.tsx`: compact mental care card backed by `/api/care`, including per-user batch-cached daily quotes, a gear-triggered quote prompt editor, instant local quote cycling with background sync, local fallback batch, stable title-row energy icons and status pill, bright level-5 amber badge icons, small retry/settings icon actions, and an editable "today focus" field.
 - `components/assistant/AiAssistantPanel.tsx`: right-side assistant shell with a compact AI connectivity test control, recent-history loading and clearing, chat area, inline pending response state, `Command+Enter` / `Ctrl+Enter` send shortcuts, safe Markdown rendering for assistant replies, preserved user line breaks, icon-only send control, and selectable proposal confirmation cards. Confirmed task/habit writes dispatch refresh events so the main panels reload newly written data. The desktop panel is sticky, the message log is the scroll container with subtle custom scrollbar styling, and the input stays anchored at the panel bottom.
 - `components/sync/SyncStatusProvider.tsx`: client-side provider and badge for page-level `Synced`, `Saving...`, and `Sync failed` state. Feature components wrap write requests with `trackSync` and keep their own rollback snapshots.
 - `tests/unit/app/page.test.tsx`: verifies that the workspace regions render.
@@ -314,11 +314,11 @@ Recommended responsibilities:
 - `tasks.json`: parent tasks and subtasks.
 - `habits.json`: habit definitions.
 - `habit-checkins.json`: daily habit completion records.
-- `care-records.json`: daily mental care content, energy self-assessment, favorite state, and today-focus text.
-- `care-quote-preferences.json`: legacy single-user quote style preference and cached quote batch.
+- `care-records.json`: daily mental care content, energy self-assessment, legacy favorite state, and today-focus text.
+- `care-quote-preferences.json`: legacy single-user quote prompt and cached quote batch.
 - `ai-logs.json`: AI requests, proposed operations, confirmed operations, and failures.
 - In SQLite multi-user mode, `ai_chat_messages` stores per-user assistant transcripts with `role`, `content`, and `created_at`. It is scoped by `user_id` and is not shared across users.
-- In SQLite multi-user mode, `care_quote_preferences` stores each user's quote style preference, cached quote batch, and current quote index. It is scoped by `user_id` and is not shared across users.
+- In SQLite multi-user mode, `care_quote_preferences` stores each user's quote prompt, cached quote batch, and current quote index. It is scoped by `user_id` and is not shared across users.
 - `trash.json`: deleted records with enough metadata to support future restore.
 
 ## Git Boundaries

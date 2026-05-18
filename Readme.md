@@ -10,7 +10,7 @@
 P0 功能：
 
 - 单页面工作台。
-- 心灵关怀模块：每日 Quote、可编辑 Quote 风格偏好、批量预生成缓存、即时刷新切换、收藏、能量自评、今日 focus、失败 fallback。
+- 心灵关怀模块：每日 Quote、可编辑 Quote 生成提示词、批量预生成缓存、即时刷新切换、能量自评、今日 focus、失败 fallback。
 - 每日健康习惯模块：创建、编辑、停用、完成/未完成打卡。
 - 任务模块：一级任务、一层子任务、状态、优先级、截止日期、完成隐藏、接近截止/逾期高亮。
 - 右侧常驻 AI 助手：聊天、历史记录、API 测试、任务拆解、操作建议、勾选确认后写入。
@@ -235,7 +235,7 @@ The project is in MVP implementation. Current dev status includes a versioned da
 - `app/layout.tsx`: root App Router layout and metadata.
 - `app/page.tsx`: single-page workspace shell with care, habit, task, AI assistant regions, and the current habit business date in the page header.
 - `components/sync/SyncStatusProvider.tsx`: client-side sync status provider and badge for optimistic UI feedback.
-- `components/care/CarePanel.tsx`: compact mental care panel connected to `/api/care/today`, `/api/care/generate`, and `/api/care/update`, with per-user batch-cached daily quotes, editable quote style preference, instant local quote cycling, local fallback batch, stable title-row energy icons and status pill, bright level-5 amber badge feedback, small retry/favorite icon actions, and an editable "today focus" field.
+- `components/care/CarePanel.tsx`: compact mental care panel connected to `/api/care/today`, `/api/care/generate`, and `/api/care/update`, with per-user batch-cached daily quotes, a gear-triggered quote prompt editor, instant local quote cycling, local fallback batch, stable title-row energy icons and status pill, bright level-5 amber badge feedback, small retry/settings icon actions, and an editable "today focus" field.
 - `components/assistant/AiAssistantPanel.tsx`: right-side assistant shell with a compact `Test AI` control connected to `/api/ai/test`, chat connected to `/api/ai/chat`, recent history connected to `/api/ai/chat/history`, and selectable proposal cards that confirm selected writes through `/api/ai/actions/confirm`. Confirmed task/habit writes refresh the main panels, the proposal buttons use short `Apply` / `Cancel` labels, sent messages immediately show an inline `Thinking...` assistant state, `Command+Enter` / `Ctrl+Enter` sends multiline input, assistant replies render safe Markdown, and the send control is icon-only for the narrow assistant panel. On desktop the panel is sticky, message history scrolls independently with subtle custom scrollbars, and the input stays at the panel bottom.
 - `components/tasks/TaskManager.tsx`: compact hierarchical task table connected to `/api/tasks`, including top-level task create/delete, one-layer subtask create/delete, expandable subtasks, small row-level complete/reopen controls, two-step select-then-edit title editing with blur save, colored status pill editing without a visible dropdown arrow, compact priority dot editing with Low as the default, direct due-date picker access, completed top-level task hiding, and due-date highlighting.
 - `components/habits/HabitManager.tsx`: compact daily habit list connected to `/api/habits`, including a panel-level edit mode, bottom-only new-habit form, row-wide name/target maintenance in edit mode, clickable progress fractions for target changes in normal mode, trash-icon deactivation, compact circular complete/cancel controls, checked-count-over-target header progress, and multi-check cancellation behavior. Check-in counts and the header progress bar update immediately before the background sync finishes. Completed habits are greyed out, struck through, and sorted after incomplete habits.

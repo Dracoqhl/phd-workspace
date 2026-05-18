@@ -1,6 +1,6 @@
 "use client";
 
-import { Heart, HeartCrack, RefreshCw, Star } from "lucide-react";
+import { Heart, HeartCrack, RefreshCw, Settings } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { useSyncStatus } from "@/components/sync/SyncStatusProvider";
@@ -23,6 +23,7 @@ export function CarePanel() {
   const [lastSavedQuotePreference, setLastSavedQuotePreference] = useState("");
   const [quoteBatch, setQuoteBatch] = useState<string[]>([]);
   const [quoteIndex, setQuoteIndex] = useState(0);
+  const [showQuoteSettings, setShowQuoteSettings] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -233,34 +234,35 @@ export function CarePanel() {
               <RefreshCw aria-hidden="true" size={14} />
             </button>
             <button
-              aria-label={care?.isFavorite ? "Unfavorite care message" : "Favorite care message"}
+              aria-label="Quote settings"
               className="inline-flex h-7 w-7 items-center justify-center rounded-md text-amber-700 hover:bg-amber-100 disabled:opacity-60"
               disabled={loading || saving}
-              onClick={() => void updateCare({ isFavorite: !care?.isFavorite })}
+              onClick={() => setShowQuoteSettings((current) => !current)}
               type="button"
             >
-              <Star aria-hidden="true" className={care?.isFavorite ? "fill-current" : ""} size={15} />
+              <Settings aria-hidden="true" size={15} />
             </button>
           </div>
         </div>
         <p className="text-sm leading-6 text-slate-800">{content}</p>
-        <label className="mt-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-amber-700">
-          Style
-          <input
-            aria-label="Quote style"
-            className="h-7 min-w-0 flex-1 rounded-md border border-amber-200 bg-white/70 px-2 text-xs font-normal normal-case tracking-normal text-slate-700 outline-none placeholder:text-amber-500/70 focus:border-amber-400 disabled:opacity-60"
-            disabled={loading || saving}
-            onBlur={() => void saveQuotePreference()}
-            onChange={(event) => setQuotePreference(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                event.currentTarget.blur();
-              }
-            }}
-            placeholder="更短 / 更科研 / 更温和..."
-            value={quotePreference}
-          />
-        </label>
+        {showQuoteSettings ? (
+          <label className="mt-3 block">
+            <span className="sr-only">Quote prompt</span>
+            <input
+              aria-label="Quote prompt"
+              className="h-8 w-full rounded-md border border-amber-200 bg-white/70 px-2 text-xs text-slate-700 outline-none focus:border-amber-400 disabled:opacity-60"
+              disabled={loading || saving}
+              onBlur={() => void saveQuotePreference()}
+              onChange={(event) => setQuotePreference(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.currentTarget.blur();
+                }
+              }}
+              value={quotePreference}
+            />
+          </label>
+        ) : null}
       </div>
 
       <label className="mt-3 block text-xs font-semibold uppercase tracking-wide text-slate-500">

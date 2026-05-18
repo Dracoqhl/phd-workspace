@@ -97,8 +97,8 @@ describe("CarePanel", () => {
     expect(screen.getByText("Daily quote")).toBeInTheDocument();
     expect(screen.getByText("Unset")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Retry care message" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Favorite care message" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Quote style")).toHaveValue("温和、具体、低压力");
+    expect(screen.getByRole("button", { name: "Quote settings" })).toBeInTheDocument();
+    expect(screen.queryByLabelText("Quote prompt")).not.toBeInTheDocument();
     expect(screen.getByLabelText("Today focus")).toHaveAttribute("placeholder", "今天最想完成的一件事...");
   });
 
@@ -122,7 +122,10 @@ describe("CarePanel", () => {
 
     render(<CarePanel />);
 
-    const input = await screen.findByLabelText("Quote style");
+    fireEvent.click(await screen.findByRole("button", { name: "Quote settings" }));
+    const input = await screen.findByLabelText("Quote prompt");
+    expect(input).toHaveValue("温和、具体、低压力");
+    expect(input).not.toHaveAttribute("placeholder");
     fireEvent.change(input, { target: { value: "更短，更有科研感" } });
     fireEvent.blur(input);
 
@@ -230,24 +233,14 @@ describe("CarePanel", () => {
     expect(await screen.findByText("Steady")).toBeInTheDocument();
   });
 
-  it("toggles favorite state with star icons", async () => {
-    const fetchMock = mockFetch(care());
+  it("does not show the removed favorite action", async () => {
+    mockFetch(care());
 
     render(<CarePanel />);
 
-    fireEvent.click(await screen.findByRole("button", { name: "Favorite care message" }));
-    expect(await screen.findByRole("button", { name: "Unfavorite care message" })).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledWith(
-      "/api/care/update",
-      expect.objectContaining({ method: "POST", body: JSON.stringify({ isFavorite: true }) })
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "Unfavorite care message" }));
-    expect(await screen.findByRole("button", { name: "Favorite care message" })).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledWith(
-      "/api/care/update",
-      expect.objectContaining({ method: "POST", body: JSON.stringify({ isFavorite: false }) })
-    );
+    expect(await screen.findByRole("button", { name: "Quote settings" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Favorite care message" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Unfavorite care message" })).not.toBeInTheDocument();
   });
 
   it("saves today's focus text on blur", async () => {

@@ -20,7 +20,8 @@ describe("AiAssistantPanel", () => {
     expect(screen.getByLabelText("AI message")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Send message" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Send" })).not.toBeInTheDocument();
-    expect(screen.getByText(/Quote style/i)).toBeInTheDocument();
+    expect(screen.getByText(/可以指定 Quote 的内容或类型/)).toBeInTheDocument();
+    expect(screen.queryByText(/励志诗句|名人名言|更短|更温和/)).not.toBeInTheDocument();
     expect(screen.getByRole("complementary", { name: "AI 助手" })).toHaveClass("flex-1");
     expect(screen.getByRole("log", { name: "AI conversation history" })).toHaveClass(
       "custom-scrollbar",
