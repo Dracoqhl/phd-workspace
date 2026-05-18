@@ -237,13 +237,13 @@ export function CarePanel() {
         </div>
       </div>
 
-      <div className="mt-3 rounded-md border border-energy bg-energy-soft px-3 py-3" data-testid="care-quote-panel">
+      <div className="mt-3 rounded-md border border-care bg-care-soft px-3 py-3" data-testid="care-quote-panel">
         <div className="mb-2 flex items-center justify-between gap-2">
-          <span className="text-xs font-semibold uppercase tracking-wide text-energy-text">Daily quote</span>
+          <span className="text-xs font-semibold uppercase tracking-wide text-care-text">Daily quote</span>
           <div className="flex items-center gap-1">
             <button
               aria-label="Retry care message"
-              className="inline-flex h-7 w-7 items-center justify-center rounded-md text-energy-text hover:bg-energy/10 disabled:opacity-60"
+              className="inline-flex h-7 w-7 items-center justify-center rounded-md text-care-text hover:bg-care/10 disabled:opacity-60"
               disabled={loading || saving}
               onClick={() => void retryCare()}
               type="button"
@@ -252,7 +252,7 @@ export function CarePanel() {
             </button>
             <button
               aria-label="Quote settings"
-              className="inline-flex h-7 w-7 items-center justify-center rounded-md text-energy-text hover:bg-energy/10 disabled:opacity-60"
+              className="inline-flex h-7 w-7 items-center justify-center rounded-md text-care-text hover:bg-care/10 disabled:opacity-60"
               disabled={loading || saving}
               onClick={() => setShowQuoteSettings((current) => !current)}
               type="button"
@@ -265,12 +265,12 @@ export function CarePanel() {
         {showQuoteSettings ? (
           <div className="mt-3">
             <div className="mb-1 flex items-center justify-between gap-2">
-              <label className="text-xs font-semibold uppercase tracking-wide text-energy-text" htmlFor="quote-prompt">
+              <label className="text-xs font-semibold uppercase tracking-wide text-care-text" htmlFor="quote-prompt">
                 Quote prompt
               </label>
               <button
                 aria-label="Reset quote prompt"
-                className="inline-flex h-6 items-center gap-1 rounded-md px-1.5 text-xs font-semibold text-energy-text hover:bg-energy/10 disabled:opacity-60"
+                className="inline-flex h-6 items-center gap-1 rounded-md px-1.5 text-xs font-semibold text-care-text hover:bg-care/10 disabled:opacity-60"
                 disabled={loading || saving}
                 onClick={() => void resetQuotePreference()}
                 type="button"
@@ -281,7 +281,7 @@ export function CarePanel() {
             </div>
             <input
               aria-label="Quote prompt"
-              className="h-8 w-full rounded-md border border-energy bg-surface/70 px-2 text-xs text-primary outline-none focus:border-energy disabled:opacity-60"
+              className="h-8 w-full rounded-md border border-care bg-surface/70 px-2 text-xs text-primary outline-none focus:border-care disabled:opacity-60"
               disabled={loading || saving}
               id="quote-prompt"
               onBlur={() => void saveQuotePreference()}

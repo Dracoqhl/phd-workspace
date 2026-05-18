@@ -436,14 +436,14 @@ function ProposalCard({
   }
 
   return (
-    <div className="mt-2 rounded-md border border-warning bg-warning-soft p-2 text-xs text-primary">
+    <div className="mt-2 rounded-md border border-proposal bg-proposal-soft p-2 text-xs text-primary">
       <div className="mb-2 flex items-center justify-between gap-2">
-        <span className="font-semibold text-warning-text">操作建议</span>
+        <span className="font-semibold text-proposal-text">操作建议</span>
         {actionState !== "pending" ? <span className="text-slate-600">{actionStatus}</span> : null}
       </div>
       <div className="custom-scrollbar grid max-h-64 gap-1.5 overflow-y-auto pr-1" data-testid="ai-proposal-list">
         {proposals.map((proposal) => (
-          <label className="flex items-start gap-2 rounded border border-warning bg-white px-2 py-1.5" key={proposal.id}>
+          <label className="flex items-start gap-2 rounded border border-proposal bg-white px-2 py-1.5" key={proposal.id}>
             <input
               aria-label={`Select ${proposal.summary}`}
               checked={selectedIds.has(proposal.id)}
