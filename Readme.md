@@ -234,6 +234,8 @@ The project is in private beta implementation. Current dev status includes a ver
 - `.eslintrc.cjs`: ESLint configuration for the current TypeScript/React app.
 - `app/layout.tsx`: root App Router layout and metadata.
 - `app/page.tsx`: page entry that renders the login/register shell, the normal user workspace, or the admin dashboard depending on authentication state and role.
+- `app/globals.css`: Tailwind entry point, CSS variable theme tokens, and theme compatibility overrides.
+- `components/theme/ThemeProvider.tsx`: compact theme selector for `Light`, `Dark`, `Forest`, `Warm`, and `System`. Theme preference is stored locally in the browser and applied before React hydration to reduce theme flash.
 - `components/admin/AdminDashboard.tsx`: admin-only dashboard connected to `/api/admin/overview` and `/api/admin/invites`, with aggregate stats, single-use invite-code status, copy controls, and registered-user task/habit counts.
 - `components/sync/SyncStatusProvider.tsx`: client-side sync status provider and badge for optimistic UI feedback.
 - `components/care/CarePanel.tsx`: compact mental care panel connected to `/api/care/today`, `/api/care/generate`, and `/api/care/update`, with per-user batch-cached daily quotes, a gear-triggered quote prompt editor, local default prompt + default batch reset without an AI call, instant local quote cycling, local fallback batch, stable title-row energy icons and status pill, bright level-5 amber badge feedback, small retry/settings icon actions, and an editable "today focus" field. Returned quote items are capped server-side at 50 Chinese characters for stable display.

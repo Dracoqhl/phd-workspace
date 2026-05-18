@@ -4,6 +4,7 @@ import { AiAssistantPanel } from "@/components/assistant/AiAssistantPanel";
 import { CarePanel } from "@/components/care/CarePanel";
 import { HabitManager } from "@/components/habits/HabitManager";
 import { SyncStatusBadge, SyncStatusProvider } from "@/components/sync/SyncStatusProvider";
+import { ThemeProvider, ThemeSelect } from "@/components/theme/ThemeProvider";
 import { TaskManager } from "@/components/tasks/TaskManager";
 import { getHabitBusinessDate } from "@/lib/domain/habits";
 import type { PublicUser } from "@/types/user";
@@ -20,20 +21,24 @@ export function WorkspacePageContent({ authenticated, initialAuthMode = "login",
 
   if (authenticated) {
     return (
-      <SyncStatusProvider>
-        <WorkspaceShell authenticated={true} businessDate={businessDate} multiUserEnabled={multiUserEnabled} user={user} />
-      </SyncStatusProvider>
+      <ThemeProvider>
+        <SyncStatusProvider>
+          <WorkspaceShell authenticated={true} businessDate={businessDate} multiUserEnabled={multiUserEnabled} user={user} />
+        </SyncStatusProvider>
+      </ThemeProvider>
     );
   }
 
   return (
-    <WorkspaceShell
-      authenticated={false}
-      businessDate={businessDate}
-      initialAuthMode={initialAuthMode}
-      multiUserEnabled={multiUserEnabled}
-      user={user}
-    />
+    <ThemeProvider>
+      <WorkspaceShell
+        authenticated={false}
+        businessDate={businessDate}
+        initialAuthMode={initialAuthMode}
+        multiUserEnabled={multiUserEnabled}
+        user={user}
+      />
+    </ThemeProvider>
   );
 }
 
@@ -66,6 +71,7 @@ function WorkspaceShell({
                 </p>
               </div>
               <div aria-label="Workspace status" className="flex shrink-0 flex-wrap items-center gap-2">
+                <ThemeSelect />
                 {authenticated ? <SyncStatusBadge /> : null}
                 <span className="w-fit rounded-md bg-white px-3 py-1.5 text-sm font-medium text-slate-600 shadow-sm ring-1 ring-slate-200">
                   {businessDate}

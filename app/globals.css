@@ -4,8 +4,70 @@
 
 :root {
   color-scheme: light;
-  background: #f8fafc;
-  color: #1f2933;
+  --color-bg: oklch(0.985 0.004 238);
+  --color-surface: oklch(0.998 0.003 238);
+  --color-surface-muted: oklch(0.962 0.008 238);
+  --color-text: oklch(0.245 0.026 245);
+  --color-text-muted: oklch(0.47 0.024 245);
+  --color-border: oklch(0.885 0.014 245);
+  --color-accent: oklch(0.49 0.11 152);
+  --color-accent-hover: oklch(0.43 0.105 152);
+  --color-accent-soft: oklch(0.94 0.035 152);
+  --color-danger: oklch(0.57 0.17 28);
+  --color-danger-soft: oklch(0.95 0.04 28);
+  --color-warning: oklch(0.68 0.13 72);
+  --color-warning-soft: oklch(0.95 0.045 72);
+  --color-success: oklch(0.55 0.13 150);
+  --color-success-soft: oklch(0.94 0.04 150);
+  --shadow-surface: 0 1px 2px rgb(20 30 42 / 0.06);
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-bg: oklch(0.19 0.018 245);
+  --color-surface: oklch(0.235 0.02 245);
+  --color-surface-muted: oklch(0.285 0.024 245);
+  --color-text: oklch(0.925 0.012 245);
+  --color-text-muted: oklch(0.69 0.02 245);
+  --color-border: oklch(0.36 0.028 245);
+  --color-accent: oklch(0.66 0.12 158);
+  --color-accent-hover: oklch(0.72 0.13 158);
+  --color-accent-soft: oklch(0.31 0.052 158);
+  --color-danger: oklch(0.69 0.16 28);
+  --color-danger-soft: oklch(0.31 0.05 28);
+  --color-warning: oklch(0.75 0.12 78);
+  --color-warning-soft: oklch(0.34 0.05 78);
+  --color-success: oklch(0.68 0.13 150);
+  --color-success-soft: oklch(0.3 0.055 150);
+  --shadow-surface: 0 1px 2px rgb(0 0 0 / 0.24);
+}
+
+:root[data-theme="forest"] {
+  color-scheme: light;
+  --color-bg: oklch(0.965 0.018 146);
+  --color-surface: oklch(0.992 0.009 146);
+  --color-surface-muted: oklch(0.925 0.028 146);
+  --color-text: oklch(0.255 0.035 148);
+  --color-text-muted: oklch(0.46 0.035 148);
+  --color-border: oklch(0.84 0.035 146);
+  --color-accent: oklch(0.43 0.12 146);
+  --color-accent-hover: oklch(0.37 0.115 146);
+  --color-accent-soft: oklch(0.89 0.06 146);
+}
+
+:root[data-theme="warm"] {
+  color-scheme: light;
+  --color-bg: oklch(0.972 0.012 72);
+  --color-surface: oklch(0.995 0.006 72);
+  --color-surface-muted: oklch(0.935 0.027 72);
+  --color-text: oklch(0.265 0.03 58);
+  --color-text-muted: oklch(0.49 0.03 58);
+  --color-border: oklch(0.85 0.035 72);
+  --color-accent: oklch(0.53 0.13 66);
+  --color-accent-hover: oklch(0.47 0.12 66);
+  --color-accent-soft: oklch(0.91 0.055 66);
 }
 
 * {
@@ -15,7 +77,85 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: #f8fafc;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+select,
+input,
+textarea,
+button {
+  color-scheme: inherit;
+}
+
+:root[data-theme] .bg-white {
+  background-color: var(--color-surface);
+}
+
+:root[data-theme] .bg-paper {
+  background-color: var(--color-bg);
+}
+
+:root[data-theme] .text-ink,
+:root[data-theme] .text-slate-700,
+:root[data-theme] .text-slate-800 {
+  color: var(--color-text);
+}
+
+:root[data-theme] .text-slate-400,
+:root[data-theme] .text-slate-500,
+:root[data-theme] .text-slate-600 {
+  color: var(--color-text-muted);
+}
+
+:root[data-theme] .border-slate-100,
+:root[data-theme] .border-slate-200,
+:root[data-theme] .border-slate-300,
+:root[data-theme] .divide-slate-100 > :not([hidden]) ~ :not([hidden]),
+:root[data-theme] .divide-slate-200 > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--color-border);
+}
+
+:root[data-theme] .ring-slate-200 {
+  --tw-ring-color: var(--color-border);
+}
+
+:root[data-theme] .bg-slate-50,
+:root[data-theme] .bg-slate-100 {
+  background-color: var(--color-surface-muted);
+}
+
+:root[data-theme] .hover\:bg-slate-50:hover,
+:root[data-theme] .hover\:bg-slate-100:hover {
+  background-color: var(--color-surface-muted);
+}
+
+:root[data-theme] .bg-ink,
+:root[data-theme] .bg-moss {
+  background-color: var(--color-accent);
+}
+
+:root[data-theme] .hover\:bg-ink\/90:hover,
+:root[data-theme] .hover\:bg-slate-700:hover {
+  background-color: var(--color-accent-hover);
+}
+
+:root[data-theme] .text-moss {
+  color: var(--color-accent);
+}
+
+:root[data-theme] .focus\:border-moss:focus,
+:root[data-theme] .focus\:border-slate-400:focus {
+  border-color: var(--color-accent);
+}
+
+:root[data-theme] .focus\:ring-moss\/20:focus,
+:root[data-theme] .focus\:ring-moss\/40:focus {
+  --tw-ring-color: color-mix(in oklch, var(--color-accent) 35%, transparent);
+}
+
+:root[data-theme] .shadow-sm {
+  box-shadow: var(--shadow-surface);
 }
 
 .custom-scrollbar {

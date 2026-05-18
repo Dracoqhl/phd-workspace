@@ -82,6 +82,7 @@ describe("workspace page shell", () => {
 
     expect(screen.getByRole("heading", { name: "博士工作台" })).toBeInTheDocument();
     expect(screen.getByText("2026-05-08")).toBeInTheDocument();
+    expect(screen.getByLabelText("Theme")).toHaveValue("light");
     expect(screen.getByRole("status", { name: "Data sync status" })).toHaveTextContent("Synced");
     expect(screen.getByLabelText("Workspace status")).toContainElement(
       screen.getByRole("status", { name: "Data sync status" })

@@ -5,9 +5,16 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        ink: "#1f2933",
-        paper: "#f8fafc",
-        moss: "#3f7d58",
+        ink: "var(--color-text)",
+        paper: "var(--color-bg)",
+        moss: "var(--color-accent)",
+        surface: "var(--color-surface)",
+        "surface-muted": "var(--color-surface-muted)",
+        primary: "var(--color-text)",
+        muted: "var(--color-text-muted)",
+        line: "var(--color-border)",
+        accent: "var(--color-accent)",
+        "accent-soft": "var(--color-accent-soft)",
         coral: "#c75f4b",
         amber: "#b7791f"
       }
