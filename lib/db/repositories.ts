@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import type { SqliteDatabase } from "@/lib/db/database";
 import type { AiActionLog } from "@/types/assistant";
 import type { AiChatMessage } from "@/types/ai-chat";
-import type { CareRecord } from "@/types/care";
+import type { CareQuotePreference, CareRecord } from "@/types/care";
 import type { CreateHabitInput, Habit, HabitCheckin, UpdateHabitInput } from "@/types/habit";
 import type { CreateTaskInput, Task, UpdateTaskInput } from "@/types/task";
 import type { TrashEntry } from "@/types/trash";
@@ -16,6 +16,7 @@ export function createSqliteRepositories(db: SqliteDatabase, userId: string) {
     habits: new SqliteHabitRepository(db, userId),
     habitCheckins: new SqliteHabitCheckinRepository(db, userId),
     careRecords: new SqliteCareRecordRepository(db, userId),
+    careQuotePreferences: new SqliteCareQuotePreferenceRepository(db, userId),
     aiLogs: new SqliteAiLogRepository(db, userId),
     aiChatMessages: new SqliteAiChatMessageRepository(db, userId)
   };
@@ -274,6 +275,51 @@ class SqliteCareRecordRepository {
   }
 }
 
+class SqliteCareQuotePreferenceRepository {
+  constructor(
+    private readonly db: SqliteDatabase,
+    private readonly userId: string
+  ) {}
+
+  async get(): Promise<CareQuotePreference | null> {
+    const row = this.db
+      .prepare("SELECT * FROM care_quote_preferences WHERE user_id = ?")
+      .get(this.userId) as CareQuotePreferenceRow | undefined;
+    return row ? mapCareQuotePreference(row) : null;
+  }
+
+  async save(input: Pick<CareQuotePreference, "preferenceText" | "quotes" | "quoteIndex">): Promise<CareQuotePreference> {
+    const existing = await this.get();
+    const now = new Date().toISOString();
+    const cache: CareQuotePreference = {
+      preferenceText: input.preferenceText,
+      quotes: input.quotes,
+      quoteIndex: normalizeQuoteIndex(input.quoteIndex, input.quotes),
+      createdAt: existing?.createdAt ?? now,
+      updatedAt: now
+    };
+
+    if (existing) {
+      this.db
+        .prepare(
+          `UPDATE care_quote_preferences
+           SET preference_text = @preferenceText, quotes_json = @quotesJson, quote_index = @quoteIndex, updated_at = @updatedAt
+           WHERE user_id = @userId`
+        )
+        .run(toCareQuotePreferenceParams(cache, this.userId));
+      return cache;
+    }
+
+    this.db
+      .prepare(
+        `INSERT INTO care_quote_preferences (user_id, preference_text, quotes_json, quote_index, created_at, updated_at)
+         VALUES (@userId, @preferenceText, @quotesJson, @quoteIndex, @createdAt, @updatedAt)`
+      )
+      .run(toCareQuotePreferenceParams(cache, this.userId));
+    return cache;
+  }
+}
+
 class SqliteAiLogRepository {
   constructor(
     private readonly db: SqliteDatabase,
@@ -415,6 +461,14 @@ interface CareRecordRow {
   updated_at: string;
 }
 
+interface CareQuotePreferenceRow {
+  preference_text: string;
+  quotes_json: string;
+  quote_index: number;
+  created_at: string;
+  updated_at: string;
+}
+
 interface AiLogRow {
   id: string;
   user_message: string;
@@ -504,6 +558,16 @@ function mapCareRecord(row: CareRecordRow): CareRecord {
   };
 }
 
+function mapCareQuotePreference(row: CareQuotePreferenceRow): CareQuotePreference {
+  return {
+    preferenceText: row.preference_text,
+    quotes: parseQuoteJson(row.quotes_json),
+    quoteIndex: row.quote_index,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
+}
+
 function mapAiLog(row: AiLogRow): AiActionLog {
   return {
     id: row.id,
@@ -541,4 +605,29 @@ function toCareParams(record: CareRecord, userId: string) {
     isChecked: record.isChecked ? 1 : 0,
     isFavorite: record.isFavorite ? 1 : 0
   };
+}
+
+function toCareQuotePreferenceParams(cache: CareQuotePreference, userId: string) {
+  return {
+    userId,
+    preferenceText: cache.preferenceText,
+    quotesJson: JSON.stringify(cache.quotes),
+    quoteIndex: normalizeQuoteIndex(cache.quoteIndex, cache.quotes),
+    createdAt: cache.createdAt,
+    updatedAt: cache.updatedAt
+  };
+}
+
+function parseQuoteJson(value: string): string[] {
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === "string" && item.trim().length > 0) : [];
+  } catch {
+    return [];
+  }
+}
+
+function normalizeQuoteIndex(index: number, quotes: string[]): number {
+  if (quotes.length === 0) return 0;
+  return Number.isInteger(index) && index >= 0 && index < quotes.length ? index : 0;
 }

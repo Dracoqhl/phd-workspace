@@ -1,5 +1,5 @@
 import { requireUser } from "@/lib/api/auth";
-import { dataConfigErrorResponse, ensureTodayCareRecord, getCareRepositories } from "@/lib/api/care";
+import { dataConfigErrorResponse, ensureTodayCareState, getCareRepositories } from "@/lib/api/care";
 
 export async function GET(request: Request): Promise<Response> {
   const auth = requireUser(request);
@@ -12,6 +12,6 @@ export async function GET(request: Request): Promise<Response> {
     return dataConfigErrorResponse();
   }
 
-  const care = await ensureTodayCareRecord(repos);
-  return Response.json({ care });
+  const careState = await ensureTodayCareState(repos);
+  return Response.json(careState);
 }

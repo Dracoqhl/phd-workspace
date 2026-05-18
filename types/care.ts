@@ -14,7 +14,23 @@ export interface CareRecord {
   updatedAt: string;
 }
 
+export interface CareQuotePreference {
+  preferenceText: string;
+  quotes: string[];
+  quoteIndex: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CareTodayResponse {
+  care: CareRecord;
+  quotePreference: string;
+  quoteBatch: string[];
+  quoteIndex: number;
+}
+
 export interface UpdateCareInput {
+  content?: string;
   energyLevel?: CareRecord["energyLevel"];
   isFavorite?: boolean;
   focusText?: string;

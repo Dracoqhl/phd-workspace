@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { MVP_DATA_FILES } from "@/lib/data/data-dir";
 import { JsonStore } from "@/lib/data/json-store";
 import type { AiActionLog, AiActionStatus } from "@/types/assistant";
-import type { CareRecord, CareSource } from "@/types/care";
+import type { CareQuotePreference, CareRecord, CareSource } from "@/types/care";
 import type { CreateHabitInput, Habit, HabitCheckin, UpdateHabitInput } from "@/types/habit";
 import type { CreateTaskInput, Task, UpdateTaskInput } from "@/types/task";
 import type { TrashEntry } from "@/types/trash";
@@ -29,6 +29,9 @@ export function createRepositories(dataDir: string) {
     habitCheckins,
     careRecords: new CareRecordRepository(
       new JsonStore<CareRecord>(dataDir, "care-records.json", { validateItem: isCareRecord })
+    ),
+    careQuotePreferences: new CareQuotePreferenceRepository(
+      new JsonStore<CareQuotePreference>(dataDir, "care-quote-preferences.json", { validateItem: isCareQuotePreference })
     ),
     aiLogs: new CollectionRepository(
       new JsonStore<AiActionLog>(dataDir, "ai-logs.json", { validateItem: isAiActionLog })
@@ -399,6 +402,52 @@ class CareRecordRepository {
   }
 }
 
+class CareQuotePreferenceRepository {
+  private mutationQueue: Promise<unknown> = Promise.resolve();
+
+  constructor(private readonly store: JsonStore<CareQuotePreference>) {}
+
+  async get(): Promise<CareQuotePreference | null> {
+    const items = (await this.store.read()).items.map(normalizeCareQuotePreference);
+    return items[0] ?? null;
+  }
+
+  async save(input: Pick<CareQuotePreference, "preferenceText" | "quotes" | "quoteIndex">): Promise<CareQuotePreference> {
+    return this.enqueueMutation(async () => {
+      let saved: CareQuotePreference | null = null;
+      await this.store.updateItems((items) => {
+        const existing = items[0] ? normalizeCareQuotePreference(items[0]) : null;
+        const now = new Date().toISOString();
+        saved = {
+          preferenceText: input.preferenceText,
+          quotes: input.quotes,
+          quoteIndex: normalizeQuoteIndex(input.quoteIndex, input.quotes),
+          createdAt: existing?.createdAt ?? now,
+          updatedAt: now
+        };
+        return [saved];
+      });
+
+      if (!saved) {
+        throw new Error("Care quote preference was not saved");
+      }
+
+      return saved;
+    });
+  }
+
+  private enqueueMutation<T>(operation: () => Promise<T>): Promise<T> {
+    const next = this.mutationQueue.then(operation, operation);
+
+    this.mutationQueue = next.then(
+      () => undefined,
+      () => undefined
+    );
+
+    return next;
+  }
+}
+
 function validateParentTask(parentTaskId: string | null, tasks: Task[]): void {
   if (parentTaskId === null) {
     return;
@@ -504,6 +553,20 @@ function normalizeCareRecord(record: CareRecord): CareRecord {
   };
 }
 
+function normalizeCareQuotePreference(cache: CareQuotePreference): CareQuotePreference {
+  const quotes = Array.isArray(cache.quotes)
+    ? cache.quotes.filter((quote): quote is string => typeof quote === "string" && quote.trim().length > 0)
+    : [];
+
+  return {
+    preferenceText: typeof cache.preferenceText === "string" ? cache.preferenceText : "",
+    quotes,
+    quoteIndex: normalizeQuoteIndex(cache.quoteIndex, quotes),
+    createdAt: typeof cache.createdAt === "string" ? cache.createdAt : new Date().toISOString(),
+    updatedAt: typeof cache.updatedAt === "string" ? cache.updatedAt : new Date().toISOString()
+  };
+}
+
 function normalizeEnergyLevel(value: unknown): CareRecord["energyLevel"] {
   return value === null || value === 1 || value === 2 || value === 3 || value === 4 || value === 5 ? value : null;
 }
@@ -523,6 +586,23 @@ function isCareRecord(value: unknown): value is CareRecord {
     typeof value.createdAt === "string" &&
     typeof value.updatedAt === "string"
   );
+}
+
+function isCareQuotePreference(value: unknown): value is CareQuotePreference {
+  return (
+    isRecord(value) &&
+    typeof value.preferenceText === "string" &&
+    Array.isArray(value.quotes) &&
+    value.quotes.every((quote) => typeof quote === "string") &&
+    typeof value.quoteIndex === "number" &&
+    typeof value.createdAt === "string" &&
+    typeof value.updatedAt === "string"
+  );
+}
+
+function normalizeQuoteIndex(index: number, quotes: string[]): number {
+  if (quotes.length === 0) return 0;
+  return Number.isInteger(index) && index >= 0 && index < quotes.length ? index : 0;
 }
 
 function isAiActionLog(value: unknown): value is AiActionLog {

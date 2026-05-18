@@ -86,6 +86,15 @@ export function ensureDatabaseSchema(db: SqliteDatabase): void {
       UNIQUE(user_id, date)
     );
 
+    CREATE TABLE IF NOT EXISTS care_quote_preferences (
+      user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      preference_text TEXT NOT NULL,
+      quotes_json TEXT NOT NULL,
+      quote_index INTEGER NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS ai_action_logs (
       id TEXT PRIMARY KEY,
       user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,

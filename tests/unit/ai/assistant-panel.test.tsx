@@ -20,6 +20,7 @@ describe("AiAssistantPanel", () => {
     expect(screen.getByLabelText("AI message")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Send message" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Send" })).not.toBeInTheDocument();
+    expect(screen.getByText(/Quote style/i)).toBeInTheDocument();
     expect(screen.getByRole("complementary", { name: "AI 助手" })).toHaveClass("flex-1");
     expect(screen.getByRole("log", { name: "AI conversation history" })).toHaveClass(
       "custom-scrollbar",
@@ -67,7 +68,7 @@ describe("AiAssistantPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: "Clear chat history" }));
 
     await waitFor(() => expect(screen.queryByText("需要清空的历史")).not.toBeInTheDocument());
-    expect(screen.getByText("可以问我如何安排今天、拆解任务或整理当前任务。")).toBeInTheDocument();
+    expect(screen.getByText(/可以问我如何安排今天、拆解任务或整理当前任务/)).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith("/api/ai/chat/history", { method: "DELETE" });
   });
 

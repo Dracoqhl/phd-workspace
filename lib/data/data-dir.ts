@@ -5,6 +5,7 @@ export const MVP_DATA_FILES = [
   "habits.json",
   "habit-checkins.json",
   "care-records.json",
+  "care-quote-preferences.json",
   "ai-logs.json",
   "trash.json"
 ] as const;

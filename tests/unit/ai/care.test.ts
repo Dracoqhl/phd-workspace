@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { generateAiCareContent } from "@/lib/ai/care";
+import { generateAiCareContent, generateAiCareQuoteBatch } from "@/lib/ai/care";
 
 const config = {
   apiKey: "secret-key",
@@ -36,5 +36,35 @@ describe("generateAiCareContent", () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json({ choices: [{}] })));
 
     await expect(generateAiCareContent(config)).resolves.toBeNull();
+  });
+});
+
+describe("generateAiCareQuoteBatch", () => {
+  it("returns a sanitized batch from a JSON array response", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        Response.json({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify([
+                  "“今天先推进一个最小动作。”",
+                  "把复杂问题留给连续的小步。",
+                  "",
+                  "给自己一点缓冲。"
+                ])
+              }
+            }
+          ]
+        })
+      )
+    );
+
+    await expect(generateAiCareQuoteBatch(config, "更短，更科研", 3)).resolves.toEqual([
+      "今天先推进一个最小动作。",
+      "把复杂问题留给连续的小步。",
+      "给自己一点缓冲。"
+    ]);
   });
 });

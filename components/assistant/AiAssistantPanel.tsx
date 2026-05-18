@@ -221,7 +221,9 @@ export function AiAssistantPanel() {
           role="log"
         >
           {chatMessages.length === 0 ? (
-            <p className="text-sm leading-6 text-slate-500">可以问我如何安排今天、拆解任务或整理当前任务。</p>
+            <p className="text-sm leading-6 text-slate-500">
+              可以问我如何安排今天、拆解任务或整理当前任务。Quote style 也可以指定，比如更短、更科研或更温和。
+            </p>
           ) : (
             chatMessages.map((chatMessage) => (
               <ChatMessageBubble

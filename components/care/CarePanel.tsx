@@ -4,7 +4,7 @@ import { Heart, HeartCrack, RefreshCw, Star } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { useSyncStatus } from "@/components/sync/SyncStatusProvider";
-import type { CareRecord, UpdateCareInput } from "@/types/care";
+import type { CareRecord, CareTodayResponse, UpdateCareInput } from "@/types/care";
 
 const energyLabels: Record<NonNullable<CareRecord["energyLevel"]>, string> = {
   1: "Low",
@@ -19,6 +19,10 @@ export function CarePanel() {
   const [care, setCare] = useState<CareRecord | null>(null);
   const [focusText, setFocusText] = useState("");
   const [lastSavedFocusText, setLastSavedFocusText] = useState("");
+  const [quotePreference, setQuotePreference] = useState("");
+  const [lastSavedQuotePreference, setLastSavedQuotePreference] = useState("");
+  const [quoteBatch, setQuoteBatch] = useState<string[]>([]);
+  const [quoteIndex, setQuoteIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -33,14 +37,14 @@ export function CarePanel() {
 
       try {
         const response = await fetch("/api/care/today");
-        const payload = (await response.json()) as { care?: CareRecord; error?: string };
+        const payload = (await response.json()) as Partial<CareTodayResponse> & { error?: string };
 
         if (!response.ok || !payload.care) {
           throw new Error(payload.error ?? "Unable to load care message.");
         }
 
         if (active) {
-          applyCare(payload.care);
+          applyCareState(normalizeCareTodayResponse(payload));
         }
       } catch (caught) {
         if (active) {
@@ -60,16 +64,27 @@ export function CarePanel() {
     };
   }, []);
 
-  function applyCare(nextCare: CareRecord) {
-    setCare(nextCare);
-    setFocusText(nextCare.focusText);
-    setLastSavedFocusText(nextCare.focusText);
+  function applyCareState(nextState: CareTodayResponse) {
+    applyCare(nextState.care);
+    setQuotePreference(nextState.quotePreference);
+    setLastSavedQuotePreference(nextState.quotePreference);
+    setQuoteBatch(nextState.quoteBatch);
+    setQuoteIndex(nextState.quoteIndex);
   }
 
   async function retryCare() {
-    const payload = await writeCare("/api/care/generate", { method: "POST" });
+    if (quoteBatch.length > 1) {
+      const nextIndex = (quoteIndex + 1) % quoteBatch.length;
+      const nextContent = quoteBatch[nextIndex];
+      setQuoteIndex(nextIndex);
+      setCare((current) => (current ? { ...current, content: nextContent, updatedAt: new Date().toISOString() } : current));
+      await updateCare({ content: nextContent });
+      return;
+    }
+
+    const payload = await writeCare("/api/care/generate", { method: "POST", body: JSON.stringify({ preferenceText: quotePreference }) });
     if (payload) {
-      applyCare(payload.care);
+      applyCareState(payload);
     }
   }
 
@@ -86,6 +101,9 @@ export function CarePanel() {
     if (typeof input.focusText === "string") {
       setFocusText(input.focusText);
     }
+    if (typeof input.content === "string" && quoteBatch.length > 0) {
+      setQuoteIndex(Math.max(0, quoteBatch.indexOf(input.content)));
+    }
 
     const payload = await writeCare("/api/care/update", {
       method: "POST",
@@ -100,8 +118,14 @@ export function CarePanel() {
     }
 
     if (sequence === updateSequence.current) {
-      applyCare(payload.care);
+      applyCareState(payload);
     }
+  }
+
+  function applyCare(nextCare: CareRecord) {
+    setCare(nextCare);
+    setFocusText(nextCare.focusText);
+    setLastSavedFocusText(nextCare.focusText);
   }
 
   async function saveFocusText() {
@@ -112,7 +136,26 @@ export function CarePanel() {
     await updateCare({ focusText });
   }
 
-  async function writeCare(url: string, init: RequestInit): Promise<{ care: CareRecord } | null> {
+  async function saveQuotePreference() {
+    if (quotePreference.trim() === lastSavedQuotePreference.trim()) {
+      return;
+    }
+
+    const preferenceText = quotePreference.trim();
+    const payload = await writeCare("/api/care/generate", {
+      method: "POST",
+      body: JSON.stringify({ preferenceText })
+    });
+
+    if (payload) {
+      applyCareState(payload);
+      return;
+    }
+
+    setQuotePreference(lastSavedQuotePreference);
+  }
+
+  async function writeCare(url: string, init: RequestInit): Promise<CareTodayResponse | null> {
     setSaving(true);
     setError(null);
 
@@ -123,13 +166,13 @@ export function CarePanel() {
             ...init,
             headers: { "Content-Type": "application/json", ...(init.headers ?? {}) }
           });
-          const responsePayload = (await response.json()) as { care?: CareRecord; error?: string };
+          const responsePayload = (await response.json()) as Partial<CareTodayResponse> & { error?: string };
 
           if (!response.ok || !responsePayload.care) {
             throw new Error(responsePayload.error ?? "Unable to save care message.");
           }
 
-          return { care: responsePayload.care };
+          return normalizeCareTodayResponse(responsePayload);
         })()
       );
 
@@ -201,6 +244,23 @@ export function CarePanel() {
           </div>
         </div>
         <p className="text-sm leading-6 text-slate-800">{content}</p>
+        <label className="mt-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-amber-700">
+          Style
+          <input
+            aria-label="Quote style"
+            className="h-7 min-w-0 flex-1 rounded-md border border-amber-200 bg-white/70 px-2 text-xs font-normal normal-case tracking-normal text-slate-700 outline-none placeholder:text-amber-500/70 focus:border-amber-400 disabled:opacity-60"
+            disabled={loading || saving}
+            onBlur={() => void saveQuotePreference()}
+            onChange={(event) => setQuotePreference(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.currentTarget.blur();
+              }
+            }}
+            placeholder="更短 / 更科研 / 更温和..."
+            value={quotePreference}
+          />
+        </label>
       </div>
 
       <label className="mt-3 block text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -228,6 +288,16 @@ export function CarePanel() {
       ) : null}
     </section>
   );
+}
+
+function normalizeCareTodayResponse(payload: Partial<CareTodayResponse>): CareTodayResponse {
+  const care = payload.care!;
+  return {
+    care,
+    quotePreference: typeof payload.quotePreference === "string" ? payload.quotePreference : "",
+    quoteBatch: Array.isArray(payload.quoteBatch) && payload.quoteBatch.length > 0 ? payload.quoteBatch : [care.content],
+    quoteIndex: typeof payload.quoteIndex === "number" ? payload.quoteIndex : 0
+  };
 }
 
 function energyButtonClass(currentLevel: CareRecord["energyLevel"]): string {

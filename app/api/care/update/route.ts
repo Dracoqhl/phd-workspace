@@ -25,6 +25,6 @@ export async function POST(request: Request): Promise<Response> {
     return dataConfigErrorResponse();
   }
 
-  const care = await updateTodayCareRecord(repos, input);
-  return Response.json({ care });
+  const careState = await updateTodayCareRecord(repos, input);
+  return Response.json(careState);
 }

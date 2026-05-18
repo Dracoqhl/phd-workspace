@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CarePanel } from "@/components/care/CarePanel";
-import type { CareRecord } from "@/types/care";
+import type { CareRecord, CareTodayResponse } from "@/types/care";
 
 const now = "2026-05-08T08:00:00.000Z";
 
@@ -23,30 +23,51 @@ function care(overrides: Partial<CareRecord> = {}): CareRecord {
   };
 }
 
+function careResponse(overrides: Partial<CareTodayResponse> = {}): CareTodayResponse {
+  return {
+    care: care(),
+    quotePreference: "温和、具体、低压力",
+    quoteBatch: ["今天先完成一个清晰的小动作。", "给自己一点缓冲，稳定推进。", "把注意力放回下一步。"],
+    quoteIndex: 0,
+    ...overrides
+  };
+}
+
 function mockFetch(initial: CareRecord) {
   let current = initial;
+  let quotePreference = "温和、具体、低压力";
+  let quoteBatch = ["今天先完成一个清晰的小动作。", "给自己一点缓冲，稳定推进。", "把注意力放回下一步。"];
+  let quoteIndex = 0;
   const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
     const method = init?.method ?? "GET";
 
     if (url === "/api/care/today" && method === "GET") {
-      return Response.json({ care: current });
+      return Response.json({ care: current, quotePreference, quoteBatch, quoteIndex });
     }
 
     if (url === "/api/care/generate" && method === "POST") {
-      current = care({ ...current, content: "给自己一点缓冲，稳定推进。" });
-      return Response.json({ care: current });
+      const body = JSON.parse(String(init?.body ?? "{}")) as { preferenceText?: string; quoteIndex?: number };
+      quotePreference = body.preferenceText ?? quotePreference;
+      quoteBatch = ["新的偏好第一条。", "新的偏好第二条。"];
+      quoteIndex = body.quoteIndex ?? 0;
+      current = care({ ...current, content: quoteBatch[quoteIndex] });
+      return Response.json({ care: current, quotePreference, quoteBatch, quoteIndex });
     }
 
     if (url === "/api/care/update" && method === "POST") {
       const body = JSON.parse(String(init?.body ?? "{}")) as Partial<CareRecord>;
+      if (typeof body.content === "string") {
+        quoteIndex = quoteBatch.indexOf(body.content);
+      }
       current = care({
         ...current,
+        content: body.content ?? current.content,
         energyLevel: body.energyLevel ?? current.energyLevel,
         isFavorite: body.isFavorite ?? current.isFavorite,
         focusText: body.focusText ?? current.focusText
       });
-      return Response.json({ care: current });
+      return Response.json({ care: current, quotePreference, quoteBatch, quoteIndex });
     }
 
     throw new Error(`Unexpected request ${method} ${url}`);
@@ -77,10 +98,11 @@ describe("CarePanel", () => {
     expect(screen.getByText("Unset")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Retry care message" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Favorite care message" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Quote style")).toHaveValue("温和、具体、低压力");
     expect(screen.getByLabelText("Today focus")).toHaveAttribute("placeholder", "今天最想完成的一件事...");
   });
 
-  it("retries the care message", async () => {
+  it("cycles through cached quotes immediately before syncing", async () => {
     const fetchMock = mockFetch(care());
 
     render(<CarePanel />);
@@ -88,7 +110,30 @@ describe("CarePanel", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Retry care message" }));
 
     expect(await screen.findByText("给自己一点缓冲，稳定推进。")).toBeInTheDocument();
-    expect(fetchMock).toHaveBeenCalledWith("/api/care/generate", expect.objectContaining({ method: "POST" }));
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/care/update",
+      expect.objectContaining({ method: "POST", body: JSON.stringify({ content: "给自己一点缓冲，稳定推进。" }) })
+    );
+    expect(fetchMock).not.toHaveBeenCalledWith("/api/care/generate", expect.anything());
+  });
+
+  it("regenerates cached quotes when the quote style changes", async () => {
+    const fetchMock = mockFetch(care());
+
+    render(<CarePanel />);
+
+    const input = await screen.findByLabelText("Quote style");
+    fireEvent.change(input, { target: { value: "更短，更有科研感" } });
+    fireEvent.blur(input);
+
+    expect(await screen.findByText("新的偏好第一条。")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/care/generate",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ preferenceText: "更短，更有科研感" })
+      })
+    );
   });
 
   it("updates the energy level with distinct icon feedback", async () => {
@@ -126,9 +171,9 @@ describe("CarePanel", () => {
       const url = String(input);
       const method = init?.method ?? "GET";
 
-      if (url === "/api/care/today" && method === "GET") {
-        return Response.json({ care: care({ energyLevel: 5 }) });
-      }
+        if (url === "/api/care/today" && method === "GET") {
+          return Response.json(careResponse({ care: care({ energyLevel: 5 }) }));
+        }
 
       if (url === "/api/care/update" && method === "POST") {
         const body = JSON.parse(String(init?.body ?? "{}")) as Partial<CareRecord>;
@@ -149,7 +194,7 @@ describe("CarePanel", () => {
     fireEvent.click(screen.getByRole("button", { name: "Set energy to 2" }));
 
     expect(await screen.findByText("Soft")).toBeInTheDocument();
-    pending.resolve(Response.json({ care: care({ energyLevel: 4 }) }));
+    pending.resolve(Response.json(careResponse({ care: care({ energyLevel: 4 }) })));
     expect(await screen.findByText("Soft")).toBeInTheDocument();
   });
 
@@ -163,7 +208,7 @@ describe("CarePanel", () => {
         const method = init?.method ?? "GET";
 
         if (url === "/api/care/today" && method === "GET") {
-          return Response.json({ care: initial });
+          return Response.json(careResponse({ care: initial }));
         }
 
         if (url === "/api/care/update" && method === "POST") {
@@ -181,7 +226,7 @@ describe("CarePanel", () => {
 
     expect(input).not.toBeDisabled();
 
-    pending.resolve(Response.json({ care: care({ energyLevel: 3 }) }));
+    pending.resolve(Response.json(careResponse({ care: care({ energyLevel: 3 }) })));
     expect(await screen.findByText("Steady")).toBeInTheDocument();
   });
 

@@ -9,6 +9,8 @@ import { POST as generateCare } from "@/app/api/care/generate/route";
 import { GET as getTodayCare } from "@/app/api/care/today/route";
 import { POST as updateCare } from "@/app/api/care/update/route";
 import { createRepositories } from "@/lib/data/repositories";
+import { closeDatabase, getDatabase } from "@/lib/db/database";
+import { ensureDatabaseSchema } from "@/lib/db/schema";
 
 const appPassword = "correct-password";
 const sessionSecret = "session-secret";
@@ -32,6 +34,7 @@ afterEach(async () => {
   vi.useRealTimers();
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
+  closeDatabase();
 
   if (tempDir) {
     await rm(tempDir, { recursive: true, force: true });
@@ -143,9 +146,59 @@ describe("care routes", () => {
     const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(JSON.parse(String(init.body))).toMatchObject({
       model: "gpt-test",
-      max_tokens: 180,
-      temperature: 0.7
+      max_tokens: 900,
+      temperature: 0.8
     });
+  });
+
+  it("stores a per-user quote batch and regenerates it only when the preference changes", async () => {
+    vi.stubEnv("DATABASE_PATH", join(tempDir!, "workspace.sqlite"));
+    vi.stubEnv("ADMIN_EMAIL", "admin@example.com");
+    vi.stubEnv("ADMIN_PASSWORD", "admin-password");
+    ensureDatabaseSchema(getDatabase());
+    const dbCookie = await loginAndGetCookie("admin@example.com", "admin-password");
+    vi.stubEnv("AI_API_KEY", "secret-key");
+    vi.stubEnv("AI_MODEL", "gpt-test");
+    vi.stubEnv("AI_BASE_URL", "https://example.test/v1/");
+    const fetchMock = vi.fn().mockResolvedValue(
+      Response.json({
+        choices: [{ message: { content: JSON.stringify(["第一条科研 quote。", "第二条科研 quote。", "第三条科研 quote。"]) } }]
+      })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    const firstResponse = await generateCare(
+      authRequest(`${baseUrl}/api/care/generate`, {
+        method: "POST",
+        headers: { Cookie: dbCookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ preferenceText: "偏科研，短一点" })
+      })
+    );
+    expect(firstResponse.status).toBe(200);
+    await expect(firstResponse.json()).resolves.toMatchObject({
+      care: { content: "第一条科研 quote。", source: "ai_generated" },
+      quotePreference: "偏科研，短一点",
+      quoteBatch: ["第一条科研 quote。", "第二条科研 quote。", "第三条科研 quote。"],
+      quoteIndex: 0
+    });
+
+    const todayResponse = await getTodayCare(authRequest(`${baseUrl}/api/care/today`, { headers: { Cookie: dbCookie } }));
+    await expect(todayResponse.json()).resolves.toMatchObject({
+      quotePreference: "偏科研，短一点",
+      quoteBatch: ["第一条科研 quote。", "第二条科研 quote。", "第三条科研 quote。"],
+      quoteIndex: 0
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    const reusedResponse = await generateCare(
+      authRequest(`${baseUrl}/api/care/generate`, {
+        method: "POST",
+        headers: { Cookie: dbCookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ preferenceText: "偏科研，短一点" })
+      })
+    );
+    expect(reusedResponse.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
   it("falls back when AI care generation fails", async () => {
@@ -225,4 +278,10 @@ function getSessionCookie(response: Response): string {
   }
 
   return setCookie.split(";")[0];
+}
+
+async function loginAndGetCookie(email: string, password: string): Promise<string> {
+  const response = await login(jsonRequest(`${baseUrl}/api/auth/login`, { email, password }));
+  expect(response.status).toBe(200);
+  return getSessionCookie(response);
 }
