@@ -11,6 +11,7 @@ import { POST as updateCare } from "@/app/api/care/update/route";
 import { createRepositories } from "@/lib/data/repositories";
 import { closeDatabase, getDatabase } from "@/lib/db/database";
 import { ensureDatabaseSchema } from "@/lib/db/schema";
+import { DEFAULT_CARE_QUOTE_BATCH, DEFAULT_CARE_QUOTE_PREFERENCE } from "@/lib/domain/care";
 
 const appPassword = "correct-password";
 const sessionSecret = "session-secret";
@@ -89,7 +90,12 @@ describe("care routes", () => {
       })
     );
 
-    const response = await generateCare(authRequest(`${baseUrl}/api/care/generate`, { method: "POST" }));
+    const response = await generateCare(
+      authRequest(`${baseUrl}/api/care/generate`, {
+        method: "POST",
+        body: JSON.stringify({ preferenceText: "偏科研，短一点" })
+      })
+    );
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({
@@ -120,7 +126,12 @@ describe("care routes", () => {
       })
     );
 
-    const response = await generateCare(authRequest(`${baseUrl}/api/care/generate`, { method: "POST" }));
+    const response = await generateCare(
+      authRequest(`${baseUrl}/api/care/generate`, {
+        method: "POST",
+        body: JSON.stringify({ preferenceText: "偏科研，短一点" })
+      })
+    );
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({
@@ -198,6 +209,41 @@ describe("care routes", () => {
       })
     );
     expect(reusedResponse.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("restores the default quote batch without calling AI", async () => {
+    vi.stubEnv("AI_API_KEY", "secret-key");
+    vi.stubEnv("AI_MODEL", "gpt-test");
+    vi.stubEnv("AI_BASE_URL", "https://example.test/v1/");
+    const fetchMock = vi.fn().mockResolvedValue(
+      Response.json({
+        choices: [{ message: { content: JSON.stringify(["自定义第一条。", "自定义第二条。"]) } }]
+      })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await generateCare(
+      authRequest(`${baseUrl}/api/care/generate`, {
+        method: "POST",
+        body: JSON.stringify({ preferenceText: "自定义励志诗句" })
+      })
+    );
+
+    const response = await generateCare(
+      authRequest(`${baseUrl}/api/care/generate`, {
+        method: "POST",
+        body: JSON.stringify({ preferenceText: DEFAULT_CARE_QUOTE_PREFERENCE })
+      })
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      care: { content: DEFAULT_CARE_QUOTE_BATCH[0], source: "fallback" },
+      quotePreference: DEFAULT_CARE_QUOTE_PREFERENCE,
+      quoteBatch: DEFAULT_CARE_QUOTE_BATCH,
+      quoteIndex: 0
+    });
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 

@@ -150,6 +150,7 @@ describe("CarePanel", () => {
     fireEvent.click(screen.getByRole("button", { name: "Reset quote prompt" }));
 
     expect(await screen.findByDisplayValue(defaultQuotePrompt)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Reset quote prompt" })).toHaveTextContent("重置");
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/care/generate",
       expect.objectContaining({

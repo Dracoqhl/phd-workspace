@@ -3,6 +3,7 @@ import { generateAiCareQuoteBatch } from "@/lib/ai/care";
 import {
   createAiCareRecord,
   createFallbackCareRecord,
+  DEFAULT_CARE_QUOTE_BATCH,
   DEFAULT_CARE_QUOTE_PREFERENCE,
   getCareDate,
   getFallbackCareQuoteBatch
@@ -60,14 +61,17 @@ export async function refreshTodayCareRecord(
   const config = getAiConfig();
   const existingCache = await repos.careQuotePreferences.get();
   const preferenceText = normalizePreferenceText(input.preferenceText ?? existingCache?.preferenceText);
+  const isDefaultPreference = preferenceText === DEFAULT_CARE_QUOTE_PREFERENCE;
   const canReuseCache =
     existingCache &&
     existingCache.preferenceText === preferenceText &&
     existingCache.quotes.length > 0 &&
     input.preferenceText !== undefined;
-  const generatedQuotes = canReuseCache ? null : config ? await generateAiCareQuoteBatch(config, preferenceText) : null;
+  const generatedQuotes = canReuseCache || isDefaultPreference ? null : config ? await generateAiCareQuoteBatch(config, preferenceText) : null;
   const quotes = canReuseCache
     ? existingCache.quotes
+    : isDefaultPreference
+      ? DEFAULT_CARE_QUOTE_BATCH
     : generatedQuotes?.length
       ? generatedQuotes
       : existingCache?.quotes.length

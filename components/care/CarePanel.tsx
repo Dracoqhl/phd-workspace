@@ -270,12 +270,13 @@ export function CarePanel() {
               </label>
               <button
                 aria-label="Reset quote prompt"
-                className="inline-flex h-6 w-6 items-center justify-center rounded-md text-amber-700 hover:bg-amber-100 disabled:opacity-60"
+                className="inline-flex h-6 items-center gap-1 rounded-md px-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-100 disabled:opacity-60"
                 disabled={loading || saving}
                 onClick={() => void resetQuotePreference()}
                 type="button"
               >
                 <RotateCcw aria-hidden="true" size={13} />
+                重置
               </button>
             </div>
             <input
