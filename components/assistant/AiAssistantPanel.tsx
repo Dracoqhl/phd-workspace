@@ -24,6 +24,7 @@ interface AiChatHistoryResponse {
     id: string;
     role: "user" | "assistant";
     content: string;
+    proposals?: AiActionProposal[];
     createdAt: string;
   }>;
 }
@@ -65,12 +66,21 @@ export function AiAssistantPanel() {
         if (!response.ok) return;
         const payload = (await response.json()) as AiChatHistoryResponse;
         if (ignore || !Array.isArray(payload.messages)) return;
-        const historyMessages: ChatMessage[] = payload.messages.map((message) => ({
+        let lastUserMessage = "";
+        const historyMessages: ChatMessage[] = payload.messages.map((message) => {
+          if (message.role === "user") {
+            lastUserMessage = message.content;
+          }
+
+          return {
             id: message.id,
             role: message.role,
             content: message.content,
-            status: "done"
-        }));
+            status: "done",
+            proposals: message.proposals,
+            proposalUserMessage: message.role === "assistant" && message.proposals?.length ? lastUserMessage : undefined
+          };
+        });
         setChatMessages((current) => (current.length > 0 ? current : historyMessages));
       } catch {
         // History is a convenience; chat remains usable if loading fails.

@@ -385,6 +385,80 @@ describe("AI chat route", () => {
     await expect(otherHistoryResponse.json()).resolves.toEqual({ messages: [] });
   });
 
+  it("persists assistant proposals so pending confirmation cards survive refresh", async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), "phd-ai-history-"));
+    dataDir = tempDir;
+    vi.stubEnv("DATABASE_PATH", join(tempDir, "workspace.sqlite"));
+    vi.stubEnv("ADMIN_EMAIL", "admin@example.com");
+    vi.stubEnv("ADMIN_PASSWORD", "admin-password");
+    ensureDatabaseSchema(getDatabase());
+    const adminCookie = await loginAndGetCookie("admin@example.com", "admin-password");
+
+    vi.stubEnv("AI_API_KEY", "secret-key");
+    vi.stubEnv("AI_MODEL", "test-model");
+    vi.stubEnv("AI_BASE_URL", "https://example.test/v1/");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        Response.json({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  reply: "我拆成了一个任务。",
+                  proposals: [
+                    {
+                      id: "proposal_refresh_1",
+                      actionType: "create_task",
+                      summary: "新增任务：整理实验记录",
+                      payload: {
+                        title: "整理实验记录",
+                        description: "",
+                        status: "not_started",
+                        priority: "medium",
+                        dueDate: null,
+                        parentTaskId: null
+                      }
+                    }
+                  ]
+                })
+              }
+            }
+          ]
+        })
+      )
+    );
+
+    const response = await chat(
+      authRequest(`${baseUrl}/api/ai/chat`, {
+        method: "POST",
+        headers: { Cookie: adminCookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ message: "帮我拆解今天的任务" })
+      })
+    );
+    expect(response.status).toBe(200);
+
+    const historyResponse = await getChatHistory(authRequest(`${baseUrl}/api/ai/chat/history`, { headers: { Cookie: adminCookie } }));
+    expect(historyResponse.status).toBe(200);
+    await expect(historyResponse.json()).resolves.toMatchObject({
+      messages: [
+        { role: "user", content: "帮我拆解今天的任务" },
+        {
+          role: "assistant",
+          content: "我拆成了一个任务。",
+          proposals: [
+            {
+              id: "proposal_refresh_1",
+              actionType: "create_task",
+              summary: "新增任务：整理实验记录",
+              payload: { title: "整理实验记录" }
+            }
+          ]
+        }
+      ]
+    });
+  });
+
   it("clears only the current user's chat history", async () => {
     const tempDir = await mkdtemp(join(tmpdir(), "phd-ai-history-"));
     dataDir = tempDir;

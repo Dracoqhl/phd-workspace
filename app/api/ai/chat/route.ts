@@ -67,7 +67,7 @@ export async function POST(request: Request): Promise<Response> {
 
   if ("aiChatMessages" in repositories) {
     await repositories.aiChatMessages.add({ role: "user", content: input.message });
-    await repositories.aiChatMessages.add({ role: "assistant", content: result.reply });
+    await repositories.aiChatMessages.add({ role: "assistant", content: result.reply, proposals: result.proposals });
   }
 
   await Promise.all(

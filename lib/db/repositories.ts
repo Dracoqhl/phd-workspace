@@ -362,19 +362,27 @@ class SqliteAiChatMessageRepository {
     return rows.map(mapAiChatMessage);
   }
 
-  async add(input: Pick<AiChatMessage, "role" | "content">): Promise<AiChatMessage> {
+  async add(input: Pick<AiChatMessage, "role" | "content"> & { proposals?: AiChatMessage["proposals"] }): Promise<AiChatMessage> {
     const message: AiChatMessage = {
       id: randomUUID(),
       role: input.role,
       content: input.content,
+      ...(input.proposals && input.proposals.length > 0 ? { proposals: input.proposals } : {}),
       createdAt: new Date().toISOString()
     };
     this.db
       .prepare(
-        `INSERT INTO ai_chat_messages (id, user_id, role, content, created_at)
-         VALUES (@id, @userId, @role, @content, @createdAt)`
+        `INSERT INTO ai_chat_messages (id, user_id, role, content, proposals_json, created_at)
+         VALUES (@id, @userId, @role, @content, @proposalsJson, @createdAt)`
       )
-      .run({ ...message, userId: this.userId });
+      .run({
+        id: message.id,
+        userId: this.userId,
+        role: message.role,
+        content: message.content,
+        proposalsJson: JSON.stringify(message.proposals ?? []),
+        createdAt: message.createdAt
+      });
     return message;
   }
 
@@ -482,6 +490,7 @@ interface AiChatMessageRow {
   id: string;
   role: AiChatMessage["role"];
   content: string;
+  proposals_json: string;
   created_at: string;
 }
 
@@ -580,12 +589,23 @@ function mapAiLog(row: AiLogRow): AiActionLog {
 }
 
 function mapAiChatMessage(row: AiChatMessageRow): AiChatMessage {
+  const proposals = parseAiChatProposals(row.proposals_json);
   return {
     id: row.id,
     role: row.role,
     content: row.content,
+    ...(proposals.length > 0 ? { proposals } : {}),
     createdAt: row.created_at
   };
+}
+
+function parseAiChatProposals(value: string): NonNullable<AiChatMessage["proposals"]> {
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return Array.isArray(parsed) ? (parsed as NonNullable<AiChatMessage["proposals"]>) : [];
+  } catch {
+    return [];
+  }
 }
 
 function mapTrash(row: TrashRow): TrashEntry {

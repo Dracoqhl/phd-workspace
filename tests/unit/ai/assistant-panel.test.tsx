@@ -52,6 +52,47 @@ describe("AiAssistantPanel", () => {
     expect(fetch).toHaveBeenCalledWith("/api/ai/chat/history");
   });
 
+  it("restores pending proposal cards from saved chat history", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        Response.json({
+          messages: [
+            { id: "history_user", role: "user", content: "帮我拆解任务", createdAt: "2026-05-18T08:00:00.000Z" },
+            {
+              id: "history_assistant",
+              role: "assistant",
+              content: "我拆成了一个任务。",
+              createdAt: "2026-05-18T08:00:01.000Z",
+              proposals: [
+                {
+                  id: "proposal_refresh_1",
+                  actionType: "create_task",
+                  summary: "新增任务：整理实验记录",
+                  riskLevel: "low",
+                  payload: {
+                    title: "整理实验记录",
+                    description: "",
+                    status: "not_started",
+                    priority: "medium",
+                    dueDate: null,
+                    parentTaskId: null
+                  }
+                }
+              ]
+            }
+          ]
+        })
+      )
+    );
+
+    render(<AiAssistantPanel />);
+
+    expect(await screen.findByText("我拆成了一个任务。")).toBeInTheDocument();
+    expect(screen.getByText("新增任务：整理实验记录")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Apply" })).toBeInTheDocument();
+  });
+
   it("clears saved chat history from the assistant panel", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       if (String(input) === "/api/ai/chat/history" && init?.method === "DELETE") {
