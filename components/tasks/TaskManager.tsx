@@ -40,6 +40,9 @@ export function TaskManager() {
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [addingSubtaskFor, setAddingSubtaskFor] = useState<string | null>(null);
   const [subtaskTitle, setSubtaskTitle] = useState("");
+  const [subtaskStatus, setSubtaskStatus] = useState<TaskStatus>("not_started");
+  const [subtaskPriority, setSubtaskPriority] = useState<TaskPriority>("low");
+  const [subtaskDueDate, setSubtaskDueDate] = useState("");
   const [pendingCompletionTaskIds, setPendingCompletionTaskIds] = useState<Set<string>>(() => new Set());
   const hasLocalWrites = useRef(false);
   const taskMutationSequences = useRef(new Map<string, number>());
@@ -215,9 +218,9 @@ export function TaskManager() {
         body: JSON.stringify({
           title,
           description: "",
-          status: "not_started",
-          priority: "low",
-          dueDate: null
+          status: subtaskStatus,
+          priority: subtaskPriority,
+          dueDate: subtaskDueDate || null
         })
       });
 
@@ -226,6 +229,9 @@ export function TaskManager() {
         setExpanded(parentTask.id, true);
         setAddingSubtaskFor(null);
         setSubtaskTitle("");
+        setSubtaskStatus("not_started");
+        setSubtaskPriority("low");
+        setSubtaskDueDate("");
       }
     } catch {
       setAddingSubtaskFor(parentTask.id);
@@ -326,6 +332,9 @@ export function TaskManager() {
   function startAddSubtask(taskId: string) {
     setAddingSubtaskFor(taskId);
     setSubtaskTitle("");
+    setSubtaskStatus("not_started");
+    setSubtaskPriority("low");
+    setSubtaskDueDate("");
   }
 
   return (
@@ -406,7 +415,19 @@ export function TaskManager() {
                   task={task}
                 />
                 {addingSubtaskFor === task.id ? (
-                  <SubtaskInput onCancel={() => setAddingSubtaskFor(null)} onCreate={() => createSubtask(task)} onTitleChange={setSubtaskTitle} parentTitle={task.title} title={subtaskTitle} />
+                  <SubtaskInput
+                    dueDate={subtaskDueDate}
+                    onCancel={() => setAddingSubtaskFor(null)}
+                    onCreate={() => createSubtask(task)}
+                    onDueDateChange={setSubtaskDueDate}
+                    onPriorityChange={setSubtaskPriority}
+                    onStatusChange={setSubtaskStatus}
+                    onTitleChange={setSubtaskTitle}
+                    parentTitle={task.title}
+                    priority={subtaskPriority}
+                    status={subtaskStatus}
+                    title={subtaskTitle}
+                  />
                 ) : null}
                 {expanded ? children.map((child) => (
                   <TaskRow
@@ -653,21 +674,37 @@ function DueDateCell({ task, onChange }: { task: Task; onChange: (taskId: string
   );
 }
 
-function SubtaskInput({ parentTitle, title, onTitleChange, onCreate, onCancel }: { parentTitle: string; title: string; onTitleChange: (value: string) => void; onCreate: () => Promise<void>; onCancel: () => void }) {
+function SubtaskInput({ parentTitle, title, status, priority, dueDate, onTitleChange, onStatusChange, onPriorityChange, onDueDateChange, onCreate, onCancel }: { parentTitle: string; title: string; status: TaskStatus; priority: TaskPriority; dueDate: string; onTitleChange: (value: string) => void; onStatusChange: (value: TaskStatus) => void; onPriorityChange: (value: TaskPriority) => void; onDueDateChange: (value: string) => void; onCreate: () => Promise<void>; onCancel: () => void }) {
   function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
     if (event.key === "Escape") onCancel();
     if (event.key === "Enter") void onCreate();
   }
 
   return (
-    <div className="grid grid-cols-[2rem_minmax(0,1fr)_6.5rem_4.5rem_5.5rem_4.5rem] items-center gap-2 border-t border-slate-200 bg-slate-50 px-3 py-2" role="row">
+    <div className="grid grid-cols-[2rem_minmax(0,1fr)_6.5rem_4.5rem_5.5rem_4.5rem] items-center gap-2 border-t border-slate-200 bg-task-child px-3 py-2" role="row">
       <div role="cell" />
       <div role="cell">
         <input aria-label={`New subtask for ${parentTitle}`} autoFocus className="ml-5 h-8 w-full rounded-md border border-slate-300 px-2 text-sm text-ink outline-none focus:border-moss" onChange={(event) => onTitleChange(event.target.value)} onKeyDown={handleKeyDown} value={title} />
       </div>
-      <div className="text-xs text-slate-500" role="cell">Todo</div>
-      <div className="flex justify-center" role="cell"><span className="inline-block h-3 w-3 rounded-full bg-priority-low" /></div>
-      <div role="cell"><Calendar aria-hidden="true" className="text-slate-400" size={16} /></div>
+      <div className="flex justify-center" role="cell">
+        <select aria-label={`New subtask status for ${parentTitle}`} className={`h-7 w-[6.25rem] appearance-none rounded-full border px-2 text-center text-xs font-semibold outline-none focus:border-moss ${statusSelectClass(status)}`} onChange={(event) => onStatusChange(event.target.value as TaskStatus)} value={status}>
+          {statusOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+        </select>
+      </div>
+      <div className="flex justify-center" role="cell">
+        <label className="relative inline-flex h-7 w-10 items-center justify-center rounded-md hover:bg-slate-100">
+          <span className={`h-3 w-3 rounded-full ${priorityDotClass(priority)}`} />
+          <select aria-label={`New subtask priority for ${parentTitle}`} className="absolute inset-0 cursor-pointer appearance-none opacity-0" onChange={(event) => onPriorityChange(event.target.value as TaskPriority)} value={priority}>
+            {priorityOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+          </select>
+        </label>
+      </div>
+      <div className="flex justify-center" role="cell">
+        <label className="relative inline-flex h-7 w-[5.25rem] items-center justify-center rounded-md px-2 text-xs font-medium text-slate-700 hover:bg-slate-100">
+          <span>{dueDate ? formatShortDate(dueDate) : <Calendar aria-hidden="true" size={15} />}</span>
+          <input aria-label={`New subtask due date for ${parentTitle}`} className="absolute inset-0 cursor-pointer opacity-0" onChange={(event) => onDueDateChange(event.target.value)} type="date" value={dueDate} />
+        </label>
+      </div>
       <div role="cell" />
     </div>
   );

@@ -57,9 +57,9 @@ function mockFetch(tasks: Task[]) {
           id: "subtask_new",
           title: String(body.title),
           description: "",
-          status: "not_started",
-          priority: "low",
-          dueDate: null,
+          status: body.status as Task["status"],
+          priority: body.priority as Task["priority"],
+          dueDate: (body.dueDate as string | null) ?? null,
           parentTaskId: "task_1"
         })
       });
@@ -499,6 +499,34 @@ describe("TaskManager", () => {
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/tasks/task_1/subtasks",
       expect.objectContaining({ method: "POST" })
+    );
+  });
+
+  it("creates a subtask with editable status, priority, and due date", async () => {
+    const fetchMock = mockFetch([task({ id: "task_1" })]);
+
+    render(<TaskManager />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Add subtask to Draft dissertation chapter" }));
+    fireEvent.change(screen.getByLabelText("New subtask for Draft dissertation chapter"), { target: { value: "Run robustness check" } });
+    fireEvent.change(screen.getByLabelText("New subtask status for Draft dissertation chapter"), { target: { value: "next" } });
+    fireEvent.change(screen.getByLabelText("New subtask priority for Draft dissertation chapter"), { target: { value: "medium" } });
+    fireEvent.change(screen.getByLabelText("New subtask due date for Draft dissertation chapter"), { target: { value: "2026-05-24" } });
+    fireEvent.keyDown(screen.getByLabelText("New subtask for Draft dissertation chapter"), { key: "Enter" });
+
+    expect(await screen.findByText("Run robustness check")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/tasks/task_1/subtasks",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          title: "Run robustness check",
+          description: "",
+          status: "next",
+          priority: "medium",
+          dueDate: "2026-05-24"
+        })
+      })
     );
   });
 

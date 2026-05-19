@@ -77,7 +77,7 @@ These exist because large areas need lower chroma than compact badges and icons.
 
 | Token | Use |
 | --- | --- |
-| `care`, `care-soft`, `care-text` | Mental-care quote panel and quote controls. Stay close to the active theme accent; do not introduce an unrelated standalone hue. Use instead of `energy` or `warning`. |
+| `care`, `care-soft`, `care-text` | Mental-care quote panel and quote controls. These should map directly to the active theme accent family; do not introduce an unrelated standalone hue. Use instead of `energy` or `warning`. |
 | `proposal`, `proposal-soft`, `proposal-text` | AI proposal card container. Use instead of `warning`. |
 | `row-warning-soft` | Broad row background for near-due tasks. Use through `due-near-soft`. |
 | `row-danger-soft` | Broad row background for overdue tasks. Use through `due-over-soft`. |
@@ -132,7 +132,7 @@ Do not reuse status colors for unrelated component backgrounds. For example, `Wa
 
 ### Mental Care
 
-- Quote panel uses `care`, `care-soft`, and `care-text`. These tokens should harmonize with the active theme accent rather than introducing a separate blue/teal island.
+- Quote panel uses `care`, `care-soft`, and `care-text`. These tokens should reuse the active theme accent family rather than introducing a separate blue/teal island.
 - Energy icons use `energy` and `energy-muted`.
 - Level 5 badge uses CSS variables, not hardcoded amber fills.
 - Quote settings controls use `care-text` and `hover:bg-care/10`.
@@ -259,3 +259,4 @@ Legacy `coral` and `amber` still exist in `tailwind.config.ts`, but new code sho
 - 2026-05-19: Moved near-due and overdue emphasis out of whole task rows and into compact Due controls so row background remains tied to task priority.
 - 2026-05-19: Simplified task table color hierarchy. Task rows returned to neutral parent/child backgrounds; parent rows are slightly stronger than child rows, priority is shown through subdued dots and small muted child turn-marker icons, and Due uses bold yellow/red text only.
 - 2026-05-19: Re-aligned the Daily quote care tokens with each theme's accent family so the care panel feels integrated with the page rather than like a separate blue module.
+- 2026-05-19: Updated care tokens to directly reuse theme accent variables instead of hand-tuned near matches.
