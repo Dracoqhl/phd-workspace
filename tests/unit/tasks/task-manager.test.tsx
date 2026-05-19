@@ -122,7 +122,8 @@ describe("TaskManager", () => {
     expect(screen.getByTestId("status-cell-task_1")).toHaveClass("justify-center");
     expect(screen.getByTestId("priority-cell-task_1")).toHaveClass("justify-center");
     expect(screen.getByTestId("due-cell-task_1")).toHaveClass("justify-center");
-    expect(screen.getByRole("row", { name: /Draft dissertation chapter/ })).toHaveClass("bg-task-parent", "hover:bg-task-row-hover");
+    expect(screen.getByRole("row", { name: /Draft dissertation chapter/ })).toHaveClass("bg-task-priority-high");
+    expect(screen.getByRole("row", { name: /Draft dissertation chapter/ })).not.toHaveClass("hover:bg-task-row-hover");
     expect(screen.getByRole("button", { name: "Delete task Draft dissertation chapter" })).toHaveClass("text-action-muted", "hover:text-delete");
     expect(screen.getByText("1/2")).toBeInTheDocument();
     expect(screen.queryByText("Collect figures")).not.toBeInTheDocument();
@@ -131,8 +132,27 @@ describe("TaskManager", () => {
 
     expect(screen.getByText("Collect figures")).toBeInTheDocument();
     expect(screen.getByText("Revise intro")).toBeInTheDocument();
-    expect(screen.getByRole("row", { name: /Collect figures/ })).toHaveClass("bg-task-child", "hover:bg-task-row-hover");
+    expect(screen.getByRole("row", { name: /Revise intro/ })).toHaveClass("bg-task-priority-high-child");
     expect(screen.getByRole("button", { name: "Delete subtask Collect figures" })).toHaveClass("text-action-muted", "hover:text-delete");
+  });
+
+  it("uses priority row color only for rows while keeping priority dots semantic", async () => {
+    mockFetch([
+      task({ id: "low_task", title: "Low task", priority: "low", dueDate: null }),
+      task({ id: "medium_task", title: "Medium task", priority: "medium", dueDate: null }),
+      task({ id: "high_task", title: "High task", priority: "high", dueDate: null }),
+      task({ id: "subtask_1", title: "Child task", priority: "low", parentTaskId: "high_task", dueDate: null })
+    ]);
+
+    render(<TaskManager />);
+
+    expect(await screen.findByRole("row", { name: /Low task/ })).toHaveClass("bg-task-priority-low");
+    expect(screen.getByRole("row", { name: /Medium task/ })).toHaveClass("bg-task-priority-medium");
+    expect(screen.getByRole("row", { name: /High task/ })).toHaveClass("bg-task-priority-high");
+
+    fireEvent.click(screen.getByRole("button", { name: "Expand subtasks for High task" }));
+    expect(screen.getByRole("row", { name: /Child task/ })).toHaveClass("bg-task-priority-high-child");
+    expect(screen.getByTestId("priority-dot-subtask_1")).toHaveClass("bg-priority-low");
   });
 
   it("hides completed top-level tasks by default and reveals them with a toggle", async () => {

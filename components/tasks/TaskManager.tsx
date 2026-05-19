@@ -374,6 +374,7 @@ export function TaskManager() {
                   expanded={expanded}
                   isSubtask={false}
                   pendingCompletion={pendingCompletionTaskIds.has(task.id)}
+                  parentPriority={task.priority}
                   onAddSubtask={startAddSubtask}
                   onDelete={deleteTask}
                   onPriorityChange={(taskId, priority) => updateTask(taskId, { priority })}
@@ -398,6 +399,7 @@ export function TaskManager() {
                     isSubtask={true}
                     key={child.id}
                     pendingCompletion={pendingCompletionTaskIds.has(child.id)}
+                    parentPriority={task.priority}
                     onDelete={deleteSubtask}
                     onPriorityChange={(taskId, priority) => updateTask(taskId, { priority })}
                     onStatusChange={(taskId, status) => updateTask(taskId, { status })}
@@ -427,6 +429,7 @@ interface TaskRowProps {
   progress?: { completed: number; total: number };
   selected: boolean;
   pendingCompletion: boolean;
+  parentPriority?: TaskPriority;
   selectedTaskId: string | null;
   onToggleExpanded?: (taskId: string) => void;
   onSelect: (taskId: string) => void;
@@ -439,7 +442,7 @@ interface TaskRowProps {
   onDelete: (task: Task) => Promise<void>;
 }
 
-function TaskRow({ task, isSubtask, canExpand, expanded, progress, selected, pendingCompletion, selectedTaskId, onToggleExpanded, onSelect, onAddSubtask, onTitleSave, onStatusToggle, onStatusChange, onPriorityChange, onDueDateChange, onDelete }: TaskRowProps) {
+function TaskRow({ task, isSubtask, canExpand, expanded, progress, selected, pendingCompletion, parentPriority, selectedTaskId, onToggleExpanded, onSelect, onAddSubtask, onTitleSave, onStatusToggle, onStatusChange, onPriorityChange, onDueDateChange, onDelete }: TaskRowProps) {
   const dueState = getTaskDueState(task);
   const rowClass = pendingCompletion
     ? "bg-success-soft"
@@ -447,12 +450,12 @@ function TaskRow({ task, isSubtask, canExpand, expanded, progress, selected, pen
       ? "bg-due-over-soft"
       : dueState === "near_due"
         ? "bg-due-near-soft"
-        : isSubtask
-          ? "bg-task-child"
-          : "bg-task-parent";
+        : task.status === "completed"
+          ? isSubtask ? "bg-task-child" : "bg-task-parent"
+          : taskPriorityRowClass(parentPriority ?? task.priority, isSubtask, selected);
 
   return (
-    <div aria-busy={pendingCompletion} aria-selected={selected} className={`grid grid-cols-[2rem_minmax(0,1fr)_6.5rem_4.5rem_5.5rem_4.5rem] items-center gap-2 border-t border-slate-200 px-3 py-2 text-sm transition-colors duration-150 hover:bg-task-row-hover ${rowClass} ${selected ? "ring-1 ring-inset ring-moss" : ""} ${pendingCompletion ? "ring-1 ring-inset ring-success" : ""} ${task.status === "completed" ? "text-slate-400" : "text-slate-700"}`} role="row">
+    <div aria-busy={pendingCompletion} aria-selected={selected} className={`grid grid-cols-[2rem_minmax(0,1fr)_6.5rem_4.5rem_5.5rem_4.5rem] items-center gap-2 border-t border-slate-200 px-3 py-2 text-sm transition-colors duration-150 ${rowClass} ${selected ? "ring-1 ring-inset ring-moss" : ""} ${pendingCompletion ? "ring-1 ring-inset ring-success" : ""} ${task.status === "completed" ? "text-slate-400" : "text-slate-700"}`} role="row">
       <div className="flex items-center" role="cell">
         {!isSubtask && canExpand ? (
           <button aria-label={`${expanded ? "Collapse" : "Expand"} subtasks for ${task.title}`} className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100" onClick={() => onToggleExpanded?.(task.id)} type="button">
@@ -648,6 +651,14 @@ function priorityDotClass(priority: TaskPriority): string {
   if (priority === "high") return "bg-priority-high";
   if (priority === "medium") return "bg-priority-medium";
   return "bg-priority-low";
+}
+
+function taskPriorityRowClass(priority: TaskPriority, isSubtask: boolean, selected: boolean): string {
+  const childSuffix = isSubtask ? "-child" : "";
+  const selectedSuffix = selected ? "-selected" : "";
+  if (priority === "high") return `bg-task-priority-high${childSuffix}${selectedSuffix}`;
+  if (priority === "medium") return `bg-task-priority-medium${childSuffix}${selectedSuffix}`;
+  return `bg-task-priority-low${childSuffix}${selectedSuffix}`;
 }
 
 function statusSelectClass(status: TaskStatus): string {

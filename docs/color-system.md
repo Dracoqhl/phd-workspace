@@ -13,6 +13,7 @@ Examples:
 - Use `bg-care-soft`, not `bg-amber-50`, for the mental-care quote panel.
 - Use `text-delete`, not `text-red-600`, for delete icons.
 - Use `bg-priority-medium`, not `bg-yellow-400`, for medium priority dots.
+- Use `bg-task-priority-high`, not `bg-priority-high`, for task row importance backgrounds.
 - Use `bg-due-near-soft`, not `bg-warning-soft`, for near-due task rows.
 - Use `bg-sync-idle-soft`, not `bg-success-soft`, for the normal synced state.
 
@@ -82,7 +83,11 @@ These exist because large areas need lower chroma than compact badges and icons.
 | `row-danger-soft` | Broad row background for overdue tasks. Use through `due-over-soft`. |
 | `task-parent` | Ordinary first-level task row background. |
 | `task-child` | Ordinary subtask row background. Slightly quieter than parent rows. |
-| `task-row-hover` | Shared task row hover background. |
+| `task-row-hover` | Shared task row hover background. Keep it transparent or extremely subtle when row priority backgrounds are active. |
+| `task-priority-low`, `task-priority-medium`, `task-priority-high` | Parent task row importance backgrounds. These are large-area tokens and should follow each theme's overall palette. |
+| `task-priority-low-selected`, `task-priority-medium-selected`, `task-priority-high-selected` | Selected parent task row backgrounds. Slightly stronger than the ordinary row background. |
+| `task-priority-low-child`, `task-priority-medium-child`, `task-priority-high-child` | Subtask row backgrounds inherited from the parent task priority, kept lighter than parent rows. |
+| `task-priority-low-child-selected`, `task-priority-medium-child-selected`, `task-priority-high-child-selected` | Selected subtask backgrounds inherited from the parent task priority. |
 
 Large-area token rule: if a color fills a card, table row, message panel, or proposal block, prefer one of these tokens or create a new low-chroma token. Do not use vivid state colors as broad backgrounds.
 
@@ -95,7 +100,7 @@ These map domain concepts to colors.
 | `energy`, `energy-soft`, `energy-text`, `energy-muted` | Mental-care energy icons and compact energy state feedback. Do not use `energy-soft` as the quote panel background. |
 | `action-muted`, `action-muted-hover` | Low-emphasis utility icons and secondary action affordances. |
 | `delete`, `delete-soft`, `delete-hover` | Destructive hover and confirmed danger states. Trash icons should usually start as `action-muted` and switch to delete colors on hover. |
-| `priority-low`, `priority-medium`, `priority-high` | Task priority dots only. Keep them compact and clearly distinguishable. |
+| `priority-low`, `priority-medium`, `priority-high` | Task priority dots only. Keep them compact and clearly distinguishable. Do not use these as task row backgrounds. |
 | `due-near`, `due-near-soft` | Near-due task indicators. `due-near-soft` is intentionally subtle for row backgrounds. |
 | `due-over`, `due-over-soft` | Overdue task indicators. Stronger than near-due, still controlled for row fills. |
 
@@ -144,9 +149,11 @@ Do not reuse status colors for unrelated component backgrounds. For example, `Wa
 ### Tasks
 
 - Status chips use `status-*` token triplets.
-- Priority dots use `priority-*` tokens. In Light mode they should feel like one green family with clear steps, not separate unrelated colors.
+- Priority dots use `priority-*` tokens. Low/Medium/High dots remain compact green/yellow/red field markers.
 - Completion controls use `success` tokens.
-- Ordinary parent rows use `task-parent`; ordinary subtask rows use `task-child`; shared hover uses `task-row-hover`.
+- Ordinary low-priority parent rows use `task-priority-low`; medium and high parent rows use theme-specific `task-priority-*` large-area backgrounds. In Light mode these row backgrounds use green-tinted steps, not warning red/yellow fills.
+- Subtask rows inherit the parent task's priority through `task-priority-*-child`, so the task group importance remains visible while the child row stays quieter.
+- Selected task rows use `task-priority-*-selected` or `task-priority-*-child-selected`. Hover must not replace these priority backgrounds with a generic gray.
 - Delete trash icons use `action-muted` by default, then `delete` and `delete-soft` on hover.
 - Near-due rows use `due-near-soft`, not `warning-soft` directly.
 - Overdue rows use `due-over-soft`, not `danger-soft` directly.
@@ -205,6 +212,7 @@ Use this checklist for any new feature or UI state:
 - Do not let Warm mode collapse all semantic states into orange or brown.
 - Do not hardcode icon fills such as `#f59e0b`; use CSS variables for theme-aware icons.
 - Do not use priority colors outside priority dots.
+- Do not use priority dot colors as task row backgrounds. Row importance uses `task-priority-*` tokens because large areas need lower chroma and theme coherence.
 - Do not use task status colors outside task status chips unless explicitly documented here.
 - Do not add a new theme without mapping every token in `app/globals.css`.
 
@@ -224,7 +232,12 @@ care, care-soft, care-text,
 proposal, proposal-soft, proposal-text,
 row-warning-soft, row-danger-soft,
 sync-idle, sync-idle-soft, sync-idle-text,
+sync-active, sync-active-soft, sync-active-text,
 task-parent, task-child, task-row-hover,
+task-priority-low, task-priority-medium, task-priority-high,
+task-priority-low-selected, task-priority-medium-selected, task-priority-high-selected,
+task-priority-low-child, task-priority-medium-child, task-priority-high-child,
+task-priority-low-child-selected, task-priority-medium-child-selected, task-priority-high-child-selected,
 action-muted, action-muted-hover,
 delete, delete-soft, delete-hover,
 priority-low, priority-medium, priority-high,
@@ -244,3 +257,4 @@ Legacy `coral` and `amber` still exist in `tailwind.config.ts`, but new code sho
 
 - 2026-05-19: Created the color system document after theme work exposed weak color governance. Documented semantic token layers, large-area color rules, and component-specific color usage.
 - 2026-05-19: Refined Light mode semantics for low-distraction task work. Added neutral sync idle tokens, parent/subtask row tokens, shared task hover, and muted action tokens for trash buttons.
+- 2026-05-19: Split task priority dot colors from task row importance backgrounds. Added task-priority row tokens, made Light mode row importance use green-tinted large-area steps, and documented that hover must not override semantic row backgrounds.
