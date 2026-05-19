@@ -315,7 +315,14 @@ export function TaskManager() {
   }
 
   return (
-    <section aria-label="任务管理" className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+    <section
+      aria-label="任务管理"
+      className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm"
+      onClick={(event) => {
+        if ((event.target as HTMLElement).closest("[data-task-row],button,input,select,label")) return;
+        setSelectedTaskId(null);
+      }}
+    >
       <div className="flex flex-col gap-3 border-b border-slate-200 pb-4 md:flex-row md:items-start md:justify-between">
         <div>
           <h2 className="text-base font-semibold text-ink">任务管理</h2>
@@ -447,7 +454,7 @@ function TaskRow({ task, isSubtask, canExpand, expanded, progress, selected, pen
     ? "bg-success-soft"
     : task.status === "completed"
       ? isSubtask ? "bg-task-child" : "bg-task-parent"
-      : taskPriorityRowClass(parentPriority ?? task.priority, isSubtask, selected);
+      : taskPriorityRowClass(parentPriority ?? task.priority, isSubtask);
 
   function selectFromRow(event: MouseEvent<HTMLDivElement>) {
     if ((event.target as HTMLElement).closest("button,input,select,label")) return;
@@ -455,7 +462,7 @@ function TaskRow({ task, isSubtask, canExpand, expanded, progress, selected, pen
   }
 
   return (
-    <div aria-busy={pendingCompletion} aria-selected={selected} className={`grid grid-cols-[2rem_minmax(0,1fr)_6.5rem_4.5rem_5.5rem_4.5rem] items-center gap-2 border-t border-slate-200 px-3 py-2 text-sm transition-colors duration-150 ${rowClass} ${selected ? "ring-1 ring-inset ring-moss" : ""} ${pendingCompletion ? "ring-1 ring-inset ring-success" : ""} ${task.status === "completed" ? "text-slate-400" : "text-slate-700"}`} onClick={selectFromRow} role="row">
+    <div aria-busy={pendingCompletion} aria-selected={selected} className={`grid grid-cols-[2rem_minmax(0,1fr)_6.5rem_4.5rem_5.5rem_4.5rem] items-center gap-2 border-t border-slate-200 px-3 py-2 text-sm transition-colors duration-150 ${rowClass} ${selected ? "ring-1 ring-inset ring-moss" : ""} ${pendingCompletion ? "ring-1 ring-inset ring-success" : ""} ${task.status === "completed" ? "text-slate-400" : "text-slate-700"}`} data-task-row="true" onClick={selectFromRow} role="row">
       <div className="flex items-center" role="cell">
         {!isSubtask && canExpand ? (
           <button aria-label={`${expanded ? "Collapse" : "Expand"} subtasks for ${task.title}`} className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100" onClick={() => onToggleExpanded?.(task.id)} type="button">
@@ -610,9 +617,9 @@ function DueDateCell({ task, onChange }: { task: Task; onChange: (taskId: string
 
   const content = task.dueDate ? formatShortDate(task.dueDate) : <Calendar aria-hidden="true" size={15} />;
   const dueClass = dueState === "overdue"
-    ? "bg-due-over-soft text-due-over"
+    ? "font-bold text-due-over"
     : dueState === "near_due"
-      ? "bg-due-near-soft text-due-near"
+      ? "font-bold text-due-near"
       : "text-slate-700 hover:bg-slate-100";
 
   return (
@@ -659,12 +666,11 @@ function priorityDotClass(priority: TaskPriority): string {
   return "bg-priority-low";
 }
 
-function taskPriorityRowClass(priority: TaskPriority, isSubtask: boolean, selected: boolean): string {
+function taskPriorityRowClass(priority: TaskPriority, isSubtask: boolean): string {
   const childSuffix = isSubtask ? "-child" : "";
-  const selectedSuffix = selected ? "-selected" : "";
-  if (priority === "high") return `bg-task-priority-high${childSuffix}${selectedSuffix}`;
-  if (priority === "medium") return `bg-task-priority-medium${childSuffix}${selectedSuffix}`;
-  return `bg-task-priority-low${childSuffix}${selectedSuffix}`;
+  if (priority === "high") return `bg-task-priority-high${childSuffix}`;
+  if (priority === "medium") return `bg-task-priority-medium${childSuffix}`;
+  return `bg-task-priority-low${childSuffix}`;
 }
 
 function statusSelectClass(status: TaskStatus): string {

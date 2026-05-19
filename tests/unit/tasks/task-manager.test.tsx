@@ -170,8 +170,10 @@ describe("TaskManager", () => {
     expect(overdueRow).not.toHaveClass("bg-due-over-soft");
     expect(nearRow).toHaveClass("bg-task-priority-low");
     expect(nearRow).not.toHaveClass("bg-due-near-soft");
-    expect(screen.getByRole("button", { name: "Edit due date for Overdue high" })).toHaveClass("bg-due-over-soft", "text-due-over");
-    expect(screen.getByRole("button", { name: "Edit due date for Near low" })).toHaveClass("bg-due-near-soft", "text-due-near");
+    expect(screen.getByRole("button", { name: "Edit due date for Overdue high" })).toHaveClass("font-bold", "text-due-over");
+    expect(screen.getByRole("button", { name: "Edit due date for Overdue high" })).not.toHaveClass("bg-due-over-soft");
+    expect(screen.getByRole("button", { name: "Edit due date for Near low" })).toHaveClass("font-bold", "text-due-near");
+    expect(screen.getByRole("button", { name: "Edit due date for Near low" })).not.toHaveClass("bg-due-near-soft");
   });
 
   it("hides completed top-level tasks by default and reveals them with a toggle", async () => {
@@ -266,7 +268,8 @@ describe("TaskManager", () => {
     fireEvent.click(title);
 
     expect(screen.getByRole("row", { name: /Draft dissertation chapter/ })).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByRole("row", { name: /Draft dissertation chapter/ })).toHaveClass("bg-task-priority-high-selected");
+    expect(screen.getByRole("row", { name: /Draft dissertation chapter/ })).toHaveClass("bg-task-priority-high", "ring-moss");
+    expect(screen.getByRole("row", { name: /Draft dissertation chapter/ })).not.toHaveClass("bg-task-priority-high-selected");
     expect(screen.queryByLabelText("Edit title for Draft dissertation chapter")).not.toBeInTheDocument();
 
     fireEvent.click(title);
@@ -290,8 +293,23 @@ describe("TaskManager", () => {
     fireEvent.click(row);
 
     expect(row).toHaveAttribute("aria-selected", "true");
-    expect(row).toHaveClass("bg-task-priority-high-selected");
+    expect(row).toHaveClass("bg-task-priority-high", "ring-moss");
     expect(screen.queryByLabelText("Edit title for Draft dissertation chapter")).not.toBeInTheDocument();
+  });
+
+  it("clears task row selection when clicking task panel whitespace", async () => {
+    mockFetch([task({ id: "task_1" })]);
+
+    render(<TaskManager />);
+
+    const row = await screen.findByRole("row", { name: /Draft dissertation chapter/ });
+    fireEvent.click(row);
+    expect(row).toHaveAttribute("aria-selected", "true");
+
+    fireEvent.click(screen.getByLabelText("任务管理"));
+    expect(row).toHaveAttribute("aria-selected", "false");
+    expect(row).not.toHaveClass("ring-moss");
+    expect(row).toHaveClass("bg-task-priority-high");
   });
 
   it("saves a title edit when focus leaves the input", async () => {

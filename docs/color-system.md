@@ -85,9 +85,9 @@ These exist because large areas need lower chroma than compact badges and icons.
 | `task-child` | Ordinary subtask row background. Slightly quieter than parent rows. |
 | `task-row-hover` | Shared task row hover background. Keep it transparent or extremely subtle when row priority backgrounds are active. |
 | `task-priority-low`, `task-priority-medium`, `task-priority-high` | Parent task row importance backgrounds. These are large-area tokens and should follow each theme's overall palette. |
-| `task-priority-low-selected`, `task-priority-medium-selected`, `task-priority-high-selected` | Selected parent task row backgrounds. Slightly stronger than the ordinary row background. |
+| `task-priority-low-selected`, `task-priority-medium-selected`, `task-priority-high-selected` | Reserved parent task selected backgrounds. Current task UI uses ring-only selection feedback instead. |
 | `task-priority-low-child`, `task-priority-medium-child`, `task-priority-high-child` | Subtask row backgrounds inherited from the parent task priority, kept lighter than parent rows. |
-| `task-priority-low-child-selected`, `task-priority-medium-child-selected`, `task-priority-high-child-selected` | Selected subtask backgrounds inherited from the parent task priority. |
+| `task-priority-low-child-selected`, `task-priority-medium-child-selected`, `task-priority-high-child-selected` | Reserved subtask selected backgrounds. Current task UI uses ring-only selection feedback instead. |
 
 Large-area token rule: if a color fills a card, table row, message panel, or proposal block, prefer one of these tokens or create a new low-chroma token. Do not use vivid state colors as broad backgrounds.
 
@@ -153,10 +153,9 @@ Do not reuse status colors for unrelated component backgrounds. For example, `Wa
 - Completion controls use `success` tokens.
 - Ordinary low-priority parent rows use `task-priority-low`; medium and high parent rows use theme-specific `task-priority-*` large-area backgrounds. In Light mode these row backgrounds use green-tinted steps, not warning red/yellow fills.
 - Subtask rows inherit the parent task's priority through `task-priority-*-child`, so the task group importance remains visible while the child row stays quieter.
-- Selected task rows use `task-priority-*-selected` or `task-priority-*-child-selected`. Hover must not replace these priority backgrounds with a generic gray.
+- Selected task rows keep their ordinary priority background and use an inset ring as the selection cue. Hover must not replace these priority backgrounds with a generic gray.
 - Delete trash icons use `action-muted` by default, then `delete` and `delete-soft` on hover.
-- Near-due and overdue states should use `due-near-soft` / `due-over-soft` on compact due-date controls, not as whole-row backgrounds when task priority row colors are active.
-- Due text or compact indicators may use `due-near` and `due-over` where more explicit warning is needed.
+- Near-due and overdue states should use bold `due-near` / `due-over` date text on compact Due controls, not whole-row backgrounds and not colored Due-control backgrounds when task priority row colors are active.
 
 ### AI Assistant
 
