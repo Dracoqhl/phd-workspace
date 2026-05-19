@@ -43,8 +43,8 @@
   --color-proposal-text: oklch(0.44 0.08 75);
   --color-row-warning-soft: oklch(0.975 0.018 82);
   --color-row-danger-soft: oklch(0.968 0.022 28);
-  --color-task-parent: var(--color-surface);
-  --color-task-child: oklch(0.976 0.006 238);
+  --color-task-parent: oklch(0.982 0.006 238);
+  --color-task-child: var(--color-surface);
   --color-task-row-hover: transparent;
   --color-task-priority-low: var(--color-task-parent);
   --color-task-priority-medium: var(--color-task-parent);

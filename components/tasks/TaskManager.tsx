@@ -454,7 +454,7 @@ function TaskRow({ task, isSubtask, canExpand, expanded, progress, selected, pen
     : task.status === "completed"
       ? isSubtask ? "bg-task-child" : "bg-task-parent"
       : isSubtask ? "bg-task-child" : "bg-task-parent";
-  const hierarchyClass = isSubtask ? `border-l-2 ${taskPriorityBorderClass(parentPriority ?? task.priority)}` : "border-l-2 border-l-transparent";
+  const hierarchyLineClass = isSubtask ? taskPriorityBorderClass(parentPriority ?? task.priority) : "";
 
   function selectFromRow(event: MouseEvent<HTMLDivElement>) {
     if ((event.target as HTMLElement).closest("button,input,select,label")) return;
@@ -462,7 +462,7 @@ function TaskRow({ task, isSubtask, canExpand, expanded, progress, selected, pen
   }
 
   return (
-    <div aria-busy={pendingCompletion} aria-selected={selected} className={`grid grid-cols-[2rem_minmax(0,1fr)_6.5rem_4.5rem_5.5rem_4.5rem] items-center gap-2 border-t border-slate-200 px-3 py-2 text-sm transition-colors duration-150 ${hierarchyClass} ${rowClass} ${selected ? "ring-1 ring-inset ring-moss" : ""} ${pendingCompletion ? "ring-1 ring-inset ring-success" : ""} ${task.status === "completed" ? "text-slate-400" : "text-slate-700"}`} data-task-row="true" onClick={selectFromRow} role="row">
+    <div aria-busy={pendingCompletion} aria-selected={selected} className={`grid grid-cols-[2rem_minmax(0,1fr)_6.5rem_4.5rem_5.5rem_4.5rem] items-center gap-2 border-t border-slate-200 px-3 py-2 text-sm transition-colors duration-150 ${rowClass} ${selected ? "ring-1 ring-inset ring-moss" : ""} ${pendingCompletion ? "ring-1 ring-inset ring-success" : ""} ${task.status === "completed" ? "text-slate-400" : "text-slate-700"}`} data-task-row="true" onClick={selectFromRow} role="row">
       <div className="flex items-center" role="cell">
         {!isSubtask && canExpand ? (
           <button aria-label={`${expanded ? "Collapse" : "Expand"} subtasks for ${task.title}`} className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100" onClick={() => onToggleExpanded?.(task.id)} type="button">
@@ -472,6 +472,7 @@ function TaskRow({ task, isSubtask, canExpand, expanded, progress, selected, pen
       </div>
       <div className="min-w-0" role="cell">
         <div className="flex min-w-0 items-center gap-2">
+          {isSubtask ? <span aria-hidden="true" className={`h-8 w-0 shrink-0 border-l-2 ${hierarchyLineClass}`} /> : null}
           <TaskCompletionButton onToggle={onStatusToggle} pending={pendingCompletion} task={task} />
           <EditableTitle indent={isSubtask} onSave={onTitleSave} onSelect={onSelect} selectedTaskId={selectedTaskId} task={task} />
           {!isSubtask && progress ? <span className="shrink-0 text-xs text-slate-500">{progress.completed}/{progress.total}</span> : null}
