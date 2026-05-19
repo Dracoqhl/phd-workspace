@@ -281,6 +281,7 @@ Owns shared TypeScript types.
 Stores product and planning documents.
 
 - The PRD should live in `docs/prd.md` once formalized.
+- Theme and semantic color rules live in `docs/color-system.md`; update it when UI color tokens, theme mappings, or component color responsibilities change.
 - Architecture changes belong in root `architecture.md`.
 - Local Superpowers planning artifacts under `docs/superpowers/` are developer-local and intentionally ignored by Git.
 
@@ -397,4 +398,5 @@ Trash entries should include:
 - Update this file when changing dependency rules or module ownership.
 - Update this file when Git boundaries or ignored runtime paths change.
 - Update `Readme.md` when setup, scripts, environment variables, deployment, or user-facing scope changes.
+- Update `docs/color-system.md` when adding UI states, changing theme tokens, or introducing component color behavior.
 - Update local `AGENT.md` when important project decisions are confirmed. It is intentionally ignored by Git.

@@ -228,6 +228,7 @@ git remote add origin https://github.com/<your-user>/<your-repo>.git
 The project is in private beta implementation. Current dev status includes a versioned data foundation, multi-user auth routes, an admin dashboard for invite/user oversight, protected task APIs, task management UI, daily habit management UI, AI-backed mental care with fallback, AI API testing, AI chat, selectable AI operation proposals, confirmed AI writes, and AI action logging.
 
 - `architecture.md`: planned directory layout and file placement rules.
+- `docs/color-system.md`: theme and semantic color source of truth for Light, Dark, Forest, Warm, and System modes.
 - `Readme.md`: project overview, product scope, and setup expectations.
 - `.gitignore`: Git ignore rules for dependencies, secrets, build output, logs, and runtime data.
 - `.env.example`: example environment variable names without real secrets.
@@ -271,4 +272,5 @@ Every development change should keep documentation current:
 
 - Update `Readme.md` when setup, scripts, environment variables, deployment, or user-facing scope changes.
 - Update `architecture.md` when directories, file placement rules, module boundaries, or dependency rules change.
+- Update `docs/color-system.md` when adding UI states, changing theme tokens, or introducing component color behavior.
 - Update local `AGENT.md` when important product or implementation decisions are confirmed. It is intentionally ignored by Git.
