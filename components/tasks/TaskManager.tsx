@@ -1,7 +1,7 @@
 "use client";
 
 import { Calendar, Check, ChevronDown, ChevronRight, CornerDownRight, Plus, Trash2 } from "lucide-react";
-import { FormEvent, KeyboardEvent, MouseEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, KeyboardEvent, MouseEvent, RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useSyncStatus } from "@/components/sync/SyncStatusProvider";
 import { getTaskDueState, getTaskProgress } from "@/lib/domain/tasks";
@@ -46,6 +46,8 @@ export function TaskManager() {
   const [pendingCompletionTaskIds, setPendingCompletionTaskIds] = useState<Set<string>>(() => new Set());
   const hasLocalWrites = useRef(false);
   const taskMutationSequences = useRef(new Map<string, number>());
+  const subtaskDraftRowRef = useRef<HTMLDivElement>(null);
+  const creatingSubtaskRef = useRef(false);
 
   const loadTasks = useCallback(async ({ force = false, showLoading = true } = {}) => {
     if (showLoading) {
@@ -111,6 +113,29 @@ export function TaskManager() {
     document.addEventListener("click", clearSelectionOnOutsideClick);
     return () => document.removeEventListener("click", clearSelectionOnOutsideClick);
   }, [selectedTaskId]);
+
+  useEffect(() => {
+    if (!addingSubtaskFor) return;
+
+    function submitSubtaskOnOutsideClick(event: globalThis.MouseEvent) {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) return;
+      if (subtaskDraftRowRef.current?.contains(target)) return;
+
+      const parentTask = tasks.find((task) => task.id === addingSubtaskFor);
+      if (!parentTask) return;
+
+      if (subtaskTitle.trim().length === 0) {
+        cancelSubtaskDraft();
+        return;
+      }
+
+      void createSubtask(parentTask);
+    }
+
+    document.addEventListener("click", submitSubtaskOnOutsideClick);
+    return () => document.removeEventListener("click", submitSubtaskOnOutsideClick);
+  }, [addingSubtaskFor, subtaskDueDate, subtaskPriority, subtaskStatus, subtaskTitle, tasks]);
 
   const topLevelTasks = useMemo(() => {
     return tasks.filter(
@@ -204,12 +229,15 @@ export function TaskManager() {
   }
 
   async function createSubtask(parentTask: Task) {
+    if (creatingSubtaskRef.current) return;
+
     const title = subtaskTitle.trim();
     if (!title) {
       setError("Subtask title is required.");
       return;
     }
 
+    creatingSubtaskRef.current = true;
     hasLocalWrites.current = true;
 
     try {
@@ -237,6 +265,8 @@ export function TaskManager() {
       setAddingSubtaskFor(parentTask.id);
       setSubtaskTitle(title);
       setError("Unable to save task.");
+    } finally {
+      creatingSubtaskRef.current = false;
     }
   }
 
@@ -337,6 +367,14 @@ export function TaskManager() {
     setSubtaskDueDate("");
   }
 
+  function cancelSubtaskDraft() {
+    setAddingSubtaskFor(null);
+    setSubtaskTitle("");
+    setSubtaskStatus("not_started");
+    setSubtaskPriority("low");
+    setSubtaskDueDate("");
+  }
+
   return (
     <section
       aria-label="任务管理"
@@ -416,8 +454,9 @@ export function TaskManager() {
                 />
                 {addingSubtaskFor === task.id ? (
                   <SubtaskInput
+                    draftRowRef={subtaskDraftRowRef}
                     dueDate={subtaskDueDate}
-                    onCancel={() => setAddingSubtaskFor(null)}
+                    onCancel={cancelSubtaskDraft}
                     onCreate={() => createSubtask(task)}
                     onDueDateChange={setSubtaskDueDate}
                     onPriorityChange={setSubtaskPriority}
@@ -674,14 +713,14 @@ function DueDateCell({ task, onChange }: { task: Task; onChange: (taskId: string
   );
 }
 
-function SubtaskInput({ parentTitle, title, status, priority, dueDate, onTitleChange, onStatusChange, onPriorityChange, onDueDateChange, onCreate, onCancel }: { parentTitle: string; title: string; status: TaskStatus; priority: TaskPriority; dueDate: string; onTitleChange: (value: string) => void; onStatusChange: (value: TaskStatus) => void; onPriorityChange: (value: TaskPriority) => void; onDueDateChange: (value: string) => void; onCreate: () => Promise<void>; onCancel: () => void }) {
+function SubtaskInput({ parentTitle, title, status, priority, dueDate, draftRowRef, onTitleChange, onStatusChange, onPriorityChange, onDueDateChange, onCreate, onCancel }: { parentTitle: string; title: string; status: TaskStatus; priority: TaskPriority; dueDate: string; draftRowRef: RefObject<HTMLDivElement>; onTitleChange: (value: string) => void; onStatusChange: (value: TaskStatus) => void; onPriorityChange: (value: TaskPriority) => void; onDueDateChange: (value: string) => void; onCreate: () => Promise<void>; onCancel: () => void }) {
   function handleKeyDown(event: KeyboardEvent<HTMLInputElement>) {
     if (event.key === "Escape") onCancel();
     if (event.key === "Enter") void onCreate();
   }
 
   return (
-    <div className="grid grid-cols-[2rem_minmax(0,1fr)_6.5rem_4.5rem_5.5rem_4.5rem] items-center gap-2 border-t border-slate-200 bg-task-child px-3 py-2" role="row">
+    <div className="grid grid-cols-[2rem_minmax(0,1fr)_6.5rem_4.5rem_5.5rem_4.5rem] items-center gap-2 border-t border-slate-200 bg-task-child px-3 py-2" ref={draftRowRef} role="row">
       <div role="cell" />
       <div className="min-w-0 pl-5 pr-1" role="cell">
         <input aria-label={`New subtask for ${parentTitle}`} autoFocus className="h-8 w-full rounded-md border border-slate-300 px-2 text-sm text-ink outline-none focus:border-moss" onChange={(event) => onTitleChange(event.target.value)} onKeyDown={handleKeyDown} value={title} />

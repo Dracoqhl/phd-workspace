@@ -502,6 +502,22 @@ describe("TaskManager", () => {
     );
   });
 
+  it("creates a filled subtask when clicking outside the draft row", async () => {
+    const fetchMock = mockFetch([task({ id: "task_1" })]);
+
+    render(<TaskManager />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Add subtask to Draft dissertation chapter" }));
+    fireEvent.change(screen.getByLabelText("New subtask for Draft dissertation chapter"), { target: { value: "Check references" } });
+    fireEvent.click(document.body);
+
+    expect(await screen.findByText("Check references")).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/tasks/task_1/subtasks",
+      expect.objectContaining({ method: "POST" })
+    );
+  });
+
   it("creates a subtask with editable status, priority, and due date", async () => {
     const fetchMock = mockFetch([task({ id: "task_1" })]);
 
