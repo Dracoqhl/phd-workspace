@@ -77,7 +77,7 @@ These exist because large areas need lower chroma than compact badges and icons.
 
 | Token | Use |
 | --- | --- |
-| `care`, `care-soft`, `care-text` | Mental-care quote panel and quote controls. Use instead of `energy` or `warning`. |
+| `care`, `care-soft`, `care-text` | Mental-care quote panel and quote controls. Stay close to the active theme accent; do not introduce an unrelated standalone hue. Use instead of `energy` or `warning`. |
 | `proposal`, `proposal-soft`, `proposal-text` | AI proposal card container. Use instead of `warning`. |
 | `row-warning-soft` | Broad row background for near-due tasks. Use through `due-near-soft`. |
 | `row-danger-soft` | Broad row background for overdue tasks. Use through `due-over-soft`. |
@@ -132,7 +132,7 @@ Do not reuse status colors for unrelated component backgrounds. For example, `Wa
 
 ### Mental Care
 
-- Quote panel uses `care`, `care-soft`, and `care-text`.
+- Quote panel uses `care`, `care-soft`, and `care-text`. These tokens should harmonize with the active theme accent rather than introducing a separate blue/teal island.
 - Energy icons use `energy` and `energy-muted`.
 - Level 5 badge uses CSS variables, not hardcoded amber fills.
 - Quote settings controls use `care-text` and `hover:bg-care/10`.
@@ -152,7 +152,7 @@ Do not reuse status colors for unrelated component backgrounds. For example, `Wa
 - Priority dots use `priority-*` tokens. Low/Medium/High dots remain compact green/yellow/red field markers, with subdued saturation.
 - Completion controls use `success` tokens.
 - Parent task rows use neutral `task-parent`; subtask rows use lighter neutral `task-child`. Parent rows should not look lighter than child rows.
-- Subtask rows can show a small turn-marker icon before the completion circle using the parent priority dot color to preserve group context without coloring the whole row. Avoid full-height vertical bars; they look too heavy and artificial in this dense table.
+- Subtask rows can show a small muted turn-marker icon before the completion circle to preserve group context without coloring the whole row. Avoid full-height vertical bars and do not tie the marker color to Priority.
 - Selected task rows keep their ordinary priority background and use an inset ring as the selection cue. Hover must not replace these priority backgrounds with a generic gray.
 - Delete trash icons use `action-muted` by default, then `delete` and `delete-soft` on hover.
 - Near-due and overdue states should use bold `due-near` / `due-over` date text on compact Due controls, not whole-row backgrounds and not colored Due-control backgrounds when task priority row colors are active.
@@ -257,4 +257,5 @@ Legacy `coral` and `amber` still exist in `tailwind.config.ts`, but new code sho
 - 2026-05-19: Refined Light mode semantics for low-distraction task work. Added neutral sync idle tokens, parent/subtask row tokens, shared task hover, and muted action tokens for trash buttons.
 - 2026-05-19: Split task priority dot colors from task row importance backgrounds. Added task-priority row tokens, made Light mode row importance use green-tinted large-area steps, and documented that hover must not override semantic row backgrounds.
 - 2026-05-19: Moved near-due and overdue emphasis out of whole task rows and into compact Due controls so row background remains tied to task priority.
-- 2026-05-19: Simplified task table color hierarchy. Task rows returned to neutral parent/child backgrounds; parent rows are slightly stronger than child rows, priority is shown through subdued dots and small child turn-marker icons, and Due uses bold yellow/red text only.
+- 2026-05-19: Simplified task table color hierarchy. Task rows returned to neutral parent/child backgrounds; parent rows are slightly stronger than child rows, priority is shown through subdued dots and small muted child turn-marker icons, and Due uses bold yellow/red text only.
+- 2026-05-19: Re-aligned the Daily quote care tokens with each theme's accent family so the care panel feels integrated with the page rather than like a separate blue module.

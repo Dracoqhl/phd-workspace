@@ -415,7 +415,6 @@ export function TaskManager() {
                     isSubtask={true}
                     key={child.id}
                     pendingCompletion={pendingCompletionTaskIds.has(child.id)}
-                    parentPriority={task.priority}
                     onDelete={deleteSubtask}
                     onPriorityChange={(taskId, priority) => updateTask(taskId, { priority })}
                     onStatusChange={(taskId, status) => updateTask(taskId, { status })}
@@ -445,7 +444,6 @@ interface TaskRowProps {
   progress?: { completed: number; total: number };
   selected: boolean;
   pendingCompletion: boolean;
-  parentPriority?: TaskPriority;
   selectedTaskId: string | null;
   onToggleExpanded?: (taskId: string) => void;
   onSelect: (taskId: string) => void;
@@ -458,13 +456,13 @@ interface TaskRowProps {
   onDelete: (task: Task) => Promise<void>;
 }
 
-function TaskRow({ task, isSubtask, canExpand, expanded, progress, selected, pendingCompletion, parentPriority, selectedTaskId, onToggleExpanded, onSelect, onAddSubtask, onTitleSave, onStatusToggle, onStatusChange, onPriorityChange, onDueDateChange, onDelete }: TaskRowProps) {
+function TaskRow({ task, isSubtask, canExpand, expanded, progress, selected, pendingCompletion, selectedTaskId, onToggleExpanded, onSelect, onAddSubtask, onTitleSave, onStatusToggle, onStatusChange, onPriorityChange, onDueDateChange, onDelete }: TaskRowProps) {
   const rowClass = pendingCompletion
     ? "bg-success-soft"
     : task.status === "completed"
       ? isSubtask ? "bg-task-child" : "bg-task-parent"
       : isSubtask ? "bg-task-child" : "bg-task-parent";
-  const hierarchyMarkerClass = isSubtask ? taskPriorityTextClass(parentPriority ?? task.priority) : "";
+  const hierarchyMarkerClass = isSubtask ? "text-muted" : "";
 
   function selectFromRow(event: MouseEvent<HTMLDivElement>) {
     if ((event.target as HTMLElement).closest("button,input,select,label")) return;
@@ -679,12 +677,6 @@ function priorityDotClass(priority: TaskPriority): string {
   if (priority === "high") return "bg-priority-high";
   if (priority === "medium") return "bg-priority-medium";
   return "bg-priority-low";
-}
-
-function taskPriorityTextClass(priority: TaskPriority): string {
-  if (priority === "high") return "text-priority-high";
-  if (priority === "medium") return "text-priority-medium";
-  return "text-priority-low";
 }
 
 function statusSelectClass(status: TaskStatus): string {

@@ -133,7 +133,7 @@ describe("TaskManager", () => {
     expect(screen.getByText("Collect figures")).toBeInTheDocument();
     expect(screen.getByText("Revise intro")).toBeInTheDocument();
     expect(screen.getByRole("row", { name: /Revise intro/ })).toHaveClass("bg-task-child");
-    expect(screen.getByTestId("subtask-marker-subtask_2")).toHaveClass("text-priority-high");
+    expect(screen.getByTestId("subtask-marker-subtask_2")).toHaveClass("text-muted");
     expect(screen.getByRole("button", { name: "Delete subtask Collect figures" })).toHaveClass("text-action-muted", "hover:text-delete");
   });
 
@@ -153,7 +153,7 @@ describe("TaskManager", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Expand subtasks for High task" }));
     expect(screen.getByRole("row", { name: /Child task/ })).toHaveClass("bg-task-child");
-    expect(screen.getByTestId("subtask-marker-subtask_1")).toHaveClass("text-priority-high");
+    expect(screen.getByTestId("subtask-marker-subtask_1")).toHaveClass("text-muted");
     expect(screen.getByTestId("priority-dot-subtask_1")).toHaveClass("bg-priority-low");
   });
 
