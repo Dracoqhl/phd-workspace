@@ -66,6 +66,7 @@ These define small and medium-sized system states. They can be used for badges, 
 | `danger`, `danger-soft`, `danger-text` | Errors, failed sync, blocked state, destructive consequences. |
 | `info`, `info-soft`, `info-text` | Informational status and non-urgent active state. |
 | `sync-idle`, `sync-idle-soft`, `sync-idle-text` | Normal synced state. This is a calm neutral state, not a success celebration. |
+| `sync-active`, `sync-active-soft`, `sync-active-text` | Temporary syncing / saving state. Keep it visible but low-drama. |
 
 State `*-soft` tokens are not automatically safe for large panels. Before using them for a broad area, check whether a more specific large-area token exists.
 
@@ -121,7 +122,7 @@ Do not reuse status colors for unrelated component backgrounds. For example, `Wa
 - Page background uses `bg-paper`.
 - Cards and panels use `bg-white` or `bg-surface`; compatibility CSS maps existing `bg-white` to `surface` under active themes.
 - Header date and account chips use neutral surface tokens.
-- `Synced` uses `sync-idle` tokens. `Saving` uses warning tokens, and `Failed` uses danger tokens.
+- `Synced` uses `sync-idle` tokens. `Saving` uses `sync-active` tokens, and `Failed` uses danger tokens.
 - Theme selector stays neutral, not semantic-state colored.
 
 ### Mental Care
@@ -143,7 +144,7 @@ Do not reuse status colors for unrelated component backgrounds. For example, `Wa
 ### Tasks
 
 - Status chips use `status-*` token triplets.
-- Priority dots use `priority-*` tokens.
+- Priority dots use `priority-*` tokens. In Light mode they should feel like one green family with clear steps, not separate unrelated colors.
 - Completion controls use `success` tokens.
 - Ordinary parent rows use `task-parent`; ordinary subtask rows use `task-child`; shared hover uses `task-row-hover`.
 - Delete trash icons use `action-muted` by default, then `delete` and `delete-soft` on hover.
@@ -200,6 +201,7 @@ Use this checklist for any new feature or UI state:
 
 - Do not use `warning-soft` or `danger-soft` as broad card/panel backgrounds unless the entire panel is truly a warning or error.
 - Do not make Light mode look warm by default. Light should remain calm and mostly neutral.
+- Do not use vivid warm colors for generic sync activity. `Saving` should stay subdued and informational, not attention-seeking.
 - Do not let Warm mode collapse all semantic states into orange or brown.
 - Do not hardcode icon fills such as `#f59e0b`; use CSS variables for theme-aware icons.
 - Do not use priority colors outside priority dots.

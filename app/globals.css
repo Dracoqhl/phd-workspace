@@ -26,8 +26,11 @@
   --color-info-soft: oklch(0.94 0.035 222);
   --color-info-text: oklch(0.39 0.11 222);
   --color-sync-idle: var(--color-border);
-  --color-sync-idle-soft: oklch(0.972 0.006 238);
-  --color-sync-idle-text: oklch(0.46 0.022 245);
+  --color-sync-idle-soft: var(--color-surface);
+  --color-sync-idle-text: var(--color-text-muted);
+  --color-sync-active: oklch(0.73 0.045 152);
+  --color-sync-active-soft: oklch(0.962 0.018 152);
+  --color-sync-active-text: oklch(0.42 0.06 152);
   --color-energy: oklch(0.61 0.15 25);
   --color-energy-soft: oklch(0.95 0.045 45);
   --color-energy-text: oklch(0.48 0.13 35);
@@ -48,9 +51,9 @@
   --color-delete: oklch(0.54 0.16 28);
   --color-delete-soft: oklch(0.95 0.04 28);
   --color-delete-hover: oklch(0.91 0.055 28);
-  --color-priority-low: oklch(0.56 0.14 150);
-  --color-priority-medium: oklch(0.74 0.15 82);
-  --color-priority-high: oklch(0.56 0.18 28);
+  --color-priority-low: oklch(0.73 0.075 152);
+  --color-priority-medium: oklch(0.59 0.115 152);
+  --color-priority-high: oklch(0.43 0.13 152);
   --color-status-todo: var(--color-border);
   --color-status-todo-soft: var(--color-surface-muted);
   --color-status-todo-text: var(--color-text-muted);
@@ -107,6 +110,9 @@
   --color-sync-idle: var(--color-border);
   --color-sync-idle-soft: oklch(0.265 0.024 245);
   --color-sync-idle-text: oklch(0.72 0.018 245);
+  --color-sync-active: oklch(0.55 0.055 158);
+  --color-sync-active-soft: oklch(0.285 0.032 158);
+  --color-sync-active-text: oklch(0.78 0.07 158);
   --color-energy: oklch(0.76 0.13 42);
   --color-energy-soft: oklch(0.34 0.05 52);
   --color-energy-text: oklch(0.85 0.1 52);
@@ -183,6 +189,9 @@
   --color-sync-idle: var(--color-border);
   --color-sync-idle-soft: oklch(0.935 0.018 146);
   --color-sync-idle-text: oklch(0.45 0.03 148);
+  --color-sync-active: oklch(0.58 0.06 146);
+  --color-sync-active-soft: oklch(0.91 0.035 146);
+  --color-sync-active-text: oklch(0.36 0.07 146);
   --color-task-parent: var(--color-surface);
   --color-task-child: oklch(0.952 0.017 146);
   --color-task-row-hover: oklch(0.925 0.024 146);
@@ -227,6 +236,9 @@
   --color-sync-idle: var(--color-border);
   --color-sync-idle-soft: oklch(0.945 0.014 72);
   --color-sync-idle-text: oklch(0.47 0.026 58);
+  --color-sync-active: oklch(0.61 0.06 72);
+  --color-sync-active-soft: oklch(0.925 0.03 72);
+  --color-sync-active-text: oklch(0.41 0.06 72);
   --color-task-parent: var(--color-surface);
   --color-task-child: oklch(0.958 0.014 72);
   --color-task-row-hover: oklch(0.935 0.022 72);

@@ -63,7 +63,7 @@ export function SyncStatusBadge() {
   const title = status === "failed" ? error ?? "Sync failed" : lastSyncedAt ? `Synced ${formatTime(lastSyncedAt)}` : label;
   const className =
     status === "saving"
-      ? "border-warning bg-warning-soft text-warning-text"
+      ? "border-sync-active bg-sync-active-soft text-sync-active-text"
       : status === "failed"
         ? "border-danger bg-danger-soft text-danger-text"
         : "border-sync-idle bg-sync-idle-soft text-sync-idle-text";

@@ -35,6 +35,7 @@ describe("SyncStatusProvider", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(screen.getByRole("status", { name: "Data sync status" })).toHaveTextContent("Saving");
+    expect(screen.getByRole("status", { name: "Data sync status" })).toHaveClass("border-sync-active", "bg-sync-active-soft", "text-sync-active-text");
 
     success.resolve("ok");
     expect(await screen.findByText(/Synced/)).toBeInTheDocument();
