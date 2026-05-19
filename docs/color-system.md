@@ -13,7 +13,7 @@ Examples:
 - Use `bg-care-soft`, not `bg-amber-50`, for the mental-care quote panel.
 - Use `text-delete`, not `text-red-600`, for delete icons.
 - Use `bg-priority-medium`, not `bg-yellow-400`, for medium priority dots.
-- Use `bg-task-priority-high`, not `bg-priority-high`, for task row importance backgrounds.
+- Use `bg-task-parent` / `bg-task-child` for task row backgrounds; priority belongs in compact dots and optional subtask hierarchy lines.
 - Use `bg-due-near-soft`, not `bg-warning-soft`, for near-due task rows.
 - Use `bg-sync-idle-soft`, not `bg-success-soft`, for the normal synced state.
 
@@ -84,9 +84,9 @@ These exist because large areas need lower chroma than compact badges and icons.
 | `task-parent` | Ordinary first-level task row background. |
 | `task-child` | Ordinary subtask row background. Slightly quieter than parent rows. |
 | `task-row-hover` | Shared task row hover background. Keep it transparent or extremely subtle when row priority backgrounds are active. |
-| `task-priority-low`, `task-priority-medium`, `task-priority-high` | Parent task row importance backgrounds. These are large-area tokens and should follow each theme's overall palette. |
+| `task-priority-low`, `task-priority-medium`, `task-priority-high` | Reserved task priority row tokens. Current task UI keeps row backgrounds neutral and uses priority dots instead. |
 | `task-priority-low-selected`, `task-priority-medium-selected`, `task-priority-high-selected` | Reserved parent task selected backgrounds. Current task UI uses ring-only selection feedback instead. |
-| `task-priority-low-child`, `task-priority-medium-child`, `task-priority-high-child` | Subtask row backgrounds inherited from the parent task priority, kept lighter than parent rows. |
+| `task-priority-low-child`, `task-priority-medium-child`, `task-priority-high-child` | Reserved subtask row tokens. Current task UI keeps child rows neutral and uses a subtle left hierarchy line. |
 | `task-priority-low-child-selected`, `task-priority-medium-child-selected`, `task-priority-high-child-selected` | Reserved subtask selected backgrounds. Current task UI uses ring-only selection feedback instead. |
 
 Large-area token rule: if a color fills a card, table row, message panel, or proposal block, prefer one of these tokens or create a new low-chroma token. Do not use vivid state colors as broad backgrounds.
@@ -149,10 +149,10 @@ Do not reuse status colors for unrelated component backgrounds. For example, `Wa
 ### Tasks
 
 - Status chips use `status-*` token triplets.
-- Priority dots use `priority-*` tokens. Low/Medium/High dots remain compact green/yellow/red field markers.
+- Priority dots use `priority-*` tokens. Low/Medium/High dots remain compact green/yellow/red field markers, with subdued saturation.
 - Completion controls use `success` tokens.
-- Ordinary low-priority parent rows use `task-priority-low`; medium and high parent rows use theme-specific `task-priority-*` large-area backgrounds. In Light mode these row backgrounds use green-tinted steps, not warning red/yellow fills.
-- Subtask rows inherit the parent task's priority through `task-priority-*-child`, so the task group importance remains visible while the child row stays quieter.
+- Parent task rows use neutral `task-parent`; subtask rows use neutral `task-child`.
+- Subtask rows can show a subtle left border using the parent priority dot color to preserve group context without coloring the whole row.
 - Selected task rows keep their ordinary priority background and use an inset ring as the selection cue. Hover must not replace these priority backgrounds with a generic gray.
 - Delete trash icons use `action-muted` by default, then `delete` and `delete-soft` on hover.
 - Near-due and overdue states should use bold `due-near` / `due-over` date text on compact Due controls, not whole-row backgrounds and not colored Due-control backgrounds when task priority row colors are active.
@@ -210,7 +210,7 @@ Use this checklist for any new feature or UI state:
 - Do not let Warm mode collapse all semantic states into orange or brown.
 - Do not hardcode icon fills such as `#f59e0b`; use CSS variables for theme-aware icons.
 - Do not use priority colors outside priority dots.
-- Do not use priority dot colors as task row backgrounds. Row importance uses `task-priority-*` tokens because large areas need lower chroma and theme coherence.
+- Do not use priority dot colors as task row backgrounds. Task rows should stay neutral unless a future design explicitly reintroduces low-chroma row priority fills.
 - Do not use task status colors outside task status chips unless explicitly documented here.
 - Do not add a new theme without mapping every token in `app/globals.css`.
 
@@ -257,3 +257,4 @@ Legacy `coral` and `amber` still exist in `tailwind.config.ts`, but new code sho
 - 2026-05-19: Refined Light mode semantics for low-distraction task work. Added neutral sync idle tokens, parent/subtask row tokens, shared task hover, and muted action tokens for trash buttons.
 - 2026-05-19: Split task priority dot colors from task row importance backgrounds. Added task-priority row tokens, made Light mode row importance use green-tinted large-area steps, and documented that hover must not override semantic row backgrounds.
 - 2026-05-19: Moved near-due and overdue emphasis out of whole task rows and into compact Due controls so row background remains tied to task priority.
+- 2026-05-19: Simplified task table color hierarchy. Task rows returned to neutral parent/child backgrounds; priority is shown through subdued dots and optional child hierarchy lines; Due uses bold yellow/red text only.

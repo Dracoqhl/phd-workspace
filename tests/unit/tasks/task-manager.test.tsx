@@ -122,7 +122,7 @@ describe("TaskManager", () => {
     expect(screen.getByTestId("status-cell-task_1")).toHaveClass("justify-center");
     expect(screen.getByTestId("priority-cell-task_1")).toHaveClass("justify-center");
     expect(screen.getByTestId("due-cell-task_1")).toHaveClass("justify-center");
-    expect(screen.getByRole("row", { name: /Draft dissertation chapter/ })).toHaveClass("bg-task-priority-high");
+    expect(screen.getByRole("row", { name: /Draft dissertation chapter/ })).toHaveClass("bg-task-parent", "border-l-transparent");
     expect(screen.getByRole("row", { name: /Draft dissertation chapter/ })).not.toHaveClass("hover:bg-task-row-hover");
     expect(screen.getByRole("button", { name: "Delete task Draft dissertation chapter" })).toHaveClass("text-action-muted", "hover:text-delete");
     expect(screen.getByText("1/2")).toBeInTheDocument();
@@ -132,11 +132,11 @@ describe("TaskManager", () => {
 
     expect(screen.getByText("Collect figures")).toBeInTheDocument();
     expect(screen.getByText("Revise intro")).toBeInTheDocument();
-    expect(screen.getByRole("row", { name: /Revise intro/ })).toHaveClass("bg-task-priority-high-child");
+    expect(screen.getByRole("row", { name: /Revise intro/ })).toHaveClass("bg-task-child", "border-l-priority-high");
     expect(screen.getByRole("button", { name: "Delete subtask Collect figures" })).toHaveClass("text-action-muted", "hover:text-delete");
   });
 
-  it("uses priority row color only for rows while keeping priority dots semantic", async () => {
+  it("uses neutral row backgrounds while keeping priority dots semantic", async () => {
     mockFetch([
       task({ id: "low_task", title: "Low task", priority: "low", dueDate: null }),
       task({ id: "medium_task", title: "Medium task", priority: "medium", dueDate: null }),
@@ -146,12 +146,12 @@ describe("TaskManager", () => {
 
     render(<TaskManager />);
 
-    expect(await screen.findByRole("row", { name: /Low task/ })).toHaveClass("bg-task-priority-low");
-    expect(screen.getByRole("row", { name: /Medium task/ })).toHaveClass("bg-task-priority-medium");
-    expect(screen.getByRole("row", { name: /High task/ })).toHaveClass("bg-task-priority-high");
+    expect(await screen.findByRole("row", { name: /Low task/ })).toHaveClass("bg-task-parent", "border-l-transparent");
+    expect(screen.getByRole("row", { name: /Medium task/ })).toHaveClass("bg-task-parent", "border-l-transparent");
+    expect(screen.getByRole("row", { name: /High task/ })).toHaveClass("bg-task-parent", "border-l-transparent");
 
     fireEvent.click(screen.getByRole("button", { name: "Expand subtasks for High task" }));
-    expect(screen.getByRole("row", { name: /Child task/ })).toHaveClass("bg-task-priority-high-child");
+    expect(screen.getByRole("row", { name: /Child task/ })).toHaveClass("bg-task-child", "border-l-priority-high");
     expect(screen.getByTestId("priority-dot-subtask_1")).toHaveClass("bg-priority-low");
   });
 
@@ -166,9 +166,9 @@ describe("TaskManager", () => {
 
     const overdueRow = await screen.findByRole("row", { name: /Overdue high/ });
     const nearRow = screen.getByRole("row", { name: /Near low/ });
-    expect(overdueRow).toHaveClass("bg-task-priority-high");
+    expect(overdueRow).toHaveClass("bg-task-parent");
     expect(overdueRow).not.toHaveClass("bg-due-over-soft");
-    expect(nearRow).toHaveClass("bg-task-priority-low");
+    expect(nearRow).toHaveClass("bg-task-parent");
     expect(nearRow).not.toHaveClass("bg-due-near-soft");
     expect(screen.getByRole("button", { name: "Edit due date for Overdue high" })).toHaveClass("font-bold", "text-due-over");
     expect(screen.getByRole("button", { name: "Edit due date for Overdue high" })).not.toHaveClass("bg-due-over-soft");
@@ -268,7 +268,7 @@ describe("TaskManager", () => {
     fireEvent.click(title);
 
     expect(screen.getByRole("row", { name: /Draft dissertation chapter/ })).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByRole("row", { name: /Draft dissertation chapter/ })).toHaveClass("bg-task-priority-high", "ring-moss");
+    expect(screen.getByRole("row", { name: /Draft dissertation chapter/ })).toHaveClass("bg-task-parent", "ring-moss");
     expect(screen.getByRole("row", { name: /Draft dissertation chapter/ })).not.toHaveClass("bg-task-priority-high-selected");
     expect(screen.queryByLabelText("Edit title for Draft dissertation chapter")).not.toBeInTheDocument();
 
@@ -293,7 +293,7 @@ describe("TaskManager", () => {
     fireEvent.click(row);
 
     expect(row).toHaveAttribute("aria-selected", "true");
-    expect(row).toHaveClass("bg-task-priority-high", "ring-moss");
+    expect(row).toHaveClass("bg-task-parent", "ring-moss");
     expect(screen.queryByLabelText("Edit title for Draft dissertation chapter")).not.toBeInTheDocument();
   });
 
@@ -309,7 +309,7 @@ describe("TaskManager", () => {
     fireEvent.click(screen.getByLabelText("任务管理"));
     expect(row).toHaveAttribute("aria-selected", "false");
     expect(row).not.toHaveClass("ring-moss");
-    expect(row).toHaveClass("bg-task-priority-high");
+    expect(row).toHaveClass("bg-task-parent");
   });
 
   it("saves a title edit when focus leaves the input", async () => {

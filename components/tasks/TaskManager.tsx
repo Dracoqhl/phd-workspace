@@ -381,7 +381,6 @@ export function TaskManager() {
                   expanded={expanded}
                   isSubtask={false}
                   pendingCompletion={pendingCompletionTaskIds.has(task.id)}
-                  parentPriority={task.priority}
                   onAddSubtask={startAddSubtask}
                   onDelete={deleteTask}
                   onPriorityChange={(taskId, priority) => updateTask(taskId, { priority })}
@@ -454,7 +453,8 @@ function TaskRow({ task, isSubtask, canExpand, expanded, progress, selected, pen
     ? "bg-success-soft"
     : task.status === "completed"
       ? isSubtask ? "bg-task-child" : "bg-task-parent"
-      : taskPriorityRowClass(parentPriority ?? task.priority, isSubtask);
+      : isSubtask ? "bg-task-child" : "bg-task-parent";
+  const hierarchyClass = isSubtask ? `border-l-2 ${taskPriorityBorderClass(parentPriority ?? task.priority)}` : "border-l-2 border-l-transparent";
 
   function selectFromRow(event: MouseEvent<HTMLDivElement>) {
     if ((event.target as HTMLElement).closest("button,input,select,label")) return;
@@ -462,7 +462,7 @@ function TaskRow({ task, isSubtask, canExpand, expanded, progress, selected, pen
   }
 
   return (
-    <div aria-busy={pendingCompletion} aria-selected={selected} className={`grid grid-cols-[2rem_minmax(0,1fr)_6.5rem_4.5rem_5.5rem_4.5rem] items-center gap-2 border-t border-slate-200 px-3 py-2 text-sm transition-colors duration-150 ${rowClass} ${selected ? "ring-1 ring-inset ring-moss" : ""} ${pendingCompletion ? "ring-1 ring-inset ring-success" : ""} ${task.status === "completed" ? "text-slate-400" : "text-slate-700"}`} data-task-row="true" onClick={selectFromRow} role="row">
+    <div aria-busy={pendingCompletion} aria-selected={selected} className={`grid grid-cols-[2rem_minmax(0,1fr)_6.5rem_4.5rem_5.5rem_4.5rem] items-center gap-2 border-t border-slate-200 px-3 py-2 text-sm transition-colors duration-150 ${hierarchyClass} ${rowClass} ${selected ? "ring-1 ring-inset ring-moss" : ""} ${pendingCompletion ? "ring-1 ring-inset ring-success" : ""} ${task.status === "completed" ? "text-slate-400" : "text-slate-700"}`} data-task-row="true" onClick={selectFromRow} role="row">
       <div className="flex items-center" role="cell">
         {!isSubtask && canExpand ? (
           <button aria-label={`${expanded ? "Collapse" : "Expand"} subtasks for ${task.title}`} className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100" onClick={() => onToggleExpanded?.(task.id)} type="button">
@@ -666,11 +666,10 @@ function priorityDotClass(priority: TaskPriority): string {
   return "bg-priority-low";
 }
 
-function taskPriorityRowClass(priority: TaskPriority, isSubtask: boolean): string {
-  const childSuffix = isSubtask ? "-child" : "";
-  if (priority === "high") return `bg-task-priority-high${childSuffix}`;
-  if (priority === "medium") return `bg-task-priority-medium${childSuffix}`;
-  return `bg-task-priority-low${childSuffix}`;
+function taskPriorityBorderClass(priority: TaskPriority): string {
+  if (priority === "high") return "border-l-priority-high";
+  if (priority === "medium") return "border-l-priority-medium";
+  return "border-l-priority-low";
 }
 
 function statusSelectClass(status: TaskStatus): string {
