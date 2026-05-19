@@ -155,6 +155,25 @@ describe("TaskManager", () => {
     expect(screen.getByTestId("priority-dot-subtask_1")).toHaveClass("bg-priority-low");
   });
 
+  it("keeps due urgency out of the task row background", async () => {
+    const nearDueDate = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
+    mockFetch([
+      task({ id: "overdue_high", title: "Overdue high", priority: "high", dueDate: "2000-01-01" }),
+      task({ id: "near_low", title: "Near low", priority: "low", dueDate: nearDueDate })
+    ]);
+
+    render(<TaskManager />);
+
+    const overdueRow = await screen.findByRole("row", { name: /Overdue high/ });
+    const nearRow = screen.getByRole("row", { name: /Near low/ });
+    expect(overdueRow).toHaveClass("bg-task-priority-high");
+    expect(overdueRow).not.toHaveClass("bg-due-over-soft");
+    expect(nearRow).toHaveClass("bg-task-priority-low");
+    expect(nearRow).not.toHaveClass("bg-due-near-soft");
+    expect(screen.getByRole("button", { name: "Edit due date for Overdue high" })).toHaveClass("bg-due-over-soft", "text-due-over");
+    expect(screen.getByRole("button", { name: "Edit due date for Near low" })).toHaveClass("bg-due-near-soft", "text-due-near");
+  });
+
   it("hides completed top-level tasks by default and reveals them with a toggle", async () => {
     mockFetch([
       task({ id: "active_task", title: "Active task", status: "not_started" }),
@@ -247,6 +266,7 @@ describe("TaskManager", () => {
     fireEvent.click(title);
 
     expect(screen.getByRole("row", { name: /Draft dissertation chapter/ })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("row", { name: /Draft dissertation chapter/ })).toHaveClass("bg-task-priority-high-selected");
     expect(screen.queryByLabelText("Edit title for Draft dissertation chapter")).not.toBeInTheDocument();
 
     fireEvent.click(title);
@@ -259,6 +279,19 @@ describe("TaskManager", () => {
       "/api/tasks/task_1",
       expect.objectContaining({ method: "PATCH", body: JSON.stringify({ title: "Draft final chapter" }) })
     );
+  });
+
+  it("selects a task row from empty row space without opening inline edit", async () => {
+    mockFetch([task({ id: "task_1" })]);
+
+    render(<TaskManager />);
+
+    const row = await screen.findByRole("row", { name: /Draft dissertation chapter/ });
+    fireEvent.click(row);
+
+    expect(row).toHaveAttribute("aria-selected", "true");
+    expect(row).toHaveClass("bg-task-priority-high-selected");
+    expect(screen.queryByLabelText("Edit title for Draft dissertation chapter")).not.toBeInTheDocument();
   });
 
   it("saves a title edit when focus leaves the input", async () => {

@@ -1,7 +1,7 @@
 "use client";
 
 import { Calendar, Check, ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
-import { FormEvent, KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, KeyboardEvent, MouseEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useSyncStatus } from "@/components/sync/SyncStatusProvider";
 import { getTaskDueState, getTaskProgress } from "@/lib/domain/tasks";
@@ -443,19 +443,19 @@ interface TaskRowProps {
 }
 
 function TaskRow({ task, isSubtask, canExpand, expanded, progress, selected, pendingCompletion, parentPriority, selectedTaskId, onToggleExpanded, onSelect, onAddSubtask, onTitleSave, onStatusToggle, onStatusChange, onPriorityChange, onDueDateChange, onDelete }: TaskRowProps) {
-  const dueState = getTaskDueState(task);
   const rowClass = pendingCompletion
     ? "bg-success-soft"
-    : dueState === "overdue"
-      ? "bg-due-over-soft"
-      : dueState === "near_due"
-        ? "bg-due-near-soft"
-        : task.status === "completed"
-          ? isSubtask ? "bg-task-child" : "bg-task-parent"
-          : taskPriorityRowClass(parentPriority ?? task.priority, isSubtask, selected);
+    : task.status === "completed"
+      ? isSubtask ? "bg-task-child" : "bg-task-parent"
+      : taskPriorityRowClass(parentPriority ?? task.priority, isSubtask, selected);
+
+  function selectFromRow(event: MouseEvent<HTMLDivElement>) {
+    if ((event.target as HTMLElement).closest("button,input,select,label")) return;
+    onSelect(task.id);
+  }
 
   return (
-    <div aria-busy={pendingCompletion} aria-selected={selected} className={`grid grid-cols-[2rem_minmax(0,1fr)_6.5rem_4.5rem_5.5rem_4.5rem] items-center gap-2 border-t border-slate-200 px-3 py-2 text-sm transition-colors duration-150 ${rowClass} ${selected ? "ring-1 ring-inset ring-moss" : ""} ${pendingCompletion ? "ring-1 ring-inset ring-success" : ""} ${task.status === "completed" ? "text-slate-400" : "text-slate-700"}`} role="row">
+    <div aria-busy={pendingCompletion} aria-selected={selected} className={`grid grid-cols-[2rem_minmax(0,1fr)_6.5rem_4.5rem_5.5rem_4.5rem] items-center gap-2 border-t border-slate-200 px-3 py-2 text-sm transition-colors duration-150 ${rowClass} ${selected ? "ring-1 ring-inset ring-moss" : ""} ${pendingCompletion ? "ring-1 ring-inset ring-success" : ""} ${task.status === "completed" ? "text-slate-400" : "text-slate-700"}`} onClick={selectFromRow} role="row">
       <div className="flex items-center" role="cell">
         {!isSubtask && canExpand ? (
           <button aria-label={`${expanded ? "Collapse" : "Expand"} subtasks for ${task.title}`} className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100" onClick={() => onToggleExpanded?.(task.id)} type="button">
@@ -597,6 +597,7 @@ function StatusSelect({ task, onChange }: { task: Task; onChange: (taskId: strin
 function DueDateCell({ task, onChange }: { task: Task; onChange: (taskId: string, dueDate: string | null) => Promise<void> }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const label = task.dueDate ? "Edit due date" : "Set due date";
+  const dueState = getTaskDueState(task);
 
   function openPicker() {
     const input = inputRef.current;
@@ -608,10 +609,15 @@ function DueDateCell({ task, onChange }: { task: Task; onChange: (taskId: string
   }
 
   const content = task.dueDate ? formatShortDate(task.dueDate) : <Calendar aria-hidden="true" size={15} />;
+  const dueClass = dueState === "overdue"
+    ? "bg-due-over-soft text-due-over"
+    : dueState === "near_due"
+      ? "bg-due-near-soft text-due-near"
+      : "text-slate-700 hover:bg-slate-100";
 
   return (
     <span className="relative inline-flex">
-      <button aria-label={`${label} for ${task.title}`} className="inline-flex h-7 w-[5.25rem] items-center justify-center rounded-md px-2 text-xs font-medium text-slate-700 hover:bg-slate-100" onClick={openPicker} type="button">
+      <button aria-label={`${label} for ${task.title}`} className={`inline-flex h-7 w-[5.25rem] items-center justify-center rounded-md px-2 text-xs font-medium ${dueClass}`} onClick={openPicker} type="button">
         {content}
       </button>
       <input

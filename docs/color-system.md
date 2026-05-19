@@ -155,8 +155,7 @@ Do not reuse status colors for unrelated component backgrounds. For example, `Wa
 - Subtask rows inherit the parent task's priority through `task-priority-*-child`, so the task group importance remains visible while the child row stays quieter.
 - Selected task rows use `task-priority-*-selected` or `task-priority-*-child-selected`. Hover must not replace these priority backgrounds with a generic gray.
 - Delete trash icons use `action-muted` by default, then `delete` and `delete-soft` on hover.
-- Near-due rows use `due-near-soft`, not `warning-soft` directly.
-- Overdue rows use `due-over-soft`, not `danger-soft` directly.
+- Near-due and overdue states should use `due-near-soft` / `due-over-soft` on compact due-date controls, not as whole-row backgrounds when task priority row colors are active.
 - Due text or compact indicators may use `due-near` and `due-over` where more explicit warning is needed.
 
 ### AI Assistant
@@ -258,3 +257,4 @@ Legacy `coral` and `amber` still exist in `tailwind.config.ts`, but new code sho
 - 2026-05-19: Created the color system document after theme work exposed weak color governance. Documented semantic token layers, large-area color rules, and component-specific color usage.
 - 2026-05-19: Refined Light mode semantics for low-distraction task work. Added neutral sync idle tokens, parent/subtask row tokens, shared task hover, and muted action tokens for trash buttons.
 - 2026-05-19: Split task priority dot colors from task row importance backgrounds. Added task-priority row tokens, made Light mode row importance use green-tinted large-area steps, and documented that hover must not override semantic row backgrounds.
+- 2026-05-19: Moved near-due and overdue emphasis out of whole task rows and into compact Due controls so row background remains tied to task priority.
