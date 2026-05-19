@@ -10,6 +10,8 @@ const config: Config = {
         moss: "var(--color-accent)",
         surface: "var(--color-surface)",
         "surface-muted": "var(--color-surface-muted)",
+        field: "var(--color-field)",
+        "field-border": "var(--color-field-border)",
         primary: "var(--color-text)",
         muted: "var(--color-text-muted)",
         line: "var(--color-border)",

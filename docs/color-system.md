@@ -48,8 +48,10 @@ These define the base application shell and ordinary controls.
 | Token | Use |
 | --- | --- |
 | `bg` / `paper` | Page background. |
-| `surface` | Cards, panels, ordinary form controls. |
+| `surface` | Cards, panels, and neutral containers. |
 | `surface-muted` | Table headers, subtle grouped rows, inactive backgrounds. |
+| `field` | Ordinary editable fields and visible field-like edit triggers. It stays close to `surface` but mixes in the active theme accent so inputs are not pure white or neutral gray. |
+| `field-border` | Ordinary editable field borders. It mixes `border` with the active theme accent and should be used with `field`. |
 | `text` / `primary` / `ink` | Main readable text. |
 | `text-muted` / `muted` | Secondary labels, helper text, timestamps. |
 | `border` / `line` | Ordinary borders and dividers. |
@@ -177,7 +179,7 @@ Do not reuse status colors for unrelated component backgrounds. For example, `Wa
 
 - Primary submit and active auth mode use `accent`.
 - Form errors use `danger-text`.
-- Inputs use surface, text, border, and focus accent tokens.
+- Inputs use `field`, `field-border`, text, placeholder muted, and focus accent tokens.
 
 ## Implementation Locations
 
@@ -220,7 +222,7 @@ The current implementation exposes these semantic Tailwind colors:
 
 ```text
 ink, paper, moss,
-surface, surface-muted, primary, muted, line, accent, accent-soft,
+surface, surface-muted, field, field-border, primary, muted, line, accent, accent-soft,
 success, success-soft, success-text,
 warning, warning-soft, warning-text,
 danger, danger-soft, danger-text,
@@ -258,6 +260,7 @@ Legacy `coral` and `amber` still exist in `tailwind.config.ts`, but new code sho
 - 2026-05-19: Split task priority dot colors from task row importance backgrounds. Added task-priority row tokens, made Light mode row importance use green-tinted large-area steps, and documented that hover must not override semantic row backgrounds.
 - 2026-05-19: Moved near-due and overdue emphasis out of whole task rows and into compact Due controls so row background remains tied to task priority.
 - 2026-05-19: Simplified task table color hierarchy. Task rows returned to neutral parent/child backgrounds; parent rows are slightly stronger than child rows, priority is shown through subdued dots and small muted child turn-marker icons, and Due uses bold yellow/red text only.
+- 2026-05-20: Added `field` and `field-border` tokens for ordinary editable fields and field-like edit triggers. Workspace focus, task creation/editing, habit editing/creation, login/register fields, Due edit triggers, and the AI assistant prompt now use theme-tinted field colors instead of pure white or neutral dark gray.
 - 2026-05-19: Re-aligned the Daily quote care tokens with each theme's accent family so the care panel feels integrated with the page rather than like a separate blue module.
 - 2026-05-19: Updated care tokens to directly reuse theme accent variables instead of hand-tuned near matches.
 - 2026-05-19: Updated AI proposal tokens to reuse theme accent variables and removed hardcoded white proposal item backgrounds so operation suggestions stay coherent with the active theme.
