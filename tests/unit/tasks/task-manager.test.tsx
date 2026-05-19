@@ -133,7 +133,7 @@ describe("TaskManager", () => {
     expect(screen.getByText("Collect figures")).toBeInTheDocument();
     expect(screen.getByText("Revise intro")).toBeInTheDocument();
     expect(screen.getByRole("row", { name: /Revise intro/ })).toHaveClass("bg-task-child");
-    expect(screen.getByRole("row", { name: /Revise intro/ }).querySelector(".border-l-priority-high")).not.toBeNull();
+    expect(screen.getByTestId("subtask-marker-subtask_2")).toHaveClass("text-priority-high");
     expect(screen.getByRole("button", { name: "Delete subtask Collect figures" })).toHaveClass("text-action-muted", "hover:text-delete");
   });
 
@@ -153,7 +153,7 @@ describe("TaskManager", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Expand subtasks for High task" }));
     expect(screen.getByRole("row", { name: /Child task/ })).toHaveClass("bg-task-child");
-    expect(screen.getByRole("row", { name: /Child task/ }).querySelector(".border-l-priority-high")).not.toBeNull();
+    expect(screen.getByTestId("subtask-marker-subtask_1")).toHaveClass("text-priority-high");
     expect(screen.getByTestId("priority-dot-subtask_1")).toHaveClass("bg-priority-low");
   });
 
@@ -299,7 +299,7 @@ describe("TaskManager", () => {
     expect(screen.queryByLabelText("Edit title for Draft dissertation chapter")).not.toBeInTheDocument();
   });
 
-  it("clears task row selection when clicking task panel whitespace", async () => {
+  it("clears task row selection when clicking outside task rows", async () => {
     mockFetch([task({ id: "task_1" })]);
 
     render(<TaskManager />);
@@ -312,6 +312,11 @@ describe("TaskManager", () => {
     expect(row).toHaveAttribute("aria-selected", "false");
     expect(row).not.toHaveClass("ring-moss");
     expect(row).toHaveClass("bg-task-parent");
+
+    fireEvent.click(row);
+    expect(row).toHaveAttribute("aria-selected", "true");
+    fireEvent.click(document.body);
+    expect(row).toHaveAttribute("aria-selected", "false");
   });
 
   it("saves a title edit when focus leaves the input", async () => {

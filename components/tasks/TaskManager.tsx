@@ -1,6 +1,6 @@
 "use client";
 
-import { Calendar, Check, ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
+import { Calendar, Check, ChevronDown, ChevronRight, CornerDownRight, Plus, Trash2 } from "lucide-react";
 import { FormEvent, KeyboardEvent, MouseEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useSyncStatus } from "@/components/sync/SyncStatusProvider";
@@ -94,6 +94,20 @@ export function TaskManager() {
     window.addEventListener("phd-workspace:tasks-refresh", refreshTasks);
     return () => window.removeEventListener("phd-workspace:tasks-refresh", refreshTasks);
   }, [loadTasks]);
+
+  useEffect(() => {
+    if (!selectedTaskId) return;
+
+    function clearSelectionOnOutsideClick(event: globalThis.MouseEvent) {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) return;
+      if (target.closest("[data-task-row]")) return;
+      setSelectedTaskId(null);
+    }
+
+    document.addEventListener("click", clearSelectionOnOutsideClick);
+    return () => document.removeEventListener("click", clearSelectionOnOutsideClick);
+  }, [selectedTaskId]);
 
   const topLevelTasks = useMemo(() => {
     return tasks.filter(
@@ -318,10 +332,6 @@ export function TaskManager() {
     <section
       aria-label="任务管理"
       className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm"
-      onClick={(event) => {
-        if ((event.target as HTMLElement).closest("[data-task-row],button,input,select,label")) return;
-        setSelectedTaskId(null);
-      }}
     >
       <div className="flex flex-col gap-3 border-b border-slate-200 pb-4 md:flex-row md:items-start md:justify-between">
         <div>
@@ -454,7 +464,7 @@ function TaskRow({ task, isSubtask, canExpand, expanded, progress, selected, pen
     : task.status === "completed"
       ? isSubtask ? "bg-task-child" : "bg-task-parent"
       : isSubtask ? "bg-task-child" : "bg-task-parent";
-  const hierarchyLineClass = isSubtask ? taskPriorityBorderClass(parentPriority ?? task.priority) : "";
+  const hierarchyMarkerClass = isSubtask ? taskPriorityTextClass(parentPriority ?? task.priority) : "";
 
   function selectFromRow(event: MouseEvent<HTMLDivElement>) {
     if ((event.target as HTMLElement).closest("button,input,select,label")) return;
@@ -472,7 +482,11 @@ function TaskRow({ task, isSubtask, canExpand, expanded, progress, selected, pen
       </div>
       <div className="min-w-0" role="cell">
         <div className="flex min-w-0 items-center gap-2">
-          {isSubtask ? <span aria-hidden="true" className={`h-8 w-0 shrink-0 border-l-2 ${hierarchyLineClass}`} /> : null}
+          {isSubtask ? (
+            <span aria-hidden="true" className={`inline-flex h-4 w-4 shrink-0 items-center justify-center ${hierarchyMarkerClass}`} data-testid={`subtask-marker-${task.id}`}>
+              <CornerDownRight size={14} strokeWidth={2.2} />
+            </span>
+          ) : null}
           <TaskCompletionButton onToggle={onStatusToggle} pending={pendingCompletion} task={task} />
           <EditableTitle indent={isSubtask} onSave={onTitleSave} onSelect={onSelect} selectedTaskId={selectedTaskId} task={task} />
           {!isSubtask && progress ? <span className="shrink-0 text-xs text-slate-500">{progress.completed}/{progress.total}</span> : null}
@@ -667,10 +681,10 @@ function priorityDotClass(priority: TaskPriority): string {
   return "bg-priority-low";
 }
 
-function taskPriorityBorderClass(priority: TaskPriority): string {
-  if (priority === "high") return "border-l-priority-high";
-  if (priority === "medium") return "border-l-priority-medium";
-  return "border-l-priority-low";
+function taskPriorityTextClass(priority: TaskPriority): string {
+  if (priority === "high") return "text-priority-high";
+  if (priority === "medium") return "text-priority-medium";
+  return "text-priority-low";
 }
 
 function statusSelectClass(status: TaskStatus): string {
