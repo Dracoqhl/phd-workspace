@@ -304,6 +304,7 @@ describe("AiAssistantPanel", () => {
     expect(screen.getByText("新增任务：整理实验数据")).toBeInTheDocument();
     expect(screen.getByText("新增习惯：喝水")).toBeInTheDocument();
     expect(screen.getByTestId("ai-proposal-list")).toHaveClass("custom-scrollbar");
+    expect(screen.getByText("新增任务：整理实验数据").closest("label")).toHaveClass("bg-surface");
 
     fireEvent.click(screen.getByRole("checkbox", { name: "Select 新增习惯：喝水" }));
     expect(screen.getByRole("button", { name: "Apply" })).toBeInTheDocument();

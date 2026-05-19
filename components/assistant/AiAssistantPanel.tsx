@@ -443,7 +443,7 @@ function ProposalCard({
       </div>
       <div className="custom-scrollbar grid max-h-64 gap-1.5 overflow-y-auto pr-1" data-testid="ai-proposal-list">
         {proposals.map((proposal) => (
-          <label className="flex items-start gap-2 rounded border border-proposal bg-white px-2 py-1.5" key={proposal.id}>
+          <label className="flex items-start gap-2 rounded border border-proposal bg-surface px-2 py-1.5" key={proposal.id}>
             <input
               aria-label={`Select ${proposal.summary}`}
               checked={selectedIds.has(proposal.id)}

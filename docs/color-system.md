@@ -78,7 +78,7 @@ These exist because large areas need lower chroma than compact badges and icons.
 | Token | Use |
 | --- | --- |
 | `care`, `care-soft`, `care-text` | Mental-care quote panel and quote controls. These should map directly to the active theme accent family; do not introduce an unrelated standalone hue. Use instead of `energy` or `warning`. |
-| `proposal`, `proposal-soft`, `proposal-text` | AI proposal card container. Use instead of `warning`. |
+| `proposal`, `proposal-soft`, `proposal-text` | AI proposal card container. These should map directly to the active theme accent family; use instead of `warning` so ordinary create/update proposals do not look like caution states. |
 | `row-warning-soft` | Broad row background for near-due tasks. Use through `due-near-soft`. |
 | `row-danger-soft` | Broad row background for overdue tasks. Use through `due-over-soft`. |
 | `task-parent` | First-level task row background. Slightly stronger than child rows so parent tasks read as group headers. |
@@ -260,3 +260,4 @@ Legacy `coral` and `amber` still exist in `tailwind.config.ts`, but new code sho
 - 2026-05-19: Simplified task table color hierarchy. Task rows returned to neutral parent/child backgrounds; parent rows are slightly stronger than child rows, priority is shown through subdued dots and small muted child turn-marker icons, and Due uses bold yellow/red text only.
 - 2026-05-19: Re-aligned the Daily quote care tokens with each theme's accent family so the care panel feels integrated with the page rather than like a separate blue module.
 - 2026-05-19: Updated care tokens to directly reuse theme accent variables instead of hand-tuned near matches.
+- 2026-05-19: Updated AI proposal tokens to reuse theme accent variables and removed hardcoded white proposal item backgrounds so operation suggestions stay coherent with the active theme.
