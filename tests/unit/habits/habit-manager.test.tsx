@@ -123,6 +123,7 @@ describe("HabitManager", () => {
     expect(within(rows[1]).getByText("Done habit")).toBeInTheDocument();
     expect(rows[1]).toHaveClass("text-slate-400");
     expect(within(rows[1]).getByText("Done habit")).toHaveClass("line-through");
+    expect(screen.getByRole("list")).toHaveClass("overflow-hidden");
     expect(screen.getByText("1/2 checked")).toBeInTheDocument();
     expect(screen.getByRole("progressbar", { name: "Habit check-in progress" })).toHaveAttribute("aria-valuenow", "1");
   });

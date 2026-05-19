@@ -337,7 +337,7 @@ export function HabitManager() {
       ) : null}
 
       {!loading && sortedHabits.length > 0 ? (
-        <ul className="mt-4 divide-y divide-slate-100 rounded-lg border border-slate-200">
+        <ul className="mt-4 divide-y divide-slate-100 overflow-hidden rounded-lg border border-slate-200 bg-white">
           {sortedHabits.map((item) => {
             const rowClass = item.isCompleted ? "bg-slate-50 text-slate-400" : "bg-white text-slate-700";
             const itemCompletedCount = item.checkin?.completedCount ?? 0;
