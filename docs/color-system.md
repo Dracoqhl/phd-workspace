@@ -14,6 +14,7 @@ Examples:
 - Use `text-delete`, not `text-red-600`, for delete icons.
 - Use `bg-priority-medium`, not `bg-yellow-400`, for medium priority dots.
 - Use `bg-due-near-soft`, not `bg-warning-soft`, for near-due task rows.
+- Use `bg-sync-idle-soft`, not `bg-success-soft`, for the normal synced state.
 
 ## Theme Strategy
 
@@ -60,10 +61,11 @@ These define small and medium-sized system states. They can be used for badges, 
 
 | Token | Use |
 | --- | --- |
-| `success`, `success-soft`, `success-text` | Saved, synced, completed, available, confirmed. |
+| `success`, `success-soft`, `success-text` | Completed, available, confirmed, and explicit success events. Do not use for the ordinary synced idle state. |
 | `warning`, `warning-soft`, `warning-text` | Saving, waiting, caution, temporary attention. |
 | `danger`, `danger-soft`, `danger-text` | Errors, failed sync, blocked state, destructive consequences. |
 | `info`, `info-soft`, `info-text` | Informational status and non-urgent active state. |
+| `sync-idle`, `sync-idle-soft`, `sync-idle-text` | Normal synced state. This is a calm neutral state, not a success celebration. |
 
 State `*-soft` tokens are not automatically safe for large panels. Before using them for a broad area, check whether a more specific large-area token exists.
 
@@ -77,6 +79,9 @@ These exist because large areas need lower chroma than compact badges and icons.
 | `proposal`, `proposal-soft`, `proposal-text` | AI proposal card container. Use instead of `warning`. |
 | `row-warning-soft` | Broad row background for near-due tasks. Use through `due-near-soft`. |
 | `row-danger-soft` | Broad row background for overdue tasks. Use through `due-over-soft`. |
+| `task-parent` | Ordinary first-level task row background. |
+| `task-child` | Ordinary subtask row background. Slightly quieter than parent rows. |
+| `task-row-hover` | Shared task row hover background. |
 
 Large-area token rule: if a color fills a card, table row, message panel, or proposal block, prefer one of these tokens or create a new low-chroma token. Do not use vivid state colors as broad backgrounds.
 
@@ -87,7 +92,8 @@ These map domain concepts to colors.
 | Token | Use |
 | --- | --- |
 | `energy`, `energy-soft`, `energy-text`, `energy-muted` | Mental-care energy icons and compact energy state feedback. Do not use `energy-soft` as the quote panel background. |
-| `delete`, `delete-soft`, `delete-hover` | Trash icons and destructive hover states. Use instead of raw danger red for delete affordances. |
+| `action-muted`, `action-muted-hover` | Low-emphasis utility icons and secondary action affordances. |
+| `delete`, `delete-soft`, `delete-hover` | Destructive hover and confirmed danger states. Trash icons should usually start as `action-muted` and switch to delete colors on hover. |
 | `priority-low`, `priority-medium`, `priority-high` | Task priority dots only. Keep them compact and clearly distinguishable. |
 | `due-near`, `due-near-soft` | Near-due task indicators. `due-near-soft` is intentionally subtle for row backgrounds. |
 | `due-over`, `due-over-soft` | Overdue task indicators. Stronger than near-due, still controlled for row fills. |
@@ -115,6 +121,7 @@ Do not reuse status colors for unrelated component backgrounds. For example, `Wa
 - Page background uses `bg-paper`.
 - Cards and panels use `bg-white` or `bg-surface`; compatibility CSS maps existing `bg-white` to `surface` under active themes.
 - Header date and account chips use neutral surface tokens.
+- `Synced` uses `sync-idle` tokens. `Saving` uses warning tokens, and `Failed` uses danger tokens.
 - Theme selector stays neutral, not semantic-state colored.
 
 ### Mental Care
@@ -130,7 +137,7 @@ Do not reuse status colors for unrelated component backgrounds. For example, `Wa
 - Progress bar uses `success`.
 - Completed and partial check-in circles use `success` tokens.
 - Pending check-in uses `success-soft` with subtle ring feedback.
-- Deactivate trash icon uses `delete`, not neutral gray or raw red.
+- Deactivate trash icon uses `action-muted` by default and `delete` only on hover, not raw red.
 - Completed rows remain neutral muted, not success colored.
 
 ### Tasks
@@ -138,7 +145,8 @@ Do not reuse status colors for unrelated component backgrounds. For example, `Wa
 - Status chips use `status-*` token triplets.
 - Priority dots use `priority-*` tokens.
 - Completion controls use `success` tokens.
-- Delete trash icons use `delete`, `delete-soft`, and `delete-hover`.
+- Ordinary parent rows use `task-parent`; ordinary subtask rows use `task-child`; shared hover uses `task-row-hover`.
+- Delete trash icons use `action-muted` by default, then `delete` and `delete-soft` on hover.
 - Near-due rows use `due-near-soft`, not `warning-soft` directly.
 - Overdue rows use `due-over-soft`, not `danger-soft` directly.
 - Due text or compact indicators may use `due-near` and `due-over` where more explicit warning is needed.
@@ -213,6 +221,9 @@ energy, energy-soft, energy-text, energy-muted,
 care, care-soft, care-text,
 proposal, proposal-soft, proposal-text,
 row-warning-soft, row-danger-soft,
+sync-idle, sync-idle-soft, sync-idle-text,
+task-parent, task-child, task-row-hover,
+action-muted, action-muted-hover,
 delete, delete-soft, delete-hover,
 priority-low, priority-medium, priority-high,
 status-todo, status-todo-soft, status-todo-text,
@@ -230,3 +241,4 @@ Legacy `coral` and `amber` still exist in `tailwind.config.ts`, but new code sho
 ## Change Log
 
 - 2026-05-19: Created the color system document after theme work exposed weak color governance. Documented semantic token layers, large-area color rules, and component-specific color usage.
+- 2026-05-19: Refined Light mode semantics for low-distraction task work. Added neutral sync idle tokens, parent/subtask row tokens, shared task hover, and muted action tokens for trash buttons.

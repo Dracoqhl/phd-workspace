@@ -66,7 +66,7 @@ export function SyncStatusBadge() {
       ? "border-warning bg-warning-soft text-warning-text"
       : status === "failed"
         ? "border-danger bg-danger-soft text-danger-text"
-        : "border-success bg-success-soft text-success-text";
+        : "border-sync-idle bg-sync-idle-soft text-sync-idle-text";
 
   return (
     <span

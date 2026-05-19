@@ -448,11 +448,11 @@ function TaskRow({ task, isSubtask, canExpand, expanded, progress, selected, pen
       : dueState === "near_due"
         ? "bg-due-near-soft"
         : isSubtask
-          ? "bg-slate-50/60"
-          : "bg-white";
+          ? "bg-task-child"
+          : "bg-task-parent";
 
   return (
-    <div aria-busy={pendingCompletion} aria-selected={selected} className={`grid grid-cols-[2rem_minmax(0,1fr)_6.5rem_4.5rem_5.5rem_4.5rem] items-center gap-2 border-t border-slate-200 px-3 py-2 text-sm transition-colors duration-150 ${rowClass} ${selected ? "ring-1 ring-inset ring-moss" : ""} ${pendingCompletion ? "ring-1 ring-inset ring-success" : ""} ${task.status === "completed" ? "text-slate-400" : "text-slate-700"}`} role="row">
+    <div aria-busy={pendingCompletion} aria-selected={selected} className={`grid grid-cols-[2rem_minmax(0,1fr)_6.5rem_4.5rem_5.5rem_4.5rem] items-center gap-2 border-t border-slate-200 px-3 py-2 text-sm transition-colors duration-150 hover:bg-task-row-hover ${rowClass} ${selected ? "ring-1 ring-inset ring-moss" : ""} ${pendingCompletion ? "ring-1 ring-inset ring-success" : ""} ${task.status === "completed" ? "text-slate-400" : "text-slate-700"}`} role="row">
       <div className="flex items-center" role="cell">
         {!isSubtask && canExpand ? (
           <button aria-label={`${expanded ? "Collapse" : "Expand"} subtasks for ${task.title}`} className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100" onClick={() => onToggleExpanded?.(task.id)} type="button">
@@ -476,7 +476,7 @@ function TaskRow({ task, isSubtask, canExpand, expanded, progress, selected, pen
             <Plus aria-hidden="true" size={14} />
           </button>
         ) : null}
-        <button aria-label={`${isSubtask ? "Delete subtask" : "Delete task"} ${task.title}`} className="inline-flex h-7 w-7 items-center justify-center rounded-md text-delete hover:bg-delete-hover" onClick={() => void onDelete(task)} type="button">
+        <button aria-label={`${isSubtask ? "Delete subtask" : "Delete task"} ${task.title}`} className="inline-flex h-7 w-7 items-center justify-center rounded-md text-action-muted hover:bg-delete-soft hover:text-delete" onClick={() => void onDelete(task)} type="button">
           <Trash2 aria-hidden="true" size={14} />
         </button>
       </div>

@@ -104,9 +104,9 @@ beforeEach(() => {
 describe("TaskManager", () => {
   it("renders compact task rows and keeps subtasks collapsed until expanded", async () => {
     mockFetch([
-      task({ id: "task_1" }),
-      task({ id: "subtask_1", title: "Collect figures", status: "completed", parentTaskId: "task_1" }),
-      task({ id: "subtask_2", title: "Revise intro", status: "not_started", parentTaskId: "task_1" })
+      task({ id: "task_1", dueDate: null }),
+      task({ id: "subtask_1", title: "Collect figures", status: "completed", parentTaskId: "task_1", dueDate: null }),
+      task({ id: "subtask_2", title: "Revise intro", status: "not_started", parentTaskId: "task_1", dueDate: null })
     ]);
 
     render(<TaskManager />);
@@ -122,7 +122,8 @@ describe("TaskManager", () => {
     expect(screen.getByTestId("status-cell-task_1")).toHaveClass("justify-center");
     expect(screen.getByTestId("priority-cell-task_1")).toHaveClass("justify-center");
     expect(screen.getByTestId("due-cell-task_1")).toHaveClass("justify-center");
-    expect(screen.getByRole("row", { name: /Draft dissertation chapter/ })).toBeInTheDocument();
+    expect(screen.getByRole("row", { name: /Draft dissertation chapter/ })).toHaveClass("bg-task-parent", "hover:bg-task-row-hover");
+    expect(screen.getByRole("button", { name: "Delete task Draft dissertation chapter" })).toHaveClass("text-action-muted", "hover:text-delete");
     expect(screen.getByText("1/2")).toBeInTheDocument();
     expect(screen.queryByText("Collect figures")).not.toBeInTheDocument();
 
@@ -130,6 +131,8 @@ describe("TaskManager", () => {
 
     expect(screen.getByText("Collect figures")).toBeInTheDocument();
     expect(screen.getByText("Revise intro")).toBeInTheDocument();
+    expect(screen.getByRole("row", { name: /Collect figures/ })).toHaveClass("bg-task-child", "hover:bg-task-row-hover");
+    expect(screen.getByRole("button", { name: "Delete subtask Collect figures" })).toHaveClass("text-action-muted", "hover:text-delete");
   });
 
   it("hides completed top-level tasks by default and reveals them with a toggle", async () => {

@@ -31,6 +31,7 @@ describe("SyncStatusProvider", () => {
     );
 
     expect(screen.getByRole("status", { name: "Data sync status" })).toHaveTextContent("Synced");
+    expect(screen.getByRole("status", { name: "Data sync status" })).toHaveClass("border-sync-idle", "bg-sync-idle-soft", "text-sync-idle-text");
 
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(screen.getByRole("status", { name: "Data sync status" })).toHaveTextContent("Saving");

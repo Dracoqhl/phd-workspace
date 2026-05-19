@@ -332,6 +332,7 @@ describe("HabitManager", () => {
     );
 
     const deactivateButton = screen.getByRole("button", { name: "Deactivate Evening walk" });
+    expect(deactivateButton).toHaveClass("text-action-muted", "hover:text-delete");
     expect(within(deactivateButton).getByTestId("habit-trash-icon")).toBeInTheDocument();
     fireEvent.click(deactivateButton);
     await waitFor(() => expect(screen.queryByText("Evening walk")).not.toBeInTheDocument());

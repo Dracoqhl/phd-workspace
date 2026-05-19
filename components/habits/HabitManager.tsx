@@ -362,7 +362,7 @@ export function HabitManager() {
                     >
                       {targetOptions.map((count) => <option key={count} value={count}>{count}</option>)}
                     </select>
-                    <button aria-label={`Deactivate ${item.habit.name}`} className="inline-flex h-8 w-8 items-center justify-center rounded-md text-delete hover:bg-delete-hover" onClick={() => void deactivateHabit(item)} type="button">
+                    <button aria-label={`Deactivate ${item.habit.name}`} className="inline-flex h-8 w-8 items-center justify-center rounded-md text-action-muted hover:bg-delete-soft hover:text-delete" onClick={() => void deactivateHabit(item)} type="button">
                       <Trash2 aria-hidden="true" data-testid="habit-trash-icon" size={14} />
                     </button>
                   </>
