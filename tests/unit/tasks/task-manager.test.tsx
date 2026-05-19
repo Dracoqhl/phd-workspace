@@ -530,6 +530,19 @@ describe("TaskManager", () => {
     );
   });
 
+  it("opens the native date picker from the new subtask due control", async () => {
+    mockFetch([task({ id: "task_1" })]);
+    const showPicker = vi.fn();
+    HTMLInputElement.prototype.showPicker = showPicker;
+
+    render(<TaskManager />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Add subtask to Draft dissertation chapter" }));
+    fireEvent.click(screen.getByRole("button", { name: "Set due date for new subtask under Draft dissertation chapter" }));
+
+    expect(showPicker).toHaveBeenCalledTimes(1);
+  });
+
   it("deletes a task and deletes a visible subtask", async () => {
     const fetchMock = mockFetch([
       task({ id: "task_1" }),

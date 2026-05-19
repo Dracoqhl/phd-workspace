@@ -683,8 +683,8 @@ function SubtaskInput({ parentTitle, title, status, priority, dueDate, onTitleCh
   return (
     <div className="grid grid-cols-[2rem_minmax(0,1fr)_6.5rem_4.5rem_5.5rem_4.5rem] items-center gap-2 border-t border-slate-200 bg-task-child px-3 py-2" role="row">
       <div role="cell" />
-      <div role="cell">
-        <input aria-label={`New subtask for ${parentTitle}`} autoFocus className="ml-5 h-8 w-full rounded-md border border-slate-300 px-2 text-sm text-ink outline-none focus:border-moss" onChange={(event) => onTitleChange(event.target.value)} onKeyDown={handleKeyDown} value={title} />
+      <div className="min-w-0 pl-5 pr-1" role="cell">
+        <input aria-label={`New subtask for ${parentTitle}`} autoFocus className="h-8 w-full rounded-md border border-slate-300 px-2 text-sm text-ink outline-none focus:border-moss" onChange={(event) => onTitleChange(event.target.value)} onKeyDown={handleKeyDown} value={title} />
       </div>
       <div className="flex justify-center" role="cell">
         <select aria-label={`New subtask status for ${parentTitle}`} className={`h-7 w-[6.25rem] appearance-none rounded-full border px-2 text-center text-xs font-semibold outline-none focus:border-moss ${statusSelectClass(status)}`} onChange={(event) => onStatusChange(event.target.value as TaskStatus)} value={status}>
@@ -700,13 +700,40 @@ function SubtaskInput({ parentTitle, title, status, priority, dueDate, onTitleCh
         </label>
       </div>
       <div className="flex justify-center" role="cell">
-        <label className="relative inline-flex h-7 w-[5.25rem] items-center justify-center rounded-md px-2 text-xs font-medium text-slate-700 hover:bg-slate-100">
-          <span>{dueDate ? formatShortDate(dueDate) : <Calendar aria-hidden="true" size={15} />}</span>
-          <input aria-label={`New subtask due date for ${parentTitle}`} className="absolute inset-0 cursor-pointer opacity-0" onChange={(event) => onDueDateChange(event.target.value)} type="date" value={dueDate} />
-        </label>
+        <NewSubtaskDueDateInput dueDate={dueDate} onDueDateChange={onDueDateChange} parentTitle={parentTitle} />
       </div>
       <div role="cell" />
     </div>
+  );
+}
+
+function NewSubtaskDueDateInput({ parentTitle, dueDate, onDueDateChange }: { parentTitle: string; dueDate: string; onDueDateChange: (value: string) => void }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  function openPicker() {
+    const input = inputRef.current;
+    if (!input) return;
+    input.focus();
+    if (typeof input.showPicker === "function") {
+      input.showPicker();
+    }
+  }
+
+  return (
+    <span className="relative inline-flex">
+      <button aria-label={`Set due date for new subtask under ${parentTitle}`} className="inline-flex h-7 w-[5.25rem] items-center justify-center rounded-md px-2 text-xs font-medium text-slate-700 hover:bg-slate-100" onClick={openPicker} type="button">
+        {dueDate ? formatShortDate(dueDate) : <Calendar aria-hidden="true" size={15} />}
+      </button>
+      <input
+        aria-label={`New subtask due date for ${parentTitle}`}
+        className="absolute left-0 top-0 h-px w-px opacity-0"
+        onChange={(event) => onDueDateChange(event.target.value)}
+        ref={inputRef}
+        tabIndex={-1}
+        type="date"
+        value={dueDate}
+      />
+    </span>
   );
 }
 
