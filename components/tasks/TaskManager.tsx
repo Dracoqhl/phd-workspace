@@ -421,8 +421,8 @@ export function TaskManager() {
       ) : null}
 
       {!loading && topLevelTasks.length > 0 ? (
-        <div aria-label="Task list" className="mt-5 overflow-hidden rounded-lg border border-slate-200" role="table">
-          <div className="grid grid-cols-[2rem_minmax(0,1fr)_6.5rem_4.5rem_5.5rem_4.5rem] items-center gap-2 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-500" role="row">
+        <div aria-label="Task list" className="rounded-list-frame mt-5 border border-slate-200" role="table">
+          <div className="rounded-list-row grid grid-cols-[2rem_minmax(0,1fr)_6.5rem_4.5rem_5.5rem_4.5rem] items-center gap-2 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-500" role="row">
             <div aria-label="Expand" className="text-center" role="columnheader" />
             <div className="text-center" role="columnheader">Task</div>
             <div className="text-center" role="columnheader">Status</div>
@@ -532,7 +532,7 @@ function TaskRow({ task, isSubtask, canExpand, expanded, progress, selected, pen
   }
 
   return (
-    <div aria-busy={pendingCompletion} aria-selected={selected} className={`grid grid-cols-[2rem_minmax(0,1fr)_6.5rem_4.5rem_5.5rem_4.5rem] items-center gap-2 border-t border-slate-200 px-3 py-2 text-sm transition-colors duration-150 ${rowClass} ${selected ? "ring-1 ring-inset ring-moss" : ""} ${pendingCompletion ? "ring-1 ring-inset ring-success" : ""} ${task.status === "completed" ? "text-slate-400" : "text-slate-700"}`} data-task-row="true" onClick={selectFromRow} role="row">
+    <div aria-busy={pendingCompletion} aria-selected={selected} className={`rounded-list-row grid grid-cols-[2rem_minmax(0,1fr)_6.5rem_4.5rem_5.5rem_4.5rem] items-center gap-2 border-t border-slate-200 px-3 py-2 text-sm transition-colors duration-150 ${rowClass} ${selected ? "ring-1 ring-inset ring-moss" : ""} ${pendingCompletion ? "ring-1 ring-inset ring-success" : ""} ${task.status === "completed" ? "text-slate-400" : "text-slate-700"}`} data-task-row="true" onClick={selectFromRow} role="row">
       <div className="flex items-center" role="cell">
         {!isSubtask && canExpand ? (
           <button aria-label={`${expanded ? "Collapse" : "Expand"} subtasks for ${task.title}`} className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100" onClick={() => onToggleExpanded?.(task.id)} type="button">
@@ -722,7 +722,7 @@ function SubtaskInput({ parentTitle, title, status, priority, dueDate, draftRowR
   }
 
   return (
-    <div className="grid grid-cols-[2rem_minmax(0,1fr)_6.5rem_4.5rem_5.5rem_4.5rem] items-center gap-2 border-t border-slate-200 bg-task-child px-3 py-2" ref={draftRowRef} role="row">
+    <div className="rounded-list-row grid grid-cols-[2rem_minmax(0,1fr)_6.5rem_4.5rem_5.5rem_4.5rem] items-center gap-2 border-t border-slate-200 bg-task-child px-3 py-2" ref={draftRowRef} role="row">
       <div role="cell" />
       <div className="min-w-0 pl-5 pr-1" role="cell">
         <input aria-label={`New subtask for ${parentTitle}`} autoFocus className={`h-8 w-full rounded-md border px-2 text-sm ${fieldControlClass}`} onChange={(event) => onTitleChange(event.target.value)} onKeyDown={handleKeyDown} value={title} />

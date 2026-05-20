@@ -337,7 +337,7 @@ export function HabitManager() {
       ) : null}
 
       {!loading && sortedHabits.length > 0 ? (
-        <ul className="mt-4 divide-y divide-slate-100 overflow-hidden rounded-lg border border-slate-200 bg-white">
+        <ul className="rounded-list-frame mt-4 divide-y divide-slate-100 border border-slate-200 bg-white">
           {sortedHabits.map((item) => {
             const rowClass = item.isCompleted ? "bg-slate-50 text-slate-400" : "bg-white text-slate-700";
             const itemCompletedCount = item.checkin?.completedCount ?? 0;
@@ -345,7 +345,7 @@ export function HabitManager() {
             const pendingCheckin = pendingCheckinHabitIds.has(item.habit.id);
 
             return (
-              <li aria-busy={pendingCheckin} className={`grid gap-2 px-3 py-2 text-sm transition-colors duration-300 ${isEditingPanel ? "sm:grid-cols-[minmax(0,1fr)_5rem_2.5rem]" : "sm:grid-cols-[1.5rem_minmax(0,1fr)_4rem]"} sm:items-center ${pendingCheckin ? "bg-success-soft text-success-text ring-1 ring-inset ring-success" : rowClass}`} key={item.habit.id}>
+              <li aria-busy={pendingCheckin} className={`rounded-list-row grid gap-2 px-3 py-2 text-sm transition-colors duration-300 ${isEditingPanel ? "sm:grid-cols-[minmax(0,1fr)_5rem_2.5rem]" : "sm:grid-cols-[1.5rem_minmax(0,1fr)_4rem]"} sm:items-center ${pendingCheckin ? "bg-success-soft text-success-text ring-1 ring-inset ring-success" : rowClass}`} key={item.habit.id}>
                 {isEditingPanel ? (
                   <>
                     <input

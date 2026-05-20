@@ -332,6 +332,25 @@ button {
   color-scheme: inherit;
 }
 
+.rounded-list-frame {
+  --rounded-list-radius: 0.5rem;
+  --rounded-list-inner-radius: calc(var(--rounded-list-radius) - 1px);
+  border-radius: var(--rounded-list-radius);
+  overflow: hidden;
+}
+
+.rounded-list-frame > .rounded-list-row:first-child,
+.rounded-list-frame > [role="rowgroup"]:first-child > .rounded-list-row:first-child {
+  border-top-left-radius: var(--rounded-list-inner-radius);
+  border-top-right-radius: var(--rounded-list-inner-radius);
+}
+
+.rounded-list-frame > .rounded-list-row:last-child,
+.rounded-list-frame > [role="rowgroup"]:last-child > .rounded-list-row:last-child {
+  border-bottom-left-radius: var(--rounded-list-inner-radius);
+  border-bottom-right-radius: var(--rounded-list-inner-radius);
+}
+
 .animated-check-circle {
   stroke: currentColor;
   stroke-linecap: round;
