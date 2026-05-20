@@ -7,6 +7,8 @@ interface LoginFormProps {
   multiUserEnabled?: boolean;
 }
 
+const fieldControlClass = "border-field-border bg-field text-ink outline-none transition-colors placeholder:text-muted focus:border-moss focus:ring-2 focus:ring-moss/20 disabled:opacity-60";
+
 export function LoginForm({ initialMode = "login", multiUserEnabled = false }: LoginFormProps) {
   const [mode, setMode] = useState<"login" | "register">(initialMode);
   const [email, setEmail] = useState("");
@@ -80,7 +82,7 @@ export function LoginForm({ initialMode = "login", multiUserEnabled = false }: L
           </label>
           <input
             autoComplete="email"
-            className="rounded-md border border-slate-300 bg-white px-3 py-2 text-base text-ink outline-none transition focus:border-moss focus:ring-2 focus:ring-moss/20"
+            className={`rounded-md border px-3 py-2 text-base ${fieldControlClass}`}
             disabled={isSubmitting}
             id="email"
             name="email"
@@ -98,7 +100,7 @@ export function LoginForm({ initialMode = "login", multiUserEnabled = false }: L
             aria-describedby={error ? errorId : undefined}
             aria-invalid={error ? "true" : undefined}
             autoComplete={mode === "register" ? "new-password" : "current-password"}
-            className="rounded-md border border-slate-300 bg-white px-3 py-2 text-base text-ink outline-none transition focus:border-moss focus:ring-2 focus:ring-moss/20"
+            className={`rounded-md border px-3 py-2 text-base ${fieldControlClass}`}
             disabled={isSubmitting}
             id="password"
             name="password"
@@ -114,7 +116,7 @@ export function LoginForm({ initialMode = "login", multiUserEnabled = false }: L
               Invite code
             </label>
             <input
-              className="rounded-md border border-slate-300 bg-white px-3 py-2 text-base text-ink outline-none transition focus:border-moss focus:ring-2 focus:ring-moss/20"
+              className={`rounded-md border px-3 py-2 text-base ${fieldControlClass}`}
               disabled={isSubmitting}
               id="invite-code"
               name="inviteCode"
@@ -152,7 +154,7 @@ export function LoginForm({ initialMode = "login", multiUserEnabled = false }: L
           aria-describedby={error ? errorId : undefined}
           aria-invalid={error ? "true" : undefined}
           autoComplete="current-password"
-          className="rounded-md border border-slate-300 bg-white px-3 py-2 text-base text-ink outline-none transition focus:border-moss focus:ring-2 focus:ring-moss/20"
+          className={`rounded-md border px-3 py-2 text-base ${fieldControlClass}`}
           disabled={isSubmitting}
           id="access-password"
           name="password"

@@ -13,6 +13,7 @@ const emptyForm = {
 };
 
 const targetOptions = [1, 2, 3, 4, 5];
+const fieldControlClass = "border-field-border bg-field text-ink outline-none transition-colors placeholder:text-muted focus:border-moss focus:ring-2 focus:ring-moss/20 disabled:opacity-60";
 
 export function HabitManager() {
   const { trackSync } = useSyncStatus();
@@ -336,7 +337,7 @@ export function HabitManager() {
       ) : null}
 
       {!loading && sortedHabits.length > 0 ? (
-        <ul className="mt-4 divide-y divide-slate-100 rounded-lg border border-slate-200">
+        <ul className="rounded-list-frame mt-4 divide-y divide-slate-100 border border-slate-200 bg-white">
           {sortedHabits.map((item) => {
             const rowClass = item.isCompleted ? "bg-slate-50 text-slate-400" : "bg-white text-slate-700";
             const itemCompletedCount = item.checkin?.completedCount ?? 0;
@@ -344,19 +345,19 @@ export function HabitManager() {
             const pendingCheckin = pendingCheckinHabitIds.has(item.habit.id);
 
             return (
-              <li aria-busy={pendingCheckin} className={`grid gap-2 px-3 py-2 text-sm transition-colors duration-300 ${isEditingPanel ? "sm:grid-cols-[minmax(0,1fr)_5rem_2.5rem]" : "sm:grid-cols-[1.5rem_minmax(0,1fr)_4rem]"} sm:items-center ${pendingCheckin ? "bg-success-soft text-success-text ring-1 ring-inset ring-success" : rowClass}`} key={item.habit.id}>
+              <li aria-busy={pendingCheckin} className={`rounded-list-row grid gap-2 px-3 py-2 text-sm transition-colors duration-300 ${isEditingPanel ? "sm:grid-cols-[minmax(0,1fr)_5rem_2.5rem]" : "sm:grid-cols-[1.5rem_minmax(0,1fr)_4rem]"} sm:items-center ${pendingCheckin ? "bg-success-soft text-success-text ring-1 ring-inset ring-success" : rowClass}`} key={item.habit.id}>
                 {isEditingPanel ? (
                   <>
                     <input
                       aria-label={`Habit name for ${item.habit.name}`}
-                      className="h-8 min-w-0 rounded-md border border-slate-300 px-2 text-sm outline-none focus:border-moss"
+                      className={`h-8 min-w-0 rounded-md border px-2 text-sm ${fieldControlClass}`}
                       defaultValue={item.habit.name}
                       onBlur={(event) => void updateHabit(item, { name: event.currentTarget.value })}
                       onKeyDown={(event) => handleNameKeyDown(event, item)}
                     />
                     <select
                       aria-label={`Daily target for ${item.habit.name}`}
-                      className="h-8 rounded-md border border-slate-300 px-2 text-sm outline-none focus:border-moss"
+                      className={`h-8 rounded-md border px-2 text-sm ${fieldControlClass}`}
                       onChange={(event) => void updateHabit(item, { targetCount: Number(event.target.value) })}
                       value={item.habit.targetCount}
                     >
@@ -376,7 +377,7 @@ export function HabitManager() {
                       <select
                         aria-label={`Daily target for ${item.habit.name}`}
                         autoFocus
-                        className="h-8 rounded-md border border-slate-300 px-2 text-xs outline-none focus:border-moss"
+                        className={`h-8 rounded-md border px-2 text-xs ${fieldControlClass}`}
                         onBlur={() => setEditingTargetId(null)}
                         onChange={(event) => {
                           void updateHabit(item, { targetCount: Number(event.target.value) });
@@ -402,9 +403,9 @@ export function HabitManager() {
       {isEditingPanel ? (
         <form className="mt-3 grid gap-2 border-t border-slate-100 pt-3 sm:grid-cols-[minmax(0,1fr)_6rem_auto]" onSubmit={createHabit}>
           <label className="sr-only" htmlFor="new-habit-name">New habit name</label>
-          <input id="new-habit-name" aria-label="New habit name" className="h-9 rounded-md border border-slate-300 px-3 text-sm outline-none focus:border-moss" onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} placeholder="New habit" value={form.name} />
+          <input id="new-habit-name" aria-label="New habit name" className={`h-9 rounded-md border px-3 text-sm ${fieldControlClass}`} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} placeholder="New habit" value={form.name} />
           <label className="sr-only" htmlFor="new-habit-target">New habit daily target</label>
-          <select id="new-habit-target" aria-label="New habit daily target" className="h-9 rounded-md border border-slate-300 px-2 text-sm outline-none focus:border-moss" onChange={(event) => setForm((current) => ({ ...current, targetCount: event.target.value }))} value={form.targetCount}>
+          <select id="new-habit-target" aria-label="New habit daily target" className={`h-9 rounded-md border px-2 text-sm ${fieldControlClass}`} onChange={(event) => setForm((current) => ({ ...current, targetCount: event.target.value }))} value={form.targetCount}>
             {targetOptions.map((count) => <option key={count} value={count}>{count}</option>)}
           </select>
           <button className="inline-flex h-9 items-center justify-center gap-1 rounded-md bg-ink px-3 text-sm font-semibold text-white hover:bg-slate-700" type="submit">

@@ -123,6 +123,7 @@ describe("HabitManager", () => {
     expect(within(rows[1]).getByText("Done habit")).toBeInTheDocument();
     expect(rows[1]).toHaveClass("text-slate-400");
     expect(within(rows[1]).getByText("Done habit")).toHaveClass("line-through");
+    expect(screen.getByRole("list")).toHaveClass("rounded-list-frame");
     expect(screen.getByText("1/2 checked")).toBeInTheDocument();
     expect(screen.getByRole("progressbar", { name: "Habit check-in progress" })).toHaveAttribute("aria-valuenow", "1");
   });
@@ -311,6 +312,7 @@ describe("HabitManager", () => {
     expect(screen.getByText("1/3 checked")).toBeInTheDocument();
     expect(screen.getByRole("progressbar", { name: "Habit check-in progress" })).toHaveAttribute("aria-valuenow", "1");
     expect(screen.getAllByRole("listitem")[0]).toHaveAttribute("aria-busy", "true");
+    expect(screen.getAllByRole("listitem")[0]).toHaveClass("rounded-list-row");
 
     pending.resolve(Response.json({ checkin: checkin({ completedCount: 1, isCompleted: false }) }));
     await waitFor(() => expect(screen.getAllByRole("listitem")[0]).toHaveAttribute("aria-busy", "false"));

@@ -7,6 +7,7 @@ import { useSyncStatus } from "@/components/sync/SyncStatusProvider";
 import type { CareRecord, CareTodayResponse, UpdateCareInput } from "@/types/care";
 
 const defaultQuotePrompt = "温和、具体、低压力、适合博士科研日常";
+const fieldControlClass = "border-field-border bg-field text-ink outline-none transition-colors placeholder:text-muted focus:border-moss focus:ring-2 focus:ring-moss/20 disabled:opacity-60";
 
 const energyLabels: Record<NonNullable<CareRecord["energyLevel"]>, string> = {
   1: "Low",
@@ -248,7 +249,7 @@ export function CarePanel() {
               onClick={() => void retryCare()}
               type="button"
             >
-              <RefreshCw aria-hidden="true" size={14} />
+              <RefreshCw aria-hidden="true" className={saving ? "animate-spin" : undefined} data-testid="care-refresh-icon" size={14} />
             </button>
             <button
               aria-label="Quote settings"
@@ -281,7 +282,7 @@ export function CarePanel() {
             </div>
             <input
               aria-label="Quote prompt"
-              className="h-8 w-full rounded-md border border-care bg-surface/70 px-2 text-xs text-primary outline-none focus:border-care disabled:opacity-60"
+              className={`h-8 w-full rounded-md border px-2 text-xs ${fieldControlClass}`}
               disabled={loading || saving}
               id="quote-prompt"
               onBlur={() => void saveQuotePreference()}
@@ -301,7 +302,7 @@ export function CarePanel() {
         Today focus
         <input
           aria-label="Today focus"
-          className="mt-1 h-9 w-full rounded-md border border-slate-200 px-2.5 text-sm font-normal normal-case tracking-normal text-ink outline-none placeholder:text-slate-400 focus:border-moss disabled:opacity-60"
+          className={`mt-1 h-9 w-full rounded-md border px-2.5 text-sm font-normal normal-case tracking-normal ${fieldControlClass}`}
           disabled={loading}
           onBlur={() => void saveFocusText()}
           onChange={(event) => setFocusText(event.target.value)}

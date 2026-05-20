@@ -23,6 +23,8 @@ const priorityOptions: Array<{ value: TaskPriority; label: string }> = [
   { value: "high", label: "High" }
 ];
 
+const fieldControlClass = "border-field-border bg-field text-ink outline-none transition-colors placeholder:text-muted focus:border-moss focus:ring-2 focus:ring-moss/20";
+
 const emptyForm = {
   title: "",
   priority: "low" as TaskPriority,
@@ -393,17 +395,17 @@ export function TaskManager() {
       <form className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_9rem_10rem_auto]" onSubmit={createTask}>
         <label className="grid gap-1 text-sm font-medium text-slate-700">
           Task title
-          <input className="h-10 rounded-md border border-slate-300 px-3 text-sm font-normal text-ink outline-none focus:border-moss" onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))} value={form.title} />
+          <input className={`h-10 rounded-md border px-3 text-sm font-normal ${fieldControlClass}`} onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))} value={form.title} />
         </label>
         <label className="grid gap-1 text-sm font-medium text-slate-700">
           Task priority
-          <select className="h-10 rounded-md border border-slate-300 px-3 text-sm font-normal text-ink outline-none focus:border-moss" onChange={(event) => setForm((current) => ({ ...current, priority: event.target.value as TaskPriority }))} value={form.priority}>
+          <select className={`h-10 rounded-md border px-3 text-sm font-normal ${fieldControlClass}`} onChange={(event) => setForm((current) => ({ ...current, priority: event.target.value as TaskPriority }))} value={form.priority}>
             {priorityOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
           </select>
         </label>
         <label className="grid gap-1 text-sm font-medium text-slate-700">
           Due date
-          <input className="h-10 rounded-md border border-slate-300 px-3 text-sm font-normal text-ink outline-none focus:border-moss" onChange={(event) => setForm((current) => ({ ...current, dueDate: event.target.value }))} type="date" value={form.dueDate} />
+          <input className={`h-10 rounded-md border px-3 text-sm font-normal ${fieldControlClass}`} onChange={(event) => setForm((current) => ({ ...current, dueDate: event.target.value }))} type="date" value={form.dueDate} />
         </label>
         <button className="mt-6 inline-flex h-10 items-center justify-center gap-2 rounded-md bg-ink px-4 text-sm font-semibold text-white hover:bg-slate-700" type="submit">
           <Plus aria-hidden="true" size={16} />
@@ -419,8 +421,8 @@ export function TaskManager() {
       ) : null}
 
       {!loading && topLevelTasks.length > 0 ? (
-        <div aria-label="Task list" className="mt-5 overflow-hidden rounded-lg border border-slate-200" role="table">
-          <div className="grid grid-cols-[2rem_minmax(0,1fr)_6.5rem_4.5rem_5.5rem_4.5rem] items-center gap-2 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-500" role="row">
+        <div aria-label="Task list" className="rounded-list-frame mt-5 border border-slate-200" role="table">
+          <div className="rounded-list-row grid grid-cols-[2rem_minmax(0,1fr)_6.5rem_4.5rem_5.5rem_4.5rem] items-center gap-2 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-500" role="row">
             <div aria-label="Expand" className="text-center" role="columnheader" />
             <div className="text-center" role="columnheader">Task</div>
             <div className="text-center" role="columnheader">Status</div>
@@ -530,7 +532,7 @@ function TaskRow({ task, isSubtask, canExpand, expanded, progress, selected, pen
   }
 
   return (
-    <div aria-busy={pendingCompletion} aria-selected={selected} className={`grid grid-cols-[2rem_minmax(0,1fr)_6.5rem_4.5rem_5.5rem_4.5rem] items-center gap-2 border-t border-slate-200 px-3 py-2 text-sm transition-colors duration-150 ${rowClass} ${selected ? "ring-1 ring-inset ring-moss" : ""} ${pendingCompletion ? "ring-1 ring-inset ring-success" : ""} ${task.status === "completed" ? "text-slate-400" : "text-slate-700"}`} data-task-row="true" onClick={selectFromRow} role="row">
+    <div aria-busy={pendingCompletion} aria-selected={selected} className={`rounded-list-row grid grid-cols-[2rem_minmax(0,1fr)_6.5rem_4.5rem_5.5rem_4.5rem] items-center gap-2 border-t border-slate-200 px-3 py-2 text-sm transition-colors duration-150 ${rowClass} ${selected ? "ring-1 ring-inset ring-moss" : ""} ${pendingCompletion ? "ring-1 ring-inset ring-success" : ""} ${task.status === "completed" ? "text-slate-400" : "text-slate-700"}`} data-task-row="true" onClick={selectFromRow} role="row">
       <div className="flex items-center" role="cell">
         {!isSubtask && canExpand ? (
           <button aria-label={`${expanded ? "Collapse" : "Expand"} subtasks for ${task.title}`} className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100" onClick={() => onToggleExpanded?.(task.id)} type="button">
@@ -612,7 +614,7 @@ function EditableTitle({ task, indent, selectedTaskId, onSelect, onSave }: { tas
       <input
         aria-label={`Edit title for ${task.title}`}
         autoFocus
-        className="h-8 min-w-0 rounded-md border border-slate-300 px-2 text-sm text-ink outline-none focus:border-moss"
+        className={`h-8 min-w-0 rounded-md border px-2 text-sm ${fieldControlClass}`}
         onBlur={() => { void saveTitle(); }}
         onChange={(event) => setValue(event.target.value)}
         onKeyDown={(event) => {
@@ -693,11 +695,11 @@ function DueDateCell({ task, onChange }: { task: Task; onChange: (taskId: string
     ? "font-bold text-due-over"
     : dueState === "near_due"
       ? "font-bold text-due-near"
-      : "text-slate-700 hover:bg-slate-100";
+      : "text-slate-700 hover:border-moss";
 
   return (
     <span className="relative inline-flex">
-      <button aria-label={`${label} for ${task.title}`} className={`inline-flex h-7 w-[5.25rem] items-center justify-center rounded-md px-2 text-xs font-medium ${dueClass}`} onClick={openPicker} type="button">
+      <button aria-label={`${label} for ${task.title}`} className={`inline-flex h-7 w-[5.25rem] items-center justify-center rounded-md border border-field-border bg-field px-2 text-xs font-medium transition-colors ${dueClass}`} onClick={openPicker} type="button">
         {content}
       </button>
       <input
@@ -720,10 +722,10 @@ function SubtaskInput({ parentTitle, title, status, priority, dueDate, draftRowR
   }
 
   return (
-    <div className="grid grid-cols-[2rem_minmax(0,1fr)_6.5rem_4.5rem_5.5rem_4.5rem] items-center gap-2 border-t border-slate-200 bg-task-child px-3 py-2" ref={draftRowRef} role="row">
+    <div className="rounded-list-row grid grid-cols-[2rem_minmax(0,1fr)_6.5rem_4.5rem_5.5rem_4.5rem] items-center gap-2 border-t border-slate-200 bg-task-child px-3 py-2" ref={draftRowRef} role="row">
       <div role="cell" />
       <div className="min-w-0 pl-5 pr-1" role="cell">
-        <input aria-label={`New subtask for ${parentTitle}`} autoFocus className="h-8 w-full rounded-md border border-slate-300 px-2 text-sm text-ink outline-none focus:border-moss" onChange={(event) => onTitleChange(event.target.value)} onKeyDown={handleKeyDown} value={title} />
+        <input aria-label={`New subtask for ${parentTitle}`} autoFocus className={`h-8 w-full rounded-md border px-2 text-sm ${fieldControlClass}`} onChange={(event) => onTitleChange(event.target.value)} onKeyDown={handleKeyDown} value={title} />
       </div>
       <div className="flex justify-center" role="cell">
         <select aria-label={`New subtask status for ${parentTitle}`} className={`h-7 w-[6.25rem] appearance-none rounded-full border px-2 text-center text-xs font-semibold outline-none focus:border-moss ${statusSelectClass(status)}`} onChange={(event) => onStatusChange(event.target.value as TaskStatus)} value={status}>
@@ -760,7 +762,7 @@ function NewSubtaskDueDateInput({ parentTitle, dueDate, onDueDateChange }: { par
 
   return (
     <span className="relative inline-flex">
-      <button aria-label={`Set due date for new subtask under ${parentTitle}`} className="inline-flex h-7 w-[5.25rem] items-center justify-center rounded-md px-2 text-xs font-medium text-slate-700 hover:bg-slate-100" onClick={openPicker} type="button">
+      <button aria-label={`Set due date for new subtask under ${parentTitle}`} className="inline-flex h-7 w-[5.25rem] items-center justify-center rounded-md border border-field-border bg-field px-2 text-xs font-medium text-slate-700 transition-colors hover:border-moss" onClick={openPicker} type="button">
         {dueDate ? formatShortDate(dueDate) : <Calendar aria-hidden="true" size={15} />}
       </button>
       <input

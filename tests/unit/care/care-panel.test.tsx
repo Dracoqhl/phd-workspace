@@ -118,6 +118,36 @@ describe("CarePanel", () => {
     expect(fetchMock).not.toHaveBeenCalledWith("/api/care/generate", expect.anything());
   });
 
+  it("spins the quote refresh icon while a quote update is saving", async () => {
+    const pending = deferred<Response>();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        const method = init?.method ?? "GET";
+
+        if (url === "/api/care/today" && method === "GET") {
+          return Response.json(careResponse({ care: care() }));
+        }
+
+        if (url === "/api/care/update" && method === "POST") {
+          return pending.promise;
+        }
+
+        throw new Error(`Unexpected request ${method} ${url}`);
+      })
+    );
+
+    render(<CarePanel />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Retry care message" }));
+
+    expect(screen.getByTestId("care-refresh-icon")).toHaveClass("animate-spin");
+
+    pending.resolve(Response.json(careResponse({ care: care({ content: "给自己一点缓冲，稳定推进。" }), quoteIndex: 1 })));
+    expect(await screen.findByText("给自己一点缓冲，稳定推进。")).toBeInTheDocument();
+  });
+
   it("regenerates cached quotes when the quote style changes", async () => {
     const fetchMock = mockFetch(care());
 
