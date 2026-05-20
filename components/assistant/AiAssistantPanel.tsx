@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 
 import type { AiActionProposal, AiActionStatus } from "@/types/assistant";
+import type { AiChatActionState } from "@/types/ai-chat";
 
 interface AiTestResponse {
   ok: boolean;
@@ -25,6 +26,8 @@ interface AiChatHistoryResponse {
     role: "user" | "assistant";
     content: string;
     proposals?: AiActionProposal[];
+    actionState?: AiChatActionState;
+    actionStatus?: string;
     createdAt: string;
   }>;
 }
@@ -36,7 +39,7 @@ interface ChatMessage {
   status?: "pending" | "error" | "done";
   proposals?: AiActionProposal[];
   proposalUserMessage?: string;
-  actionState?: "pending" | "executed" | "rejected" | "failed";
+  actionState?: AiChatActionState;
   actionStatus?: string;
 }
 
@@ -79,7 +82,9 @@ export function AiAssistantPanel() {
             content: message.content,
             status: "done",
             proposals: message.proposals,
-            proposalUserMessage: message.role === "assistant" && message.proposals?.length ? lastUserMessage : undefined
+            proposalUserMessage: message.role === "assistant" && message.proposals?.length ? lastUserMessage : undefined,
+            actionState: message.actionState,
+            actionStatus: message.actionStatus
           };
         });
         setChatMessages((current) => (current.length > 0 ? current : historyMessages));

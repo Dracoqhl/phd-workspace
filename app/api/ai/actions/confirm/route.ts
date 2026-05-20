@@ -37,5 +37,21 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   const results = await applyAiActionInput(repositories, input);
+  if ("aiChatMessages" in repositories && "markLatestProposalHandled" in repositories.aiChatMessages) {
+    const executedCount = results.filter((result) => result.status === "confirmed_executed").length;
+    const failedCount = results.filter((result) => result.status === "failed").length;
+    const actionState = input.decision === "reject" ? "rejected" : failedCount > 0 ? "failed" : "executed";
+    const actionStatus =
+      input.decision === "reject"
+        ? "已取消这些建议。"
+        : failedCount > 0
+          ? `已执行 ${executedCount} 项，${failedCount} 项失败。`
+          : `已执行 ${executedCount} 项建议。`;
+    await repositories.aiChatMessages.markLatestProposalHandled(
+      input.proposals.map((proposal) => proposal.id),
+      actionState,
+      actionStatus
+    );
+  }
   return Response.json({ ok: true, results });
 }

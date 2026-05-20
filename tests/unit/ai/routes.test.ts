@@ -459,6 +459,101 @@ describe("AI chat route", () => {
     });
   });
 
+  it("marks persisted assistant proposals as handled after confirmation", async () => {
+    const tempDir = await mkdtemp(join(tmpdir(), "phd-ai-history-"));
+    dataDir = tempDir;
+    vi.stubEnv("DATABASE_PATH", join(tempDir, "workspace.sqlite"));
+    vi.stubEnv("ADMIN_EMAIL", "admin@example.com");
+    vi.stubEnv("ADMIN_PASSWORD", "admin-password");
+    ensureDatabaseSchema(getDatabase());
+    const adminCookie = await loginAndGetCookie("admin@example.com", "admin-password");
+
+    vi.stubEnv("AI_API_KEY", "secret-key");
+    vi.stubEnv("AI_MODEL", "test-model");
+    vi.stubEnv("AI_BASE_URL", "https://example.test/v1/");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        Response.json({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  reply: "我建议新增一个任务。",
+                  proposals: [
+                    {
+                      id: "proposal_handled_1",
+                      actionType: "create_task",
+                      summary: "新增任务：整理实验记录",
+                      payload: {
+                        title: "整理实验记录",
+                        description: "",
+                        status: "not_started",
+                        priority: "medium",
+                        dueDate: null,
+                        parentTaskId: null
+                      }
+                    }
+                  ]
+                })
+              }
+            }
+          ]
+        })
+      )
+    );
+
+    const chatResponse = await chat(
+      authRequest(`${baseUrl}/api/ai/chat`, {
+        method: "POST",
+        headers: { Cookie: adminCookie, "Content-Type": "application/json" },
+        body: JSON.stringify({ message: "帮我新增整理实验记录任务" })
+      })
+    );
+    expect(chatResponse.status).toBe(200);
+
+    const confirmResponse = await confirmActions(
+      authRequest(`${baseUrl}/api/ai/actions/confirm`, {
+        method: "POST",
+        headers: { Cookie: adminCookie, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userMessage: "帮我新增整理实验记录任务",
+          proposals: [
+            {
+              id: "proposal_handled_1",
+              actionType: "create_task",
+              summary: "新增任务：整理实验记录",
+              payload: {
+                title: "整理实验记录",
+                description: "",
+                status: "not_started",
+                priority: "medium",
+                dueDate: null,
+                parentTaskId: null
+              }
+            }
+          ]
+        })
+      })
+    );
+    expect(confirmResponse.status).toBe(200);
+
+    const historyResponse = await getChatHistory(authRequest(`${baseUrl}/api/ai/chat/history`, { headers: { Cookie: adminCookie } }));
+    expect(historyResponse.status).toBe(200);
+    await expect(historyResponse.json()).resolves.toMatchObject({
+      messages: [
+        { role: "user", content: "帮我新增整理实验记录任务" },
+        {
+          role: "assistant",
+          content: "我建议新增一个任务。",
+          actionState: "executed",
+          actionStatus: "已执行 1 项建议。",
+          proposals: [{ id: "proposal_handled_1" }]
+        }
+      ]
+    });
+  });
+
   it("clears only the current user's chat history", async () => {
     const tempDir = await mkdtemp(join(tmpdir(), "phd-ai-history-"));
     dataDir = tempDir;

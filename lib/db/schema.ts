@@ -111,6 +111,8 @@ export function ensureDatabaseSchema(db: SqliteDatabase): void {
       role TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
       content TEXT NOT NULL,
       proposals_json TEXT NOT NULL DEFAULT '[]',
+      action_state TEXT NOT NULL DEFAULT 'pending',
+      action_status TEXT NOT NULL DEFAULT '',
       created_at TEXT NOT NULL
     );
 
@@ -131,6 +133,8 @@ export function ensureDatabaseSchema(db: SqliteDatabase): void {
   `);
 
   ensureColumn(db, "ai_chat_messages", "proposals_json", "TEXT NOT NULL DEFAULT '[]'");
+  ensureColumn(db, "ai_chat_messages", "action_state", "TEXT NOT NULL DEFAULT 'pending'");
+  ensureColumn(db, "ai_chat_messages", "action_status", "TEXT NOT NULL DEFAULT ''");
   ensureAdminUser(db);
 }
 

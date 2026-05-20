@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import type { SqliteDatabase } from "@/lib/db/database";
 import type { AiActionLog } from "@/types/assistant";
-import type { AiChatMessage } from "@/types/ai-chat";
+import type { AiChatActionState, AiChatMessage } from "@/types/ai-chat";
 import type { CareQuotePreference, CareRecord } from "@/types/care";
 import type { CreateHabitInput, Habit, HabitCheckin, UpdateHabitInput } from "@/types/habit";
 import type { CreateTaskInput, Task, UpdateTaskInput } from "@/types/task";
@@ -372,8 +372,8 @@ class SqliteAiChatMessageRepository {
     };
     this.db
       .prepare(
-        `INSERT INTO ai_chat_messages (id, user_id, role, content, proposals_json, created_at)
-         VALUES (@id, @userId, @role, @content, @proposalsJson, @createdAt)`
+        `INSERT INTO ai_chat_messages (id, user_id, role, content, proposals_json, action_state, action_status, created_at)
+         VALUES (@id, @userId, @role, @content, @proposalsJson, @actionState, @actionStatus, @createdAt)`
       )
       .run({
         id: message.id,
@@ -381,9 +381,35 @@ class SqliteAiChatMessageRepository {
         role: message.role,
         content: message.content,
         proposalsJson: JSON.stringify(message.proposals ?? []),
+        actionState: message.proposals && message.proposals.length > 0 ? "pending" : "",
+        actionStatus: "",
         createdAt: message.createdAt
       });
     return message;
+  }
+
+  async markLatestProposalHandled(proposalIds: string[], actionState: AiChatActionState, actionStatus: string): Promise<void> {
+    if (proposalIds.length === 0) return;
+
+    const rows = this.db
+      .prepare(
+        `SELECT * FROM ai_chat_messages
+         WHERE user_id = ? AND role = 'assistant' AND proposals_json != '[]'
+         ORDER BY created_at DESC
+         LIMIT 20`
+      )
+      .all(this.userId) as AiChatMessageRow[];
+    const proposalIdSet = new Set(proposalIds);
+    const row = rows.find((candidate) => parseAiChatProposals(candidate.proposals_json).some((proposal) => proposalIdSet.has(proposal.id)));
+    if (!row) return;
+
+    this.db
+      .prepare(
+        `UPDATE ai_chat_messages
+         SET action_state = ?, action_status = ?
+         WHERE id = ? AND user_id = ?`
+      )
+      .run(actionState, actionStatus, row.id, this.userId);
   }
 
   async clear(): Promise<void> {
@@ -491,6 +517,8 @@ interface AiChatMessageRow {
   role: AiChatMessage["role"];
   content: string;
   proposals_json: string;
+  action_state: string;
+  action_status: string;
   created_at: string;
 }
 
@@ -595,8 +623,14 @@ function mapAiChatMessage(row: AiChatMessageRow): AiChatMessage {
     role: row.role,
     content: row.content,
     ...(proposals.length > 0 ? { proposals } : {}),
+    ...(proposals.length > 0 ? { actionState: parseAiChatActionState(row.action_state) } : {}),
+    ...(row.action_status ? { actionStatus: row.action_status } : {}),
     createdAt: row.created_at
   };
+}
+
+function parseAiChatActionState(value: string): AiChatActionState {
+  return value === "executed" || value === "rejected" || value === "failed" ? value : "pending";
 }
 
 function parseAiChatProposals(value: string): NonNullable<AiChatMessage["proposals"]> {
