@@ -6,7 +6,7 @@ This document defines the intended project layout and file placement rules for å
 
 ```text
 phd-workspace/
-  Readme.md
+  README.md
   architecture.md
   package.json
   scripts/
@@ -335,7 +335,7 @@ Commit these:
 
 - application source code
 - tests
-- `Readme.md`
+- `README.md`
 - `architecture.md`
 - product docs under `docs/`
 - `.env.example`
@@ -397,6 +397,6 @@ Trash entries should include:
 - Update this file when adding, removing, or moving directories.
 - Update this file when changing dependency rules or module ownership.
 - Update this file when Git boundaries or ignored runtime paths change.
-- Update `Readme.md` when setup, scripts, environment variables, deployment, or user-facing scope changes.
+- Update `README.md` when setup, scripts, environment variables, deployment, or user-facing scope changes.
 - Update `docs/color-system.md` when adding UI states, changing theme tokens, or introducing component color behavior.
 - Update local `AGENT.md` when important project decisions are confirmed. It is intentionally ignored by Git.
