@@ -1,6 +1,9 @@
 "use client";
 
+import { RefreshCw } from "lucide-react";
 import { createContext, ReactNode, useContext, useMemo, useState } from "react";
+
+import { AnimatedCheckCircle } from "@/components/icons/AnimatedCheckCircle";
 
 type SyncStatus = "synced" | "saving" | "failed";
 
@@ -59,7 +62,7 @@ export function useSyncStatus() {
 export function SyncStatusBadge() {
   const { status, lastSyncedAt, error } = useSyncStatus();
 
-  const label = status === "saving" ? "Saving" : status === "failed" ? "Failed" : "Synced";
+  const label = status === "saving" ? "Syncing" : status === "failed" ? "Failed" : "Synced";
   const title = status === "failed" ? error ?? "Sync failed" : lastSyncedAt ? `Synced ${formatTime(lastSyncedAt)}` : label;
   const className =
     status === "saving"
@@ -71,10 +74,12 @@ export function SyncStatusBadge() {
   return (
     <span
       aria-label="Data sync status"
-      className={`inline-flex h-8 w-28 items-center justify-center rounded-md border px-2.5 text-xs font-semibold ${className}`}
+      className={`inline-flex h-8 w-28 items-center justify-center gap-1.5 rounded-md border px-2.5 text-xs font-semibold ${className}`}
       role="status"
       title={title}
     >
+      {status === "saving" ? <RefreshCw aria-hidden="true" className="h-3.5 w-3.5 animate-spin" data-testid="sync-spinner-icon" /> : null}
+      {status === "synced" ? <AnimatedCheckCircle className="h-3.5 w-3.5" /> : null}
       {label}
     </span>
   );

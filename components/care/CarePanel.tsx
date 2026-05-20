@@ -249,7 +249,7 @@ export function CarePanel() {
               onClick={() => void retryCare()}
               type="button"
             >
-              <RefreshCw aria-hidden="true" size={14} />
+              <RefreshCw aria-hidden="true" className={saving ? "animate-spin" : undefined} data-testid="care-refresh-icon" size={14} />
             </button>
             <button
               aria-label="Quote settings"
