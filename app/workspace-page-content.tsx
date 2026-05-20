@@ -1,3 +1,5 @@
+import { ExternalLink, Github } from "lucide-react";
+
 import { LoginForm } from "@/app/login-form";
 import { AdminDashboard } from "@/components/admin/AdminDashboard";
 import { AiAssistantPanel } from "@/components/assistant/AiAssistantPanel";
@@ -8,6 +10,9 @@ import { ThemeProvider, ThemeSelect } from "@/components/theme/ThemeProvider";
 import { TaskManager } from "@/components/tasks/TaskManager";
 import { getHabitBusinessDate } from "@/lib/domain/habits";
 import type { PublicUser } from "@/types/user";
+
+const REPOSITORY_URL = "https://github.com/Dracoqhl/phd-workspace";
+const REPOSITORY_LABEL = "Dracoqhl/phd-workspace";
 
 interface WorkspacePageContentProps {
   authenticated: boolean;
@@ -53,6 +58,7 @@ function WorkspaceShell({
 
   return (
     <main className="min-h-screen bg-paper text-ink">
+      <RepositoryBar />
       <div
         className={
           isAdmin
@@ -93,6 +99,27 @@ function WorkspaceShell({
         {authenticated && !isAdmin ? <AiAssistantAside user={user} /> : null}
       </div>
     </main>
+  );
+}
+
+function RepositoryBar() {
+  return (
+    <div className="border-b border-line bg-surface/85">
+      <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-3 px-4 py-1 text-[11px] leading-5 text-muted lg:px-8">
+        <span className="font-medium text-primary">Source</span>
+        <a
+          aria-label={`Open GitHub repository ${REPOSITORY_LABEL}`}
+          className="inline-flex min-w-0 items-center gap-1.5 rounded-md px-1.5 py-0.5 font-medium text-muted transition hover:bg-surface-muted hover:text-primary focus:outline-none focus:ring-2 focus:ring-accent/35"
+          href={REPOSITORY_URL}
+          rel="noreferrer"
+          target="_blank"
+        >
+          <Github aria-hidden="true" size={13} />
+          <span className="truncate">{REPOSITORY_LABEL}</span>
+          <ExternalLink aria-hidden="true" size={12} />
+        </a>
+      </div>
+    </div>
   );
 }
 

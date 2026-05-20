@@ -81,6 +81,10 @@ describe("workspace page shell", () => {
     render(<WorkspacePageContent authenticated={true} user={{ email: "student@example.com", role: "user" }} />);
 
     expect(screen.getByRole("heading", { name: "博士工作台" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open GitHub repository Dracoqhl/phd-workspace" })).toHaveAttribute(
+      "href",
+      "https://github.com/Dracoqhl/phd-workspace"
+    );
     expect(screen.getByText("2026-05-08")).toBeInTheDocument();
     expect(screen.getByLabelText("Theme")).toHaveValue("light");
     expect(screen.getByRole("status", { name: "Data sync status" })).toHaveTextContent("Synced");
