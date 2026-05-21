@@ -80,20 +80,18 @@ beforeEach(() => {
 });
 
 describe("QuickNotesPanel", () => {
-  it("creates an empty selected note and shows fallback labels in the right index", async () => {
-    mockFetch([]);
+  it("creates a default empty selected note when the list is empty", async () => {
+    const fetchMock = mockFetch([]);
 
     render(<QuickNotesPanel />);
 
-    expect(await screen.findByText("还没有随手记")).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: "新建记录" }));
-
     const item = await screen.findByRole("button", { name: "打开记录 未命名记录" });
     expect(within(item).getByText("无标签")).toBeInTheDocument();
+    expect(within(item).getByText("2026-05-21")).toBeInTheDocument();
     expect(screen.getByLabelText("随手记标签")).toHaveValue("");
     expect(screen.getByLabelText("随手记标题")).toHaveValue("");
     expect(screen.getByLabelText("随手记正文")).toHaveValue("");
+    expect(fetchMock).toHaveBeenCalledWith("/api/notes", expect.objectContaining({ method: "POST" }));
   });
 
   it("auto-saves tag, title, and content without moving the note in the index", async () => {
@@ -127,9 +125,24 @@ describe("QuickNotesPanel", () => {
 
     const list = screen.getByRole("list", { name: "随手记列表" });
     const items = within(list).getAllByRole("button", { name: /^打开记录/ });
-    expect(items.map((item) => item.textContent)).toEqual(expect.arrayContaining(["复盘新记录", "灵感新的标题"]));
+    expect(items.map((item) => item.textContent)).toEqual(expect.arrayContaining(["复盘新记录2026-05-21", "灵感新的标题2026-05-21"]));
     expect(items[0]).toHaveTextContent("新记录");
     expect(items[1]).toHaveTextContent("新的标题");
+  });
+
+  it("groups today's notes before past notes with a visual divider", async () => {
+    mockFetch([
+      note({ id: "today", tag: "今日", title: "今天记录", createdAt: "2026-05-21T02:00:00.000Z" }),
+      note({ id: "past", tag: "旧事", title: "昨天记录", createdAt: "2026-05-20T02:00:00.000Z" })
+    ]);
+
+    render(<QuickNotesPanel />);
+
+    expect(await screen.findByText("当天")).toBeInTheDocument();
+    expect(screen.getByText("往日")).toBeInTheDocument();
+    expect(screen.getByTestId("past-notes-divider")).toHaveClass("border-dashed");
+    expect(screen.getByRole("button", { name: "打开记录 今天记录" }).textContent).toContain("2026-05-21");
+    expect(screen.getByRole("button", { name: "打开记录 昨天记录" }).textContent).toContain("2026-05-20");
   });
 
   it("keeps tags within four characters and deletes notes after confirmation", async () => {

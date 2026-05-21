@@ -33,6 +33,7 @@ export function QuickNotesPanel() {
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveSequences = useRef(new Map<string, number>());
   const selectedNote = useMemo(() => notes.find((note) => note.id === selectedNoteId) ?? null, [notes, selectedNoteId]);
+  const noteGroups = useMemo(() => groupNotesByCreatedDate(notes), [notes]);
 
   const clearSaveTimer = useCallback(() => {
     if (saveTimer.current) {
@@ -57,8 +58,14 @@ export function QuickNotesPanel() {
         }
 
         if (!active) return;
-        setNotes(payload.notes);
-        const firstNote = payload.notes[0] ?? null;
+        let nextNotes = payload.notes;
+        if (nextNotes.length === 0) {
+          const created = await writeNote("/api/notes", { method: "POST" });
+          if (!active) return;
+          nextNotes = [created];
+        }
+        setNotes(nextNotes);
+        const firstNote = nextNotes[0] ?? null;
         setSelectedNoteId(firstNote?.id ?? null);
         setDraft(toDraft(firstNote));
       } catch (caught) {
@@ -184,43 +191,44 @@ export function QuickNotesPanel() {
       <div className="flex items-start justify-between gap-3 border-b border-line px-4 py-3">
         <div>
           <h2 className="text-lg font-semibold text-ink">随手记</h2>
-          <p className="mt-1 text-sm text-muted">记录灵感、复盘和临时想法。</p>
         </div>
         <span aria-label="随手记保存状态" className={saveStatusClass(saveState)} role="status">
           {formatSaveStatus(saveState, lastSavedAt)}
         </span>
       </div>
 
-      <div className="grid min-h-[30rem] gap-0 lg:grid-cols-[minmax(0,1fr)_22rem]">
-        <div className="min-w-0 border-b border-line p-4 lg:border-b-0 lg:border-r">
+      <div className="grid min-h-[22rem] gap-0 lg:grid-cols-[minmax(0,1fr)_22rem]">
+        <div className="min-w-0 border-b border-line p-3 lg:border-b-0 lg:border-r">
           {selectedNote ? (
-            <div className="grid h-full gap-3">
-              <label className="grid gap-1.5 text-sm font-medium text-muted">
-                <span>标签</span>
-                <input
-                  aria-label="随手记标签"
-                  className={`h-10 rounded-md border px-3 text-sm ${fieldControlClass}`}
-                  maxLength={4}
-                  onChange={(event: ChangeEvent<HTMLInputElement>) => updateDraft("tag", event.target.value)}
-                  placeholder="最多4字"
-                  value={draft.tag}
-                />
-              </label>
-              <label className="grid gap-1.5 text-sm font-medium text-muted">
-                <span>标题</span>
-                <input
-                  aria-label="随手记标题"
-                  className={`h-11 rounded-md border px-3 text-base font-semibold ${fieldControlClass}`}
-                  onChange={(event: ChangeEvent<HTMLInputElement>) => updateDraft("title", event.target.value)}
-                  placeholder="未命名记录"
-                  value={draft.title}
-                />
-              </label>
+            <div className="grid h-full gap-2">
+              <div className="grid gap-2 sm:grid-cols-[7rem_minmax(0,1fr)]">
+                <label className="grid gap-1 text-xs font-medium text-muted">
+                  <span>标签</span>
+                  <input
+                    aria-label="随手记标签"
+                    className={`h-9 rounded-md border px-2.5 text-sm ${fieldControlClass}`}
+                    maxLength={4}
+                    onChange={(event: ChangeEvent<HTMLInputElement>) => updateDraft("tag", event.target.value)}
+                    placeholder="最多4字"
+                    value={draft.tag}
+                  />
+                </label>
+                <label className="grid gap-1 text-xs font-medium text-muted">
+                  <span>标题</span>
+                  <input
+                    aria-label="随手记标题"
+                    className={`h-9 rounded-md border px-3 text-sm font-semibold ${fieldControlClass}`}
+                    onChange={(event: ChangeEvent<HTMLInputElement>) => updateDraft("title", event.target.value)}
+                    placeholder="未命名记录"
+                    value={draft.title}
+                  />
+                </label>
+              </div>
               <label className="grid min-h-0 flex-1 gap-1.5 text-sm font-medium text-muted">
                 <span>正文</span>
                 <textarea
                   aria-label="随手记正文"
-                  className={`min-h-72 resize-y rounded-md border px-3 py-3 text-sm leading-6 ${fieldControlClass}`}
+                  className={`min-h-40 resize-y rounded-md border px-3 py-2.5 text-sm leading-6 ${fieldControlClass}`}
                   onChange={(event: ChangeEvent<HTMLTextAreaElement>) => updateDraft("content", event.target.value)}
                   placeholder="写下一点也可以，系统会自动保存。"
                   value={draft.content}
@@ -237,35 +245,26 @@ export function QuickNotesPanel() {
         <aside className="flex min-h-0 flex-col">
           <div className="min-h-0 flex-1 overflow-y-auto p-3">
             {loading ? <p className="px-2 py-8 text-center text-sm text-muted">正在加载随手记...</p> : null}
-            {!loading && notes.length === 0 ? <p className="px-2 py-8 text-center text-sm text-muted">还没有随手记</p> : null}
             <ul aria-label="随手记列表" className="grid gap-2" role="list">
-              {notes.map((note) => (
-                <li className="grid grid-cols-[minmax(0,1fr)_2rem] items-stretch gap-1" key={note.id}>
-                  <button
-                    aria-label={`打开记录 ${displayTitle(note.title)}`}
-                    className={`min-w-0 rounded-md border px-3 py-2 text-left transition hover:bg-surface-muted ${
-                      selectedNoteId === note.id ? "border-accent bg-accent-soft/50" : "border-line bg-surface"
-                    }`}
-                    onClick={() => selectNote(note)}
-                    type="button"
-                  >
-                    <span className="flex min-w-0 items-center gap-2">
-                      <span className={`max-w-20 shrink-0 truncate rounded border px-1.5 py-0.5 text-[11px] font-semibold ${noteTagToneClass(note.tag)}`}>
-                        {displayTag(note.tag)}
-                      </span>
-                      <span className="min-w-0 truncate text-sm font-semibold text-ink">{displayTitle(note.title)}</span>
-                    </span>
-                  </button>
-                  <button
-                    aria-label={`删除记录 ${displayTitle(note.title)}`}
-                    className="inline-flex h-full min-h-10 items-center justify-center rounded-md text-action-muted transition hover:bg-delete-soft hover:text-delete focus:outline-none focus:ring-2 focus:ring-delete/30"
-                    onClick={() => void deleteNote(note)}
-                    type="button"
-                  >
-                    <Trash2 aria-hidden="true" size={16} />
-                  </button>
-                </li>
-              ))}
+              {noteGroups.pinned.length > 0 ? (
+                <>
+                  <NoteGroupHeader label="置顶" />
+                  {noteGroups.pinned.map((note) => renderNoteListItem(note, selectedNoteId, selectNote, deleteNote))}
+                </>
+              ) : null}
+              {noteGroups.today.length > 0 ? (
+                <>
+                  <NoteGroupHeader label="当天" />
+                  {noteGroups.today.map((note) => renderNoteListItem(note, selectedNoteId, selectNote, deleteNote))}
+                </>
+              ) : null}
+              {noteGroups.past.length > 0 ? (
+                <>
+                  <li aria-hidden="true" className="my-1 border-t border-dashed border-line" data-testid="past-notes-divider" />
+                  <NoteGroupHeader label="往日" />
+                  {noteGroups.past.map((note) => renderNoteListItem(note, selectedNoteId, selectNote, deleteNote))}
+                </>
+              ) : null}
             </ul>
           </div>
           <div className="border-t border-line p-3">
@@ -283,6 +282,50 @@ export function QuickNotesPanel() {
 
       {error ? <p className="border-t border-line px-4 py-3 text-sm text-danger-text">{error}</p> : null}
     </section>
+  );
+}
+
+function NoteGroupHeader({ label }: { label: string }) {
+  return (
+    <li className="px-1 pt-1 text-[11px] font-semibold text-muted" role="presentation">
+      {label}
+    </li>
+  );
+}
+
+function renderNoteListItem(
+  note: QuickNote,
+  selectedNoteId: string | null,
+  selectNote: (note: QuickNote) => void,
+  deleteNote: (note: QuickNote) => Promise<void>
+) {
+  return (
+    <li className="grid grid-cols-[minmax(0,1fr)_2rem] items-stretch gap-1" key={note.id}>
+      <button
+        aria-label={`打开记录 ${displayTitle(note.title)}`}
+        className={`min-w-0 rounded-md border px-2.5 py-1.5 text-left transition hover:bg-surface-muted ${
+          selectedNoteId === note.id ? "border-accent bg-accent-soft/50" : "border-line bg-surface"
+        }`}
+        onClick={() => selectNote(note)}
+        type="button"
+      >
+        <span className="flex min-w-0 items-center gap-2">
+          <span className={`max-w-16 shrink-0 truncate rounded border px-1.5 py-0.5 text-[11px] font-semibold ${noteTagToneClass(note.tag)}`}>
+            {displayTag(note.tag)}
+          </span>
+          <span className="min-w-0 flex-1 truncate text-sm font-semibold text-ink">{displayTitle(note.title)}</span>
+          <span className="shrink-0 text-[11px] font-medium text-muted">{formatDate(note.createdAt)}</span>
+        </span>
+      </button>
+      <button
+        aria-label={`删除记录 ${displayTitle(note.title)}`}
+        className="inline-flex h-full min-h-9 items-center justify-center rounded-md text-action-muted transition hover:bg-delete-soft hover:text-delete focus:outline-none focus:ring-2 focus:ring-delete/30"
+        onClick={() => void deleteNote(note)}
+        type="button"
+      >
+        <Trash2 aria-hidden="true" size={15} />
+      </button>
+    </li>
   );
 }
 
@@ -317,6 +360,19 @@ function displayTag(tag: string): string {
 
 function displayTitle(title: string): string {
   return title.trim() || "未命名记录";
+}
+
+function groupNotesByCreatedDate(notes: QuickNote[]): { pinned: QuickNote[]; today: QuickNote[]; past: QuickNote[] } {
+  const today = formatDate(new Date().toISOString());
+  return {
+    pinned: [],
+    today: notes.filter((note) => formatDate(note.createdAt) === today),
+    past: notes.filter((note) => formatDate(note.createdAt) !== today)
+  };
+}
+
+function formatDate(value: string): string {
+  return new Date(value).toLocaleDateString("en-CA");
 }
 
 function noteTagToneClass(tag: string): string {
