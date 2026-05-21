@@ -15,16 +15,16 @@ fi
 : "${SESSION_SECRET:=dev-session-secret-change-me}"
 : "${DATA_DIR:=$ROOT_DIR/.runtime-data}"
 : "${PORT:=3120}"
-: "${HOSTNAME:=127.0.0.1}"
+: "${BIND_HOST:=127.0.0.1}"
 
 mkdir -p "$DATA_DIR"
 
-export APP_PASSWORD SESSION_SECRET DATA_DIR PORT HOSTNAME
+export APP_PASSWORD SESSION_SECRET DATA_DIR PORT BIND_HOST
 
 echo "Starting PhD Workspace"
 echo "URL: http://localhost:${PORT}"
-echo "Host binding: ${HOSTNAME}:${PORT}"
+echo "Host binding: ${BIND_HOST}:${PORT}"
 echo "DATA_DIR: ${DATA_DIR}"
 echo "Access password: ${APP_PASSWORD}"
 
-exec pnpm dev --hostname "$HOSTNAME" --port "$PORT"
+exec pnpm dev --hostname "$BIND_HOST" --port "$PORT"
