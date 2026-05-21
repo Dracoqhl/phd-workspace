@@ -5,6 +5,7 @@ import type { AiActionLog } from "@/types/assistant";
 import type { AiChatActionState, AiChatMessage } from "@/types/ai-chat";
 import type { CareQuotePreference, CareRecord } from "@/types/care";
 import type { CreateHabitInput, Habit, HabitCheckin, UpdateHabitInput } from "@/types/habit";
+import type { QuickNote, UpdateQuickNoteInput } from "@/types/note";
 import type { CreateTaskInput, Task, UpdateTaskInput } from "@/types/task";
 import type { TrashEntry } from "@/types/trash";
 
@@ -18,7 +19,8 @@ export function createSqliteRepositories(db: SqliteDatabase, userId: string) {
     careRecords: new SqliteCareRecordRepository(db, userId),
     careQuotePreferences: new SqliteCareQuotePreferenceRepository(db, userId),
     aiLogs: new SqliteAiLogRepository(db, userId),
-    aiChatMessages: new SqliteAiChatMessageRepository(db, userId)
+    aiChatMessages: new SqliteAiChatMessageRepository(db, userId),
+    notes: new SqliteQuickNoteRepository(db, userId)
   };
 }
 
@@ -446,6 +448,69 @@ class SqliteTrashRepository {
   }
 }
 
+class SqliteQuickNoteRepository {
+  constructor(
+    private readonly db: SqliteDatabase,
+    private readonly userId: string
+  ) {}
+
+  async list(): Promise<QuickNote[]> {
+    const rows = this.db
+      .prepare("SELECT * FROM quick_notes WHERE user_id = ? ORDER BY created_at DESC, rowid DESC")
+      .all(this.userId) as QuickNoteRow[];
+    return rows.map(mapQuickNote);
+  }
+
+  async get(noteId: string): Promise<QuickNote | null> {
+    const row = this.db
+      .prepare("SELECT * FROM quick_notes WHERE id = ? AND user_id = ?")
+      .get(noteId, this.userId) as QuickNoteRow | undefined;
+    return row ? mapQuickNote(row) : null;
+  }
+
+  async create(): Promise<QuickNote> {
+    const now = new Date().toISOString();
+    const note: QuickNote = {
+      id: randomUUID(),
+      tag: "",
+      title: "",
+      content: "",
+      createdAt: now,
+      updatedAt: now
+    };
+    this.db
+      .prepare(
+        `INSERT INTO quick_notes (id, user_id, tag, title, content, created_at, updated_at)
+         VALUES (@id, @userId, @tag, @title, @content, @createdAt, @updatedAt)`
+      )
+      .run({ ...note, userId: this.userId });
+    return note;
+  }
+
+  async update(noteId: string, input: UpdateQuickNoteInput): Promise<QuickNote | null> {
+    const existing = await this.get(noteId);
+    if (!existing) return null;
+
+    const note: QuickNote = {
+      ...existing,
+      ...input,
+      updatedAt: new Date().toISOString()
+    };
+    this.db
+      .prepare(
+        `UPDATE quick_notes
+         SET tag = @tag, title = @title, content = @content, updated_at = @updatedAt
+         WHERE id = @id AND user_id = @userId`
+      )
+      .run({ ...note, userId: this.userId });
+    return note;
+  }
+
+  async delete(noteId: string): Promise<void> {
+    this.db.prepare("DELETE FROM quick_notes WHERE id = ? AND user_id = ?").run(noteId, this.userId);
+  }
+}
+
 interface TaskRow {
   id: string;
   title: string;
@@ -528,6 +593,15 @@ interface TrashRow {
   deleted_at: string;
   original_id: string;
   original_data: string;
+}
+
+interface QuickNoteRow {
+  id: string;
+  tag: string;
+  title: string;
+  content: string;
+  created_at: string;
+  updated_at: string;
 }
 
 function validateParentTask(parentTaskId: string | null, tasks: Task[]): void {
@@ -649,6 +723,17 @@ function mapTrash(row: TrashRow): TrashEntry {
     deletedAt: row.deleted_at,
     originalId: row.original_id,
     originalData: JSON.parse(row.original_data) as TrashEntry["originalData"]
+  };
+}
+
+function mapQuickNote(row: QuickNoteRow): QuickNote {
+  return {
+    id: row.id,
+    tag: row.tag,
+    title: row.title,
+    content: row.content,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
   };
 }
 

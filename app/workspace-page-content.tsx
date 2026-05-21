@@ -5,6 +5,7 @@ import { AdminDashboard } from "@/components/admin/AdminDashboard";
 import { AiAssistantPanel } from "@/components/assistant/AiAssistantPanel";
 import { CarePanel } from "@/components/care/CarePanel";
 import { HabitManager } from "@/components/habits/HabitManager";
+import { QuickNotesPanel } from "@/components/notes/QuickNotesPanel";
 import { SyncStatusBadge, SyncStatusProvider } from "@/components/sync/SyncStatusProvider";
 import { ThemeProvider, ThemeSelect } from "@/components/theme/ThemeProvider";
 import { TaskManager } from "@/components/tasks/TaskManager";
@@ -131,6 +132,7 @@ function WorkspaceSections() {
         <HabitManager />
       </div>
       <TaskManager />
+      <QuickNotesPanel />
     </div>
   );
 }

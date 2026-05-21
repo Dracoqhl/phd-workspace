@@ -14,8 +14,8 @@ fi
 : "${APP_PASSWORD:=change-me}"
 : "${SESSION_SECRET:=dev-session-secret-change-me}"
 : "${DATA_DIR:=$ROOT_DIR/.runtime-data}"
-: "${PORT:=3000}"
-: "${HOSTNAME:=0.0.0.0}"
+: "${PORT:=3120}"
+: "${HOSTNAME:=127.0.0.1}"
 
 mkdir -p "$DATA_DIR"
 

@@ -28,6 +28,10 @@ vi.mock("@/components/tasks/TaskManager", () => ({
   TaskManager: () => <section aria-label="任务管理">Task manager</section>
 }));
 
+vi.mock("@/components/notes/QuickNotesPanel", () => ({
+  QuickNotesPanel: () => <section aria-label="随手记">Quick notes</section>
+}));
+
 vi.mock("@/components/habits/HabitManager", () => ({
   HabitManager: () => <section aria-label="每日健康习惯">Habit manager</section>
 }));
@@ -94,6 +98,7 @@ describe("workspace page shell", () => {
     expect(screen.getByLabelText("Account controls")).toHaveTextContent("student@example.com");
     expect(screen.getByLabelText("Account controls")).toContainElement(screen.getByRole("button", { name: "Logout" }));
     expect(screen.getByRole("region", { name: "任务管理" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "随手记" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "每日健康习惯" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "心灵关怀" })).toBeInTheDocument();
     expect(screen.getByRole("complementary", { name: "AI 助手" })).toBeInTheDocument();
@@ -105,6 +110,7 @@ describe("workspace page shell", () => {
 
     expect(screen.getByRole("region", { name: "管理员工作台" })).toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "任务管理" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "随手记" })).not.toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "每日健康习惯" })).not.toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "心灵关怀" })).not.toBeInTheDocument();
     expect(screen.queryByRole("complementary", { name: "AI 助手" })).not.toBeInTheDocument();
