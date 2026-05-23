@@ -130,6 +130,7 @@ describe("TaskManager", () => {
     render(<TaskManager />);
 
     expect(await screen.findByRole("table", { name: "Task list" })).not.toHaveClass("rounded-list-frame");
+    expect(screen.getByText("拖动调整顺序，点击标题、状态、优先级或截止日期快速修改。")).toBeInTheDocument();
     expect(await screen.findByRole("columnheader", { name: "任务" })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "状态" })).toBeInTheDocument();
     expect(screen.getByRole("columnheader", { name: "优先级" })).toBeInTheDocument();

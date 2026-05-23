@@ -118,6 +118,9 @@ describe("HabitManager", () => {
 
     render(<HabitManager />);
 
+    expect(await screen.findByRole("heading", { name: "每日健康习惯" })).toHaveClass("text-base");
+    expect(screen.getByText("每日 02:00 刷新")).toBeInTheDocument();
+    expect(screen.queryByText(/完成后自动置底/)).not.toBeInTheDocument();
     const rows = await screen.findAllByRole("listitem");
     expect(within(rows[0]).getByText("Open habit")).toBeInTheDocument();
     expect(within(rows[1]).getByText("Done habit")).toBeInTheDocument();

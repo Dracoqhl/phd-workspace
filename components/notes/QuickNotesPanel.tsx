@@ -215,17 +215,18 @@ export function QuickNotesPanel() {
   }
 
   return (
-    <section aria-label="随手记" className="rounded-lg border border-line bg-surface shadow-sm">
-      <div className="flex items-start justify-between gap-3 border-b border-line px-4 py-3">
-        <div>
-          <h2 className="text-lg font-semibold text-ink">随手记</h2>
+    <section aria-label="随手记" className="rounded-lg border border-line bg-surface p-5 shadow-sm">
+      <div className="-mx-5 flex items-center justify-between gap-3 border-b border-line px-5 pb-4">
+        <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
+          <h2 className="text-base font-semibold text-ink">随手记</h2>
+          <p className="text-xs text-muted">实时保存标签、标题和正文，按创建时间归档。</p>
         </div>
         <span aria-label="随手记保存状态" className={saveStatusClass(saveState)} role="status">
           {formatSaveStatus(saveState, lastSavedAt)}
         </span>
       </div>
 
-      <div className="grid h-[18rem] gap-0 lg:grid-cols-[minmax(0,1fr)_18rem] xl:grid-cols-[minmax(0,1fr)_20rem]">
+      <div className="-mx-5 -mb-5 grid h-[18rem] gap-0 lg:grid-cols-[minmax(0,1fr)_18rem] xl:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="min-w-0 border-b border-line p-3 lg:border-b-0 lg:border-r">
           {selectedNote ? (
             <div className="flex h-full min-w-0 flex-col gap-2">
