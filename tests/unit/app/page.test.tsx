@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import Page from "@/app/page";
@@ -66,6 +66,9 @@ describe("workspace page shell", () => {
     render(<WorkspacePageContent authenticated={false} />);
 
     expect(screen.getByRole("heading", { name: /我的\s*工作台/ })).toBeInTheDocument();
+    expect(screen.queryByText("可自定义")).not.toBeInTheDocument();
+    expect(screen.queryByText("点击高亮文字修改工作台名称")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "查看 v1.1 更新日志" })).toBeInTheDocument();
     expect(screen.queryByText(/MVP|最小可运行页面壳/)).not.toBeInTheDocument();
     expect(screen.getByLabelText("Access password")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Log In" })).toBeInTheDocument();
@@ -108,7 +111,37 @@ describe("workspace page shell", () => {
     expect(screen.getByRole("button", { name: "Test AI" })).toBeInTheDocument();
   });
 
+  it("shows release notes on first visit to a new version and remembers dismissal", async () => {
+    const { unmount } = render(<WorkspacePageContent authenticated={true} user={{ email: "user@example.com", role: "user" }} />);
+
+    expect(await screen.findByRole("dialog", { name: /v1\.1 更通用的个人工作台/ })).toBeInTheDocument();
+    expect(screen.getByText("新增随手记模块，用于记录灵感、复盘和临时想法。")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "关闭" }));
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(window.localStorage.getItem("phd-workspace-last-seen-version")).toBe("1.1");
+
+    unmount();
+    render(<WorkspacePageContent authenticated={true} user={{ email: "user@example.com", role: "user" }} />);
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("opens release notes from the version badge and can show previous versions", async () => {
+    window.localStorage.setItem("phd-workspace-last-seen-version", "1.1");
+    render(<WorkspacePageContent authenticated={true} user={{ email: "user@example.com", role: "user" }} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "查看 v1.1 更新日志" }));
+
+    expect(await screen.findByRole("dialog", { name: /v1\.1 更通用的个人工作台/ })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "v1.0" }));
+
+    expect(screen.getByRole("dialog", { name: /v1\.0 基础工作台/ })).toBeInTheDocument();
+    expect(screen.getByText("支持任务和子任务管理，包含状态、优先级、截止日期和完成状态。")).toBeInTheDocument();
+  });
+
   it("lets users customize the workspace title prefix locally", () => {
+    window.localStorage.setItem("phd-workspace-last-seen-version", "1.1");
     render(<WorkspacePageContent authenticated={true} user={{ email: "user@example.com", role: "user" }} />);
 
     fireEvent.click(screen.getByRole("button", { name: "修改工作台名称前缀" }));
