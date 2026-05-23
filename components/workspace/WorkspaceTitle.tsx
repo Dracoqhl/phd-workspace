@@ -79,7 +79,7 @@ export function WorkspaceTitle() {
 
   return (
     <>
-      <h1 className="flex flex-wrap items-baseline gap-x-3 gap-y-1 font-semibold tracking-normal text-ink">
+      <h1 className="flex flex-wrap items-baseline gap-x-1.5 gap-y-1 font-semibold tracking-normal text-ink">
         {editing ? (
           <input
             aria-label="工作台名称前缀"
@@ -147,7 +147,7 @@ function ReleaseNotesDialog({
       <section
         aria-labelledby="release-notes-title"
         aria-modal="true"
-        className="w-full max-w-lg rounded-lg border border-slate-200 bg-white p-5 shadow-xl"
+        className="custom-scrollbar max-h-[82vh] w-full max-w-lg overflow-y-auto rounded-lg border border-slate-200 bg-white p-5 shadow-xl"
         role="dialog"
       >
         <div className="flex items-start justify-between gap-4">
