@@ -402,12 +402,12 @@ export function TaskManager() {
           <h2 className="text-base font-semibold text-ink">任务管理</h2>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <button className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-ink px-3 text-sm font-semibold text-white hover:bg-slate-700" onClick={() => setAddingTask(true)} type="button">
-            <Plus aria-hidden="true" size={16} />
-            New Task
+          <button className="inline-flex h-8 items-center justify-center gap-1.5 rounded-md bg-ink px-2.5 text-xs font-semibold text-white hover:bg-slate-700" onClick={() => setAddingTask(true)} type="button">
+            <Plus aria-hidden="true" size={14} />
+            新建任务
           </button>
-          <button className="h-9 rounded-md border border-slate-300 px-3 text-sm font-medium text-slate-700 hover:bg-slate-50" onClick={() => setShowCompleted((value) => !value)} type="button">
-            {showCompleted ? "Hide Completed" : "Show Completed"}
+          <button className="h-8 rounded-md border border-slate-300 px-2.5 text-xs font-medium text-slate-700 hover:bg-slate-50" onClick={() => setShowCompleted((value) => !value)} type="button">
+            {showCompleted ? "隐藏完成" : "展示全部"}
           </button>
         </div>
       </div>
@@ -446,8 +446,8 @@ export function TaskManager() {
       ) : null}
 
       {!loading && topLevelTasks.length > 0 ? (
-        <div aria-label="Task list" className="rounded-list-frame mt-5 border border-slate-200" role="table">
-          <div className="rounded-list-row grid grid-cols-[2rem_minmax(0,1fr)_6.5rem_4.5rem_5.5rem_4.5rem] items-center gap-2 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-500" role="row">
+        <div aria-label="Task list" className="mt-4" role="table">
+          <div className="grid grid-cols-[2rem_minmax(0,1fr)_6.5rem_4.5rem_5.5rem_4.5rem] items-center gap-2 border-b border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-500" role="row">
             <div aria-label="Expand" className="text-center" role="columnheader" />
             <div className="text-center" role="columnheader">Task</div>
             <div className="text-center" role="columnheader">Status</div>
