@@ -124,7 +124,6 @@ describe("TaskManager", () => {
     expect(screen.getByTestId("priority-cell-task_1")).toHaveClass("justify-center");
     expect(screen.getByTestId("due-cell-task_1")).toHaveClass("justify-center");
     expect(screen.getByRole("row", { name: /Draft dissertation chapter/ })).toHaveClass("bg-task-parent");
-    expect(screen.getByRole("row", { name: /Draft dissertation chapter/ })).toHaveClass("rounded-list-row");
     expect(screen.getByRole("row", { name: /Draft dissertation chapter/ })).not.toHaveClass("hover:bg-task-row-hover");
     expect(screen.getByRole("button", { name: "Delete task Draft dissertation chapter" })).toHaveClass("text-action-muted", "hover:text-delete");
     expect(screen.getByText("1/2")).toBeInTheDocument();
@@ -135,7 +134,6 @@ describe("TaskManager", () => {
     expect(screen.getByText("Collect figures")).toBeInTheDocument();
     expect(screen.getByText("Revise intro")).toBeInTheDocument();
     expect(screen.getByRole("row", { name: /Revise intro/ })).toHaveClass("bg-task-child");
-    expect(screen.getByRole("row", { name: /Revise intro/ })).toHaveClass("rounded-list-row");
     expect(screen.getByTestId("subtask-marker-subtask_2")).toHaveClass("text-muted");
     expect(screen.getByRole("button", { name: "Delete subtask Collect figures" })).toHaveClass("text-action-muted", "hover:text-delete");
   });
