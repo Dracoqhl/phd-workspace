@@ -106,11 +106,8 @@ export function WorkspaceTitle() {
             onClick={startEditing}
             type="button"
           >
+            <span className="absolute inset-x-0 bottom-1 h-[42%] rounded-md bg-moss/18 transition group-hover:bg-moss/24" aria-hidden="true" />
             <span className="relative z-10">{prefix}</span>
-            <span
-              aria-hidden="true"
-              className="absolute inset-x-1 bottom-0 h-2 rounded-full bg-moss/18 transition group-hover:bg-moss/24"
-            />
           </button>
         )}
         <span className="text-2xl font-semibold leading-none text-ink sm:text-3xl">工作台</span>
