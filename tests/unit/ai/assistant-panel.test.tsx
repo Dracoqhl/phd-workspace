@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AiAssistantPanel } from "@/components/assistant/AiAssistantPanel";
@@ -348,6 +348,8 @@ describe("AiAssistantPanel", () => {
     expect(await screen.findByText("我整理了两个建议。")).toBeInTheDocument();
     expect(screen.getByText("新增任务：整理实验数据")).toBeInTheDocument();
     expect(screen.getByText("新增习惯：喝水")).toBeInTheDocument();
+    expect(within(screen.getByTestId("chat-message-assistant-bubble")).queryByText("新增任务：整理实验数据")).not.toBeInTheDocument();
+    expect(screen.getByTestId("ai-proposal-card")).toContainElement(screen.getByText("新增任务：整理实验数据"));
     expect(screen.getByTestId("ai-proposal-list")).toHaveClass("custom-scrollbar");
     expect(screen.getByText("新增任务：整理实验数据").closest("label")).toHaveClass("bg-surface");
 
