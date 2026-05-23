@@ -1,7 +1,7 @@
 "use client";
 
 import { Plus, Trash2 } from "lucide-react";
-import { ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ChangeEvent, CompositionEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useSyncStatus } from "@/components/sync/SyncStatusProvider";
 import type { QuickNote } from "@/types/note";
@@ -30,8 +30,10 @@ export function QuickNotesPanel() {
   const [error, setError] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<SaveState>("idle");
   const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  const [tagInputValue, setTagInputValue] = useState("");
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveSequences = useRef(new Map<string, number>());
+  const isComposingTag = useRef(false);
   const selectedNote = useMemo(() => notes.find((note) => note.id === selectedNoteId) ?? null, [notes, selectedNoteId]);
   const noteGroups = useMemo(() => groupNotesByCreatedDate(notes), [notes]);
 
@@ -68,6 +70,7 @@ export function QuickNotesPanel() {
         const firstNote = nextNotes[0] ?? null;
         setSelectedNoteId(firstNote?.id ?? null);
         setDraft(toDraft(firstNote));
+        setTagInputValue(firstNote?.tag ?? "");
       } catch (caught) {
         if (active) {
           setError(caught instanceof Error ? caught.message : "Unable to load notes.");
@@ -91,6 +94,7 @@ export function QuickNotesPanel() {
     clearSaveTimer();
     setSelectedNoteId(note.id);
     setDraft(toDraft(note));
+    setTagInputValue(note.tag);
     setSaveState("idle");
     setLastSavedAt(note.updatedAt ? new Date(note.updatedAt) : null);
   }
@@ -104,6 +108,7 @@ export function QuickNotesPanel() {
       setNotes((current) => [created, ...current]);
       setSelectedNoteId(created.id);
       setDraft(toDraft(created));
+      setTagInputValue(created.tag);
       setSaveState("idle");
       setLastSavedAt(null);
     } catch {
@@ -113,13 +118,35 @@ export function QuickNotesPanel() {
 
   function updateDraft(field: "tag" | "title" | "content", value: string) {
     if (!selectedNoteId) return;
-    const normalizedValue = field === "tag" ? value.slice(0, 4) : value;
+    const normalizedValue = field === "tag" ? normalizeTag(value) : value;
     const nextDraft = { ...draft, [field]: normalizedValue };
     setDraft(nextDraft);
     setSaveState("dirty");
     setError(null);
     setNotes((current) => current.map((note) => (note.id === selectedNoteId ? { ...note, ...nextDraft } : note)));
     scheduleSave(selectedNoteId, nextDraft);
+  }
+
+  function handleTagChange(value: string) {
+    setTagInputValue(value);
+    if (!isComposingTag.current) {
+      commitTag(value);
+    }
+  }
+
+  function handleTagCompositionStart() {
+    isComposingTag.current = true;
+  }
+
+  function handleTagCompositionEnd(event: CompositionEvent<HTMLInputElement>) {
+    isComposingTag.current = false;
+    commitTag(event.currentTarget.value);
+  }
+
+  function commitTag(value: string) {
+    const normalizedValue = normalizeTag(value);
+    setTagInputValue(normalizedValue);
+    updateDraft("tag", normalizedValue);
   }
 
   function scheduleSave(noteId: string, nextDraft: Pick<QuickNote, "tag" | "title" | "content">) {
@@ -176,6 +203,7 @@ export function QuickNotesPanel() {
           const nextSelection = nextNotes[0] ?? null;
           setSelectedNoteId(nextSelection?.id ?? null);
           setDraft(toDraft(nextSelection));
+          setTagInputValue(nextSelection?.tag ?? "");
           setSaveState("idle");
           setLastSavedAt(null);
         }
@@ -207,10 +235,11 @@ export function QuickNotesPanel() {
                   <input
                     aria-label="随手记标签"
                     className={`h-8 min-w-0 rounded-md border px-2.5 text-sm ${fieldControlClass}`}
-                    maxLength={4}
-                    onChange={(event: ChangeEvent<HTMLInputElement>) => updateDraft("tag", event.target.value)}
+                    onChange={(event: ChangeEvent<HTMLInputElement>) => handleTagChange(event.target.value)}
+                    onCompositionEnd={handleTagCompositionEnd}
+                    onCompositionStart={handleTagCompositionStart}
                     placeholder="最多4字"
-                    value={draft.tag}
+                    value={tagInputValue}
                   />
                 </label>
                 <label className="flex min-w-0 flex-col gap-1 text-xs font-medium text-muted">
@@ -360,6 +389,10 @@ function displayTag(tag: string): string {
 
 function displayTitle(title: string): string {
   return title.trim() || "未命名记录";
+}
+
+function normalizeTag(value: string): string {
+  return Array.from(value.trim()).slice(0, 4).join("");
 }
 
 function groupNotesByCreatedDate(notes: QuickNote[]): { pinned: QuickNote[]; today: QuickNote[]; past: QuickNote[] } {

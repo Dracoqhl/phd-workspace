@@ -166,6 +166,46 @@ describe("QuickNotesPanel", () => {
     await waitFor(() => expect(screen.queryByText("实验日志")).not.toBeInTheDocument());
     expect(fetchMock).toHaveBeenCalledWith("/api/notes/note_1", expect.objectContaining({ method: "DELETE" }));
   });
+
+  it("does not render or save IME composition text before it is committed", async () => {
+    const fetchMock = mockFetch([note({ id: "note_1", tag: "想法", title: "实验日志" })]);
+
+    render(<QuickNotesPanel />);
+
+    const tagInput = await screen.findByLabelText("随手记标签");
+    expect(screen.getByRole("button", { name: "打开记录 实验日志" })).toHaveTextContent("想法");
+
+    fireEvent.compositionStart(tagInput);
+    fireEvent.change(tagInput, { target: { value: "ling" } });
+
+    expect(tagInput).toHaveValue("ling");
+    expect(screen.getByRole("button", { name: "打开记录 实验日志" })).toHaveTextContent("想法");
+    expect(screen.getByRole("button", { name: "打开记录 实验日志" })).not.toHaveTextContent("ling");
+    expect(fetchMock).not.toHaveBeenCalledWith(
+      "/api/notes/note_1",
+      expect.objectContaining({
+        body: expect.stringContaining("ling")
+      })
+    );
+
+    fireEvent.change(tagInput, { target: { value: "灵感" } });
+    fireEvent.compositionEnd(tagInput);
+
+    await waitFor(() => expect(screen.getByRole("button", { name: "打开记录 实验日志" })).toHaveTextContent("灵感"));
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/notes/note_1",
+        expect.objectContaining({
+          method: "PATCH",
+          body: JSON.stringify({
+            tag: "灵感",
+            title: "实验日志",
+            content: ""
+          })
+        })
+      )
+    );
+  });
 });
 
 function formatDate(value: Date): string {
