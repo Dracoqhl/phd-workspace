@@ -197,16 +197,32 @@ describe("TaskManager", () => {
     expect(screen.getByText("Done task")).toBeInTheDocument();
   });
 
+  it("keeps top-level task creation collapsed until requested", async () => {
+    mockFetch([]);
+
+    render(<TaskManager />);
+
+    expect(await screen.findByRole("button", { name: "New Task" })).toBeInTheDocument();
+    expect(screen.queryByText("紧凑展示一级任务和子任务，点击标题、优先级或截止日期快速修改。")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Task title")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "New Task" }));
+
+    await waitFor(() => expect(screen.getByLabelText("Task title")).toHaveFocus());
+  });
+
   it("creates a top-level task", async () => {
     const fetchMock = mockFetch([]);
 
     render(<TaskManager />);
 
+    fireEvent.click(await screen.findByRole("button", { name: "New Task" }));
     fireEvent.change(screen.getByLabelText("Task title"), { target: { value: "Prepare committee slides" } });
     fireEvent.change(screen.getByLabelText("Task priority"), { target: { value: "high" } });
     fireEvent.click(screen.getByRole("button", { name: "Create Task" }));
 
     expect(await screen.findByText("Prepare committee slides")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Task title")).not.toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/tasks",
       expect.objectContaining({
@@ -228,6 +244,7 @@ describe("TaskManager", () => {
 
     render(<TaskManager />);
 
+    fireEvent.click(await screen.findByRole("button", { name: "New Task" }));
     fireEvent.change(screen.getByLabelText("Task title"), { target: { value: "Default priority task" } });
     fireEvent.click(screen.getByRole("button", { name: "Create Task" }));
 

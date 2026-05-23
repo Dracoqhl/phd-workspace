@@ -35,6 +35,7 @@ export function TaskManager() {
   const { trackSync } = useSyncStatus();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [form, setForm] = useState(emptyForm);
+  const [addingTask, setAddingTask] = useState(false);
   const [showCompleted, setShowCompleted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -48,6 +49,7 @@ export function TaskManager() {
   const [pendingCompletionTaskIds, setPendingCompletionTaskIds] = useState<Set<string>>(() => new Set());
   const hasLocalWrites = useRef(false);
   const taskMutationSequences = useRef(new Map<string, number>());
+  const taskTitleInputRef = useRef<HTMLInputElement>(null);
   const subtaskDraftRowRef = useRef<HTMLDivElement>(null);
   const creatingSubtaskRef = useRef(false);
 
@@ -117,6 +119,12 @@ export function TaskManager() {
   }, [selectedTaskId]);
 
   useEffect(() => {
+    if (addingTask) {
+      taskTitleInputRef.current?.focus();
+    }
+  }, [addingTask]);
+
+  useEffect(() => {
     if (!addingSubtaskFor) return;
 
     function submitSubtaskOnOutsideClick(event: globalThis.MouseEvent) {
@@ -174,6 +182,7 @@ export function TaskManager() {
       if (created) {
         setTasks((current) => [...current, created]);
         setForm(emptyForm);
+        setAddingTask(false);
       }
     } catch {
       setError("Unable to save task.");
@@ -377,41 +386,57 @@ export function TaskManager() {
     setSubtaskDueDate("");
   }
 
+  function cancelTaskDraft() {
+    setForm(emptyForm);
+    setAddingTask(false);
+    setError(null);
+  }
+
   return (
     <section
       aria-label="任务管理"
       className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm"
     >
-      <div className="flex flex-col gap-3 border-b border-slate-200 pb-4 md:flex-row md:items-start md:justify-between">
+      <div className="flex flex-col gap-3 border-b border-slate-200 pb-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h2 className="text-base font-semibold text-ink">任务管理</h2>
-          <p className="mt-2 text-sm leading-6 text-slate-600">紧凑展示一级任务和子任务，点击标题、优先级或截止日期快速修改。</p>
         </div>
-        <button className="h-9 rounded-md border border-slate-300 px-3 text-sm font-medium text-slate-700 hover:bg-slate-50" onClick={() => setShowCompleted((value) => !value)} type="button">
-          {showCompleted ? "Hide Completed" : "Show Completed"}
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button className="inline-flex h-9 items-center justify-center gap-2 rounded-md bg-ink px-3 text-sm font-semibold text-white hover:bg-slate-700" onClick={() => setAddingTask(true)} type="button">
+            <Plus aria-hidden="true" size={16} />
+            New Task
+          </button>
+          <button className="h-9 rounded-md border border-slate-300 px-3 text-sm font-medium text-slate-700 hover:bg-slate-50" onClick={() => setShowCompleted((value) => !value)} type="button">
+            {showCompleted ? "Hide Completed" : "Show Completed"}
+          </button>
+        </div>
       </div>
 
-      <form className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_9rem_10rem_auto]" onSubmit={createTask}>
-        <label className="grid gap-1 text-sm font-medium text-slate-700">
-          Task title
-          <input className={`h-10 rounded-md border px-3 text-sm font-normal ${fieldControlClass}`} onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))} value={form.title} />
-        </label>
-        <label className="grid gap-1 text-sm font-medium text-slate-700">
-          Task priority
-          <select className={`h-10 rounded-md border px-3 text-sm font-normal ${fieldControlClass}`} onChange={(event) => setForm((current) => ({ ...current, priority: event.target.value as TaskPriority }))} value={form.priority}>
-            {priorityOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-          </select>
-        </label>
-        <label className="grid gap-1 text-sm font-medium text-slate-700">
-          Due date
-          <input className={`h-10 rounded-md border px-3 text-sm font-normal ${fieldControlClass}`} onChange={(event) => setForm((current) => ({ ...current, dueDate: event.target.value }))} type="date" value={form.dueDate} />
-        </label>
-        <button className="mt-6 inline-flex h-10 items-center justify-center gap-2 rounded-md bg-ink px-4 text-sm font-semibold text-white hover:bg-slate-700" type="submit">
-          <Plus aria-hidden="true" size={16} />
-          Create Task
-        </button>
-      </form>
+      {addingTask ? (
+        <form className="mt-3 grid gap-3 md:grid-cols-[minmax(0,1fr)_9rem_10rem_auto_auto]" onSubmit={createTask}>
+          <label className="grid gap-1 text-sm font-medium text-slate-700">
+            Task title
+            <input ref={taskTitleInputRef} className={`h-10 rounded-md border px-3 text-sm font-normal ${fieldControlClass}`} onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))} value={form.title} />
+          </label>
+          <label className="grid gap-1 text-sm font-medium text-slate-700">
+            Task priority
+            <select className={`h-10 rounded-md border px-3 text-sm font-normal ${fieldControlClass}`} onChange={(event) => setForm((current) => ({ ...current, priority: event.target.value as TaskPriority }))} value={form.priority}>
+              {priorityOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+            </select>
+          </label>
+          <label className="grid gap-1 text-sm font-medium text-slate-700">
+            Due date
+            <input className={`h-10 rounded-md border px-3 text-sm font-normal ${fieldControlClass}`} onChange={(event) => setForm((current) => ({ ...current, dueDate: event.target.value }))} type="date" value={form.dueDate} />
+          </label>
+          <button className="mt-6 inline-flex h-10 items-center justify-center gap-2 rounded-md bg-ink px-4 text-sm font-semibold text-white hover:bg-slate-700" type="submit">
+            <Plus aria-hidden="true" size={16} />
+            Create Task
+          </button>
+          <button className="mt-6 inline-flex h-10 items-center justify-center rounded-md border border-slate-300 px-3 text-sm font-medium text-slate-700 hover:bg-slate-50" onClick={cancelTaskDraft} type="button">
+            Cancel
+          </button>
+        </form>
+      ) : null}
 
       {error ? <p className="mt-4 rounded-md border border-danger bg-danger-soft px-3 py-2 text-sm text-danger-text" role="alert">{error}</p> : null}
       {loading ? <p className="mt-5 text-sm text-slate-600">Loading tasks...</p> : null}
