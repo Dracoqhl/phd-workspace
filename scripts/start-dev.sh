@@ -21,11 +21,11 @@ mkdir -p "$DATA_DIR"
 
 export APP_PASSWORD SESSION_SECRET DATA_DIR PORT BIND_HOST
 
-echo "Building PhD Workspace for development"
+echo "Building personal workspace for development"
 echo "DATA_DIR: ${DATA_DIR}"
 pnpm build
 
-echo "Starting PhD Workspace"
+echo "Starting personal workspace"
 echo "URL: http://localhost:${PORT}"
 echo "Host binding: ${BIND_HOST}:${PORT}"
 echo "DATA_DIR: ${DATA_DIR}"

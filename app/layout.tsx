@@ -4,8 +4,8 @@ import type { ReactNode } from "react";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "博士工作台",
-  description: "个人博士工作台"
+  title: "个人工作台",
+  description: "可自定义的个人工作台"
 };
 
 interface RootLayoutProps {

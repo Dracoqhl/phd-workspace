@@ -5,7 +5,7 @@ import { CarePanel } from "@/components/care/CarePanel";
 import type { CareRecord, CareTodayResponse } from "@/types/care";
 
 const now = "2026-05-08T08:00:00.000Z";
-const defaultQuotePrompt = "温和、具体、低压力、适合博士科研日常";
+const defaultQuotePrompt = "温和、具体、低压力、适合长期计划";
 
 function care(overrides: Partial<CareRecord> = {}): CareRecord {
   return {
@@ -158,7 +158,7 @@ describe("CarePanel", () => {
     expect(screen.getByText("Quote prompt")).toBeInTheDocument();
     expect(input).toHaveValue("温和、具体、低压力");
     expect(input).not.toHaveAttribute("placeholder");
-    fireEvent.change(input, { target: { value: "更短，更有科研感" } });
+    fireEvent.change(input, { target: { value: "更短，更适合长期计划" } });
     fireEvent.blur(input);
 
     expect(await screen.findByText("新的偏好第一条。")).toBeInTheDocument();
@@ -166,7 +166,7 @@ describe("CarePanel", () => {
       "/api/care/generate",
       expect.objectContaining({
         method: "POST",
-        body: JSON.stringify({ preferenceText: "更短，更有科研感" })
+        body: JSON.stringify({ preferenceText: "更短，更适合长期计划" })
       })
     );
   });

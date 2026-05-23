@@ -1,6 +1,6 @@
 # Color System
 
-This document is the source of truth for PhD Workspace color usage. Keep it updated whenever a feature adds, removes, or changes visual states, theme tokens, or component color behavior.
+This document is the source of truth for personal workspace color usage. Keep it updated whenever a feature adds, removes, or changes visual states, theme tokens, or component color behavior.
 
 ## Purpose
 

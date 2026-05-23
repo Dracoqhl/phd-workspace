@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { useSyncStatus } from "@/components/sync/SyncStatusProvider";
 import type { CareRecord, CareTodayResponse, UpdateCareInput } from "@/types/care";
 
-const defaultQuotePrompt = "温和、具体、低压力、适合博士科研日常";
+const defaultQuotePrompt = "温和、具体、低压力、适合长期计划";
 const fieldControlClass = "border-field-border bg-field text-ink outline-none transition-colors placeholder:text-muted focus:border-moss focus:ring-2 focus:ring-moss/20 disabled:opacity-60";
 
 const energyLabels: Record<NonNullable<CareRecord["energyLevel"]>, string> = {

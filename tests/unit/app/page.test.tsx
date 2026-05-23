@@ -58,13 +58,14 @@ const mockedVerifySessionToken = vi.mocked(verifySessionToken);
 
 beforeEach(() => {
   vi.clearAllMocks();
+  window.localStorage.clear();
 });
 
 describe("workspace page shell", () => {
   it("renders the login screen when unauthenticated", () => {
     render(<WorkspacePageContent authenticated={false} />);
 
-    expect(screen.getByRole("heading", { name: "博士工作台" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /我的\s*工作台/ })).toBeInTheDocument();
     expect(screen.queryByText(/MVP|最小可运行页面壳/)).not.toBeInTheDocument();
     expect(screen.getByLabelText("Access password")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Log In" })).toBeInTheDocument();
@@ -84,7 +85,9 @@ describe("workspace page shell", () => {
   it("renders the workspace regions when authenticated", () => {
     render(<WorkspacePageContent authenticated={true} user={{ email: "student@example.com", role: "user" }} />);
 
-    expect(screen.getByRole("heading", { name: "博士工作台" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /我的\s*工作台/ })).toBeInTheDocument();
+    expect(screen.queryByText("PhD Workspace")).not.toBeInTheDocument();
+    expect(screen.getByText("管理任务、每日习惯、心灵关怀和 AI 辅助整理的个人工作台。")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open GitHub repository Dracoqhl/phd-workspace" })).toHaveAttribute(
       "href",
       "https://github.com/Dracoqhl/phd-workspace"
@@ -103,6 +106,18 @@ describe("workspace page shell", () => {
     expect(screen.getByRole("region", { name: "心灵关怀" })).toBeInTheDocument();
     expect(screen.getByRole("complementary", { name: "AI 助手" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Test AI" })).toBeInTheDocument();
+  });
+
+  it("lets users customize the workspace title prefix locally", () => {
+    render(<WorkspacePageContent authenticated={true} user={{ email: "user@example.com", role: "user" }} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "修改工作台名称前缀" }));
+    const input = screen.getByLabelText("工作台名称前缀");
+    fireEvent.change(input, { target: { value: "家庭" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    expect(screen.getByRole("heading", { name: /家庭\s*工作台/ })).toBeInTheDocument();
+    expect(window.localStorage.getItem("phd-workspace-title-prefix")).toBe("家庭");
   });
 
   it("renders only the admin dashboard for admin users", () => {
