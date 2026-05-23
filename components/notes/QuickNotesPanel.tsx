@@ -197,12 +197,12 @@ export function QuickNotesPanel() {
         </span>
       </div>
 
-      <div className="grid min-h-[22rem] gap-0 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <div className="grid min-h-[22rem] gap-0 lg:grid-cols-[minmax(0,1fr)_18rem] xl:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="min-w-0 border-b border-line p-3 lg:border-b-0 lg:border-r">
           {selectedNote ? (
-            <div className="grid h-full gap-1.5">
-              <div className="grid min-w-0 gap-1.5 sm:grid-cols-[minmax(5rem,7rem)_minmax(0,1fr)]">
-                <label className="grid min-w-0 gap-0.5 text-xs font-medium text-muted">
+            <div className="flex h-full min-w-0 flex-col gap-2">
+              <div className="grid min-w-0 items-start gap-2 sm:grid-cols-[minmax(5rem,7rem)_minmax(0,1fr)]">
+                <label className="flex min-w-0 flex-col gap-1 text-xs font-medium text-muted">
                   <span>标签</span>
                   <input
                     aria-label="随手记标签"
@@ -213,7 +213,7 @@ export function QuickNotesPanel() {
                     value={draft.tag}
                   />
                 </label>
-                <label className="grid min-w-0 gap-0.5 text-xs font-medium text-muted">
+                <label className="flex min-w-0 flex-col gap-1 text-xs font-medium text-muted">
                   <span>标题</span>
                   <input
                     aria-label="随手记标题"
@@ -224,11 +224,11 @@ export function QuickNotesPanel() {
                   />
                 </label>
               </div>
-              <label className="grid min-h-0 flex-1 gap-0.5 text-sm font-medium text-muted">
+              <label className="flex min-h-0 flex-1 flex-col gap-1 text-sm font-medium text-muted">
                 <span>正文</span>
                 <textarea
                   aria-label="随手记正文"
-                  className={`min-h-40 resize-y rounded-md border px-3 py-2 text-sm leading-6 ${fieldControlClass}`}
+                  className={`min-h-40 flex-1 resize-y rounded-md border px-3 py-2 text-sm leading-6 ${fieldControlClass}`}
                   onChange={(event: ChangeEvent<HTMLTextAreaElement>) => updateDraft("content", event.target.value)}
                   placeholder="写下一点也可以，系统会自动保存。"
                   value={draft.content}
