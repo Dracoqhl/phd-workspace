@@ -225,7 +225,7 @@ export function QuickNotesPanel() {
         </span>
       </div>
 
-      <div className="grid min-h-[22rem] gap-0 lg:grid-cols-[minmax(0,1fr)_18rem] xl:grid-cols-[minmax(0,1fr)_20rem]">
+      <div className="grid h-[18rem] gap-0 lg:grid-cols-[minmax(0,1fr)_18rem] xl:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="min-w-0 border-b border-line p-3 lg:border-b-0 lg:border-r">
           {selectedNote ? (
             <div className="flex h-full min-w-0 flex-col gap-2">
@@ -257,7 +257,7 @@ export function QuickNotesPanel() {
                 <span>正文</span>
                 <textarea
                   aria-label="随手记正文"
-                  className={`min-h-40 flex-1 resize-y rounded-md border px-3 py-2 text-sm leading-6 ${fieldControlClass}`}
+                  className={`min-h-24 flex-1 resize-y rounded-md border px-3 py-2 text-sm leading-6 ${fieldControlClass}`}
                   onChange={(event: ChangeEvent<HTMLTextAreaElement>) => updateDraft("content", event.target.value)}
                   placeholder="写下一点也可以，系统会自动保存。"
                   value={draft.content}
@@ -298,7 +298,7 @@ export function QuickNotesPanel() {
           </div>
           <div className="border-t border-line p-3">
             <button
-              className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md bg-primary px-3 text-sm font-semibold text-paper transition hover:opacity-90 focus:outline-none focus:ring-2 focus:ring-accent/35"
+              className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md border border-line bg-surface-muted px-3 text-sm font-semibold text-primary transition hover:border-accent hover:bg-accent-soft focus:outline-none focus:ring-2 focus:ring-accent/35"
               onClick={() => void createNote()}
               type="button"
             >
