@@ -86,7 +86,7 @@ describe("QuickNotesPanel", () => {
     render(<QuickNotesPanel />);
 
     expect(screen.getByRole("heading", { name: "随手记" })).toHaveClass("text-base");
-    expect(screen.getByText("实时保存标签、标题和正文，按创建时间归档。")).toBeInTheDocument();
+    expect(screen.getByText("沉淀灵感、复盘和临时想法的轻量记录区。")).toBeInTheDocument();
     const item = await screen.findByRole("button", { name: "打开记录 未命名记录" });
     expect(within(item).getByText("无标签")).toBeInTheDocument();
     expect(within(item).getByText("2026-05-21")).toBeInTheDocument();

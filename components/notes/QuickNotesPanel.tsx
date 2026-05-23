@@ -217,9 +217,10 @@ export function QuickNotesPanel() {
   return (
     <section aria-label="随手记" className="rounded-lg border border-line bg-surface p-5 shadow-sm">
       <div className="-mx-5 flex items-center justify-between gap-3 border-b border-line px-5 pb-4">
-        <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
           <h2 className="text-base font-semibold text-ink">随手记</h2>
-          <p className="text-xs text-muted">实时保存标签、标题和正文，按创建时间归档。</p>
+          <span aria-hidden="true" className="hidden h-4 w-px bg-slate-200 sm:block" />
+          <p className="text-xs leading-5 text-muted">沉淀灵感、复盘和临时想法的轻量记录区。</p>
         </div>
         <span aria-label="随手记保存状态" className={saveStatusClass(saveState)} role="status">
           {formatSaveStatus(saveState, lastSavedAt)}

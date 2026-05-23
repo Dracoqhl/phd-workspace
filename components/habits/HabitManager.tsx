@@ -303,9 +303,10 @@ export function HabitManager() {
   return (
     <section aria-label="每日健康习惯" className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex flex-col gap-3 border-b border-slate-200 pb-3">
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
+        <div className="-mt-1 flex items-center justify-between gap-3">
+          <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
             <h2 className="text-base font-semibold text-ink">每日健康习惯</h2>
+            <span aria-hidden="true" className="hidden h-4 w-px bg-slate-200 sm:block" />
             <p className="text-xs text-slate-500">每日 02:00 刷新</p>
           </div>
           <button

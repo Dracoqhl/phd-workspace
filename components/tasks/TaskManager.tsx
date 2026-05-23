@@ -460,9 +460,10 @@ export function TaskManager() {
       className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm"
     >
       <div className="-mx-5 flex flex-col gap-3 border-b border-slate-200 px-5 pb-4 md:flex-row md:items-center md:justify-between">
-        <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
           <h2 className="text-base font-semibold text-ink">任务管理</h2>
-          <p className="text-xs text-slate-500">拖动调整顺序，点击标题、状态、优先级或截止日期快速修改。</p>
+          <span aria-hidden="true" className="hidden h-4 w-px bg-slate-200 sm:block" />
+          <p className="text-xs leading-5 text-slate-500">集中管理阶段目标、论文推进和待办层级。</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button className="inline-flex h-8 items-center justify-center gap-1.5 rounded-md bg-ink px-2.5 text-xs font-semibold text-white hover:bg-slate-700" onClick={() => setAddingTask(true)} type="button">
