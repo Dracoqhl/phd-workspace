@@ -282,9 +282,15 @@ describe("TaskManager", () => {
 
     render(<TaskManager />);
 
-    fireEvent.dragStart(await screen.findByRole("button", { name: "拖动任务 Second task" }));
-    fireEvent.dragOver(screen.getByRole("row", { name: /First task/ }));
-    fireEvent.drop(screen.getByRole("row", { name: /First task/ }));
+    const dragButton = await screen.findByRole("button", { name: "拖动任务 Second task" });
+    const targetRow = screen.getByRole("row", { name: /First task/ });
+    expect(dragButton).not.toHaveClass("hover:bg-slate-100");
+
+    fireEvent.dragStart(dragButton);
+    fireEvent.dragOver(targetRow);
+    expect(targetRow).toHaveAttribute("data-drop-placement", "before");
+    expect(targetRow).toHaveClass("before:bg-moss");
+    fireEvent.drop(targetRow);
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
@@ -307,9 +313,11 @@ describe("TaskManager", () => {
     render(<TaskManager />);
 
     fireEvent.click(await screen.findByRole("button", { name: "Expand subtasks for Parent task" }));
+    const targetRow = screen.getByRole("row", { name: /First child/ });
     fireEvent.dragStart(screen.getByRole("button", { name: "拖动子任务 Second child" }));
-    fireEvent.dragOver(screen.getByRole("row", { name: /First child/ }));
-    fireEvent.drop(screen.getByRole("row", { name: /First child/ }));
+    fireEvent.dragOver(targetRow);
+    expect(targetRow).toHaveAttribute("data-drop-placement", "before");
+    fireEvent.drop(targetRow);
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
