@@ -131,9 +131,14 @@ describe("QuickNotesPanel", () => {
   });
 
   it("groups today's notes before past notes with a visual divider", async () => {
+    const now = new Date();
+    const today = formatDate(now);
+    const yesterdayDate = new Date(now);
+    yesterdayDate.setDate(now.getDate() - 1);
+    const yesterday = formatDate(yesterdayDate);
     mockFetch([
-      note({ id: "today", tag: "今日", title: "今天记录", createdAt: "2026-05-21T02:00:00.000Z" }),
-      note({ id: "past", tag: "旧事", title: "昨天记录", createdAt: "2026-05-20T02:00:00.000Z" })
+      note({ id: "today", tag: "今日", title: "今天记录", createdAt: `${today}T02:00:00.000Z` }),
+      note({ id: "past", tag: "旧事", title: "昨天记录", createdAt: `${yesterday}T02:00:00.000Z` })
     ]);
 
     render(<QuickNotesPanel />);
@@ -141,8 +146,8 @@ describe("QuickNotesPanel", () => {
     expect(await screen.findByText("当天")).toBeInTheDocument();
     expect(screen.getByText("往日")).toBeInTheDocument();
     expect(screen.getByTestId("past-notes-divider")).toHaveClass("border-dashed");
-    expect(screen.getByRole("button", { name: "打开记录 今天记录" }).textContent).toContain("2026-05-21");
-    expect(screen.getByRole("button", { name: "打开记录 昨天记录" }).textContent).toContain("2026-05-20");
+    expect(screen.getByRole("button", { name: "打开记录 今天记录" }).textContent).toContain(today);
+    expect(screen.getByRole("button", { name: "打开记录 昨天记录" }).textContent).toContain(yesterday);
   });
 
   it("keeps tags within four characters and deletes notes after confirmation", async () => {
@@ -162,3 +167,7 @@ describe("QuickNotesPanel", () => {
     expect(fetchMock).toHaveBeenCalledWith("/api/notes/note_1", expect.objectContaining({ method: "DELETE" }));
   });
 });
+
+function formatDate(value: Date): string {
+  return value.toLocaleDateString("en-CA");
+}

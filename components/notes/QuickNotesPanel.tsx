@@ -200,35 +200,35 @@ export function QuickNotesPanel() {
       <div className="grid min-h-[22rem] gap-0 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="min-w-0 border-b border-line p-3 lg:border-b-0 lg:border-r">
           {selectedNote ? (
-            <div className="grid h-full gap-2">
-              <div className="grid gap-2 sm:grid-cols-[7rem_minmax(0,1fr)]">
-                <label className="grid gap-1 text-xs font-medium text-muted">
+            <div className="grid h-full gap-1.5">
+              <div className="grid min-w-0 gap-1.5 sm:grid-cols-[minmax(5rem,7rem)_minmax(0,1fr)]">
+                <label className="grid min-w-0 gap-0.5 text-xs font-medium text-muted">
                   <span>标签</span>
                   <input
                     aria-label="随手记标签"
-                    className={`h-9 rounded-md border px-2.5 text-sm ${fieldControlClass}`}
+                    className={`h-8 min-w-0 rounded-md border px-2.5 text-sm ${fieldControlClass}`}
                     maxLength={4}
                     onChange={(event: ChangeEvent<HTMLInputElement>) => updateDraft("tag", event.target.value)}
                     placeholder="最多4字"
                     value={draft.tag}
                   />
                 </label>
-                <label className="grid gap-1 text-xs font-medium text-muted">
+                <label className="grid min-w-0 gap-0.5 text-xs font-medium text-muted">
                   <span>标题</span>
                   <input
                     aria-label="随手记标题"
-                    className={`h-9 rounded-md border px-3 text-sm font-semibold ${fieldControlClass}`}
+                    className={`h-8 min-w-0 rounded-md border px-3 text-sm font-semibold ${fieldControlClass}`}
                     onChange={(event: ChangeEvent<HTMLInputElement>) => updateDraft("title", event.target.value)}
                     placeholder="未命名记录"
                     value={draft.title}
                   />
                 </label>
               </div>
-              <label className="grid min-h-0 flex-1 gap-1.5 text-sm font-medium text-muted">
+              <label className="grid min-h-0 flex-1 gap-0.5 text-sm font-medium text-muted">
                 <span>正文</span>
                 <textarea
                   aria-label="随手记正文"
-                  className={`min-h-40 resize-y rounded-md border px-3 py-2.5 text-sm leading-6 ${fieldControlClass}`}
+                  className={`min-h-40 resize-y rounded-md border px-3 py-2 text-sm leading-6 ${fieldControlClass}`}
                   onChange={(event: ChangeEvent<HTMLTextAreaElement>) => updateDraft("content", event.target.value)}
                   placeholder="写下一点也可以，系统会自动保存。"
                   value={draft.content}
