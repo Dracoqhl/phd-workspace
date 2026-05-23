@@ -7,7 +7,7 @@ import { APP_VERSION, RELEASE_NOTES } from "@/lib/version";
 const STORAGE_KEY = "phd-workspace-title-prefix";
 const RELEASE_STORAGE_KEY = "phd-workspace-last-seen-version";
 const DEFAULT_PREFIX = "我的";
-const MAX_PREFIX_LENGTH = 12;
+const MAX_PREFIX_WEIGHT = 12;
 
 export function WorkspaceTitle() {
   const [prefix, setPrefix] = useState(DEFAULT_PREFIX);
@@ -21,7 +21,7 @@ export function WorkspaceTitle() {
     try {
       const stored = window.localStorage.getItem(STORAGE_KEY)?.trim();
       if (stored) {
-        setPrefix(stored.slice(0, MAX_PREFIX_LENGTH));
+        setPrefix(limitPrefix(stored));
       }
     } catch {
       // The default title remains available if localStorage is blocked.
@@ -51,7 +51,7 @@ export function WorkspaceTitle() {
   }
 
   function savePrefix() {
-    const nextPrefix = draft.trim().slice(0, MAX_PREFIX_LENGTH) || DEFAULT_PREFIX;
+    const nextPrefix = limitPrefix(draft.trim()) || DEFAULT_PREFIX;
     setPrefix(nextPrefix);
     setDraft(nextPrefix);
     setEditing(false);
@@ -84,9 +84,8 @@ export function WorkspaceTitle() {
           <input
             aria-label="工作台名称前缀"
             className="min-w-0 max-w-56 rounded-md border border-moss bg-white px-2 py-1 text-4xl font-semibold leading-none text-ink outline-none ring-2 ring-moss/15 sm:text-5xl"
-            maxLength={MAX_PREFIX_LENGTH}
             onBlur={savePrefix}
-            onChange={(event) => setDraft(event.target.value)}
+            onChange={(event) => setDraft(limitPrefix(event.target.value))}
             onKeyDown={(event) => {
               if (event.key === "Enter") {
                 event.preventDefault();
@@ -103,25 +102,15 @@ export function WorkspaceTitle() {
         ) : (
           <button
             aria-label="修改工作台名称前缀"
-            className="group relative inline-flex rounded-md px-1 pb-2 pt-1 text-4xl font-semibold leading-none text-moss transition hover:bg-moss/10 focus:outline-none focus:ring-2 focus:ring-moss/25 sm:text-5xl"
+            className="group relative inline-flex rounded-md px-1 pb-1.5 pt-1 text-4xl font-semibold leading-none text-moss transition hover:bg-moss/10 focus:outline-none focus:ring-2 focus:ring-moss/25 sm:text-5xl"
             onClick={startEditing}
             type="button"
           >
             <span className="relative z-10">{prefix}</span>
-            <svg
+            <span
               aria-hidden="true"
-              className="pointer-events-none absolute inset-x-0 -bottom-0.5 h-3 w-full text-moss/70 transition group-hover:text-moss"
-              preserveAspectRatio="none"
-              viewBox="0 0 120 18"
-            >
-              <path
-                d="M3 10 C 14 1, 25 17, 36 8 S 58 17, 69 8 S 91 17, 102 8 S 113 1, 117 10"
-                fill="none"
-                stroke="currentColor"
-                strokeLinecap="round"
-                strokeWidth="5"
-              />
-            </svg>
+              className="absolute inset-x-1 bottom-0 h-2 rounded-full bg-moss/18 transition group-hover:bg-moss/24"
+            />
           </button>
         )}
         <span className="text-2xl font-semibold leading-none text-ink sm:text-3xl">工作台</span>
@@ -143,6 +132,20 @@ export function WorkspaceTitle() {
       ) : null}
     </>
   );
+}
+
+function limitPrefix(value: string): string {
+  let weight = 0;
+  let result = "";
+
+  for (const char of value.trim()) {
+    const charWeight = /[\u4e00-\u9fff]/.test(char) ? 2 : 1;
+    if (weight + charWeight > MAX_PREFIX_WEIGHT) break;
+    weight += charWeight;
+    result += char;
+  }
+
+  return result;
 }
 
 function ReleaseNotesDialog({

@@ -140,17 +140,17 @@ describe("workspace page shell", () => {
     expect(screen.getByText("支持任务和子任务管理，包含状态、优先级、截止日期和完成状态。")).toBeInTheDocument();
   });
 
-  it("lets users customize the workspace title prefix locally", () => {
+  it("lets users customize the workspace title prefix locally with a six Chinese character limit", () => {
     window.localStorage.setItem("phd-workspace-last-seen-version", "1.1");
     render(<WorkspacePageContent authenticated={true} user={{ email: "user@example.com", role: "user" }} />);
 
     fireEvent.click(screen.getByRole("button", { name: "修改工作台名称前缀" }));
     const input = screen.getByLabelText("工作台名称前缀");
-    fireEvent.change(input, { target: { value: "家庭" } });
+    fireEvent.change(input, { target: { value: "智慧博士生的日常" } });
     fireEvent.keyDown(input, { key: "Enter" });
 
-    expect(screen.getByRole("heading", { name: /家庭\s*工作台/ })).toBeInTheDocument();
-    expect(window.localStorage.getItem("phd-workspace-title-prefix")).toBe("家庭");
+    expect(screen.getByRole("heading", { name: /智慧博士生的\s*工作台/ })).toBeInTheDocument();
+    expect(window.localStorage.getItem("phd-workspace-title-prefix")).toBe("智慧博士生的");
   });
 
   it("renders only the admin dashboard for admin users", () => {
