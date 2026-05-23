@@ -112,14 +112,14 @@ describe("TaskManager", () => {
     render(<TaskManager />);
 
     expect(await screen.findByRole("table", { name: "Task list" })).not.toHaveClass("rounded-list-frame");
-    expect(await screen.findByRole("columnheader", { name: "Task" })).toBeInTheDocument();
-    expect(screen.getByRole("columnheader", { name: "Status" })).toBeInTheDocument();
-    expect(screen.getByRole("columnheader", { name: "Priority" })).toBeInTheDocument();
-    expect(screen.getByRole("columnheader", { name: "Due" })).toBeInTheDocument();
-    expect(screen.getByRole("columnheader", { name: "Task" })).toHaveClass("text-center");
-    expect(screen.getByRole("columnheader", { name: "Status" })).toHaveClass("text-center");
-    expect(screen.getByRole("columnheader", { name: "Priority" })).toHaveClass("text-center");
-    expect(screen.getByRole("columnheader", { name: "Due" })).toHaveClass("text-center");
+    expect(await screen.findByRole("columnheader", { name: "任务" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "状态" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "优先级" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "截止" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "任务" })).toHaveClass("text-center");
+    expect(screen.getByRole("columnheader", { name: "状态" })).toHaveClass("text-center");
+    expect(screen.getByRole("columnheader", { name: "优先级" })).toHaveClass("text-center");
+    expect(screen.getByRole("columnheader", { name: "截止" })).toHaveClass("text-center");
     expect(screen.getByTestId("status-cell-task_1")).toHaveClass("justify-center");
     expect(screen.getByTestId("priority-cell-task_1")).toHaveClass("justify-center");
     expect(screen.getByTestId("due-cell-task_1")).toHaveClass("justify-center");

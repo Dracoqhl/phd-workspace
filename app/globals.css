@@ -351,6 +351,16 @@ button {
   border-bottom-right-radius: var(--rounded-list-inner-radius);
 }
 
+.task-table {
+  border-bottom-left-radius: calc(0.5rem - 1px);
+  border-bottom-right-radius: calc(0.5rem - 1px);
+  overflow: hidden;
+}
+
+.task-table > [role="rowgroup"]:last-child > [role="row"]:last-child {
+  border-bottom-width: 0;
+}
+
 .animated-check-circle {
   stroke: currentColor;
   stroke-linecap: round;

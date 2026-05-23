@@ -446,13 +446,13 @@ export function TaskManager() {
       ) : null}
 
       {!loading && topLevelTasks.length > 0 ? (
-        <div aria-label="Task list" className="-mx-5" role="table">
-          <div className="grid grid-cols-[2rem_minmax(0,1fr)_6.5rem_4.5rem_5.5rem_4.5rem] items-center gap-2 border-b border-slate-200 px-5 py-2 text-xs font-semibold text-slate-500" role="row">
+        <div aria-label="Task list" className="task-table -mx-5 -mb-5" role="table">
+          <div className="grid grid-cols-[2rem_minmax(0,1fr)_6.5rem_4.5rem_5.5rem_4.5rem] items-center gap-2 border-b border-slate-200 px-5 py-1.5 text-[11px] font-medium text-slate-500" role="row">
             <div aria-label="Expand" className="text-center" role="columnheader" />
-            <div className="text-center" role="columnheader">Task</div>
-            <div className="text-center" role="columnheader">Status</div>
-            <div className="text-center" role="columnheader">Priority</div>
-            <div className="text-center" role="columnheader">Due</div>
+            <div className="text-center" role="columnheader">任务</div>
+            <div className="text-center" role="columnheader">状态</div>
+            <div className="text-center" role="columnheader">优先级</div>
+            <div className="text-center" role="columnheader">截止</div>
             <div aria-label="Actions" className="text-center" role="columnheader" />
           </div>
           {topLevelTasks.map((task) => {
