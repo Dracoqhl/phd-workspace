@@ -40,6 +40,7 @@ export function ensureDatabaseSchema(db: SqliteDatabase): void {
       priority TEXT NOT NULL,
       due_date TEXT,
       parent_task_id TEXT,
+      sort_order INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
       completed_at TEXT
@@ -146,6 +147,7 @@ export function ensureDatabaseSchema(db: SqliteDatabase): void {
   ensureColumn(db, "ai_chat_messages", "proposals_json", "TEXT NOT NULL DEFAULT '[]'");
   ensureColumn(db, "ai_chat_messages", "action_state", "TEXT NOT NULL DEFAULT 'pending'");
   ensureColumn(db, "ai_chat_messages", "action_status", "TEXT NOT NULL DEFAULT ''");
+  ensureColumn(db, "tasks", "sort_order", "INTEGER NOT NULL DEFAULT 0");
   ensureAdminUser(db);
 }
 

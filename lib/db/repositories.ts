@@ -32,7 +32,7 @@ class SqliteTaskRepository {
   ) {}
 
   async list(): Promise<Task[]> {
-    const rows = this.db.prepare("SELECT * FROM tasks WHERE user_id = ? ORDER BY created_at ASC").all(this.userId) as TaskRow[];
+    const rows = this.db.prepare("SELECT * FROM tasks WHERE user_id = ? ORDER BY sort_order ASC, created_at ASC").all(this.userId) as TaskRow[];
     return rows.map(mapTask);
   }
 
@@ -45,6 +45,7 @@ class SqliteTaskRepository {
     const tasks = await this.list();
     validateParentTask(input.parentTaskId, tasks);
     const now = new Date().toISOString();
+    const sortOrder = nextTaskSortOrder(tasks, input.parentTaskId);
     const task: Task = {
       id: randomUUID(),
       title: input.title,
@@ -53,6 +54,7 @@ class SqliteTaskRepository {
       priority: input.priority,
       dueDate: input.dueDate,
       parentTaskId: input.parentTaskId,
+      sortOrder,
       createdAt: now,
       updatedAt: now,
       completedAt: input.status === "completed" ? now : null
@@ -60,8 +62,8 @@ class SqliteTaskRepository {
 
     this.db.prepare(
       `INSERT INTO tasks
-       (id, user_id, title, description, status, priority, due_date, parent_task_id, created_at, updated_at, completed_at)
-       VALUES (@id, @userId, @title, @description, @status, @priority, @dueDate, @parentTaskId, @createdAt, @updatedAt, @completedAt)`
+       (id, user_id, title, description, status, priority, due_date, parent_task_id, sort_order, created_at, updated_at, completed_at)
+       VALUES (@id, @userId, @title, @description, @status, @priority, @dueDate, @parentTaskId, @sortOrder, @createdAt, @updatedAt, @completedAt)`
     ).run({ ...task, userId: this.userId });
 
     return task;
@@ -86,11 +88,26 @@ class SqliteTaskRepository {
     this.db.prepare(
       `UPDATE tasks
        SET title = @title, description = @description, status = @status, priority = @priority,
-           due_date = @dueDate, parent_task_id = @parentTaskId, updated_at = @updatedAt, completed_at = @completedAt
+           due_date = @dueDate, parent_task_id = @parentTaskId, sort_order = @sortOrder, updated_at = @updatedAt, completed_at = @completedAt
        WHERE id = @id AND user_id = @userId`
     ).run({ ...task, userId: this.userId });
 
     return task;
+  }
+
+  async reorder(parentTaskId: string | null, orderedIds: string[]): Promise<Task[]> {
+    const tasks = await this.list();
+    validateTaskReorder(parentTaskId, orderedIds, tasks);
+    const now = new Date().toISOString();
+    const transaction = this.db.transaction(() => {
+      orderedIds.forEach((id, index) => {
+        this.db
+          .prepare("UPDATE tasks SET sort_order = ?, updated_at = ? WHERE id = ? AND user_id = ?")
+          .run(index, now, id, this.userId);
+      });
+    });
+    transaction();
+    return this.list();
   }
 
   async delete(taskId: string, deletedAt = new Date().toISOString()): Promise<void> {
@@ -519,6 +536,7 @@ interface TaskRow {
   priority: Task["priority"];
   due_date: string | null;
   parent_task_id: string | null;
+  sort_order: number;
   created_at: string;
   updated_at: string;
   completed_at: string | null;
@@ -612,6 +630,23 @@ function validateParentTask(parentTaskId: string | null, tasks: Task[]): void {
   }
 }
 
+function validateTaskReorder(parentTaskId: string | null, orderedIds: string[], tasks: Task[]): void {
+  const scopedTasks = tasks.filter((task) => task.parentTaskId === parentTaskId);
+  if (orderedIds.length !== scopedTasks.length) {
+    throw new Error("Invalid task order");
+  }
+
+  const scopedIds = new Set(scopedTasks.map((task) => task.id));
+  if (orderedIds.some((id) => !scopedIds.has(id)) || new Set(orderedIds).size !== orderedIds.length) {
+    throw new Error("Invalid task order");
+  }
+}
+
+function nextTaskSortOrder(tasks: Task[], parentTaskId: string | null): number {
+  const scopedOrders = tasks.filter((task) => task.parentTaskId === parentTaskId).map((task) => task.sortOrder);
+  return scopedOrders.length === 0 ? 0 : Math.max(...scopedOrders) + 1;
+}
+
 function mapTask(row: TaskRow): Task {
   return {
     id: row.id,
@@ -621,6 +656,7 @@ function mapTask(row: TaskRow): Task {
     priority: row.priority,
     dueDate: row.due_date,
     parentTaskId: row.parent_task_id,
+    sortOrder: row.sort_order,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     completedAt: row.completed_at

@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { POST as login } from "@/app/api/auth/login/route";
 import { DELETE as deleteTask, GET as getTask, PATCH as updateTask } from "@/app/api/tasks/[id]/route";
 import { POST as createSubtask } from "@/app/api/tasks/[id]/subtasks/route";
+import { PATCH as reorderTasks } from "@/app/api/tasks/reorder/route";
 import { GET as listTasks, POST as createTask } from "@/app/api/tasks/route";
 import { createRepositories } from "@/lib/data/repositories";
 import type { Task } from "@/types/task";
@@ -116,6 +117,54 @@ describe("task routes", () => {
         priority: "low"
       }
     });
+  });
+
+  it("persists top-level task reorder", async () => {
+    const first = await createTaskJson({ title: "First" });
+    const second = await createTaskJson({ title: "Second" });
+
+    const response = await reorderTasks(
+      authRequest(`${baseUrl}/api/tasks/reorder`, {
+        method: "PATCH",
+        body: JSON.stringify({ parentTaskId: null, orderedIds: [second.id, first.id] })
+      })
+    );
+
+    expect(response.status).toBe(200);
+    const listResponse = await listTasks(authRequest(`${baseUrl}/api/tasks`));
+    const { tasks } = (await listResponse.json()) as { tasks: Task[] };
+    expect(tasks.map((task) => task.id)).toEqual([second.id, first.id]);
+  });
+
+  it("rejects subtask reorder across different parents", async () => {
+    const firstParent = await createTaskJson({ title: "First parent" });
+    const secondParent = await createTaskJson({ title: "Second parent" });
+    const firstChildResponse = await createSubtask(
+      authRequest(`${baseUrl}/api/tasks/${firstParent.id}/subtasks`, {
+        method: "POST",
+        body: JSON.stringify({ title: "First child" })
+      }),
+      { params: { id: firstParent.id } }
+    );
+    const secondChildResponse = await createSubtask(
+      authRequest(`${baseUrl}/api/tasks/${secondParent.id}/subtasks`, {
+        method: "POST",
+        body: JSON.stringify({ title: "Second child" })
+      }),
+      { params: { id: secondParent.id } }
+    );
+    const { task: firstChild } = (await firstChildResponse.json()) as { task: Task };
+    const { task: secondChild } = (await secondChildResponse.json()) as { task: Task };
+
+    const response = await reorderTasks(
+      authRequest(`${baseUrl}/api/tasks/reorder`, {
+        method: "PATCH",
+        body: JSON.stringify({ parentTaskId: firstParent.id, orderedIds: [secondChild.id, firstChild.id] })
+      })
+    );
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({ error: "Invalid task payload" });
   });
 
   it("deletes a parent task and its subtasks into trash", async () => {

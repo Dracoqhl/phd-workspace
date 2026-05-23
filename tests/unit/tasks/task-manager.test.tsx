@@ -15,6 +15,7 @@ function task(overrides: Partial<Task>): Task {
     priority: "high",
     dueDate: "2026-05-09",
     parentTaskId: null,
+    sortOrder: 0,
     createdAt: now,
     updatedAt: now,
     completedAt: null,
@@ -45,8 +46,24 @@ function mockFetch(tasks: Task[]) {
           status: "not_started",
           priority: body.priority as Task["priority"],
           dueDate: (body.dueDate as string | null) ?? null,
-          parentTaskId: null
+          parentTaskId: null,
+          sortOrder: tasks.filter((item) => item.parentTaskId === null).length
         })
+      });
+    }
+
+    if (url === "/api/tasks/reorder" && method === "PATCH") {
+      const body = parseBody(init);
+      const parentTaskId = (body.parentTaskId as string | null) ?? null;
+      const orderedIds = body.orderedIds as string[];
+      const orderById = new Map(orderedIds.map((id, index) => [id, index]));
+      return Response.json({
+        tasks: tasks
+          .map((item) => {
+            const sortOrder = orderById.get(item.id);
+            return item.parentTaskId === parentTaskId && sortOrder !== undefined ? { ...item, sortOrder } : item;
+          })
+          .sort((left, right) => left.sortOrder - right.sortOrder || left.createdAt.localeCompare(right.createdAt))
       });
     }
 
@@ -60,7 +77,8 @@ function mockFetch(tasks: Task[]) {
           status: body.status as Task["status"],
           priority: body.priority as Task["priority"],
           dueDate: (body.dueDate as string | null) ?? null,
-          parentTaskId: "task_1"
+          parentTaskId: "task_1",
+          sortOrder: tasks.filter((item) => item.parentTaskId === "task_1").length
         })
       });
     }
@@ -254,6 +272,54 @@ describe("TaskManager", () => {
         body: expect.stringContaining('"priority":"low"')
       })
     );
+  });
+
+  it("reorders top-level tasks with the drag handle", async () => {
+    const fetchMock = mockFetch([
+      task({ id: "task_1", title: "First task", sortOrder: 0 }),
+      task({ id: "task_2", title: "Second task", sortOrder: 1 })
+    ]);
+
+    render(<TaskManager />);
+
+    fireEvent.dragStart(await screen.findByRole("button", { name: "拖动任务 Second task" }));
+    fireEvent.dragOver(screen.getByRole("row", { name: /First task/ }));
+    fireEvent.drop(screen.getByRole("row", { name: /First task/ }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/tasks/reorder",
+        expect.objectContaining({
+          method: "PATCH",
+          body: JSON.stringify({ parentTaskId: null, orderedIds: ["task_2", "task_1"] })
+        })
+      );
+    });
+  });
+
+  it("reorders subtasks only within the same parent", async () => {
+    const fetchMock = mockFetch([
+      task({ id: "task_1", title: "Parent task", sortOrder: 0 }),
+      task({ id: "subtask_1", title: "First child", parentTaskId: "task_1", sortOrder: 0 }),
+      task({ id: "subtask_2", title: "Second child", parentTaskId: "task_1", sortOrder: 1 })
+    ]);
+
+    render(<TaskManager />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Expand subtasks for Parent task" }));
+    fireEvent.dragStart(screen.getByRole("button", { name: "拖动子任务 Second child" }));
+    fireEvent.dragOver(screen.getByRole("row", { name: /First child/ }));
+    fireEvent.drop(screen.getByRole("row", { name: /First child/ }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/tasks/reorder",
+        expect.objectContaining({
+          method: "PATCH",
+          body: JSON.stringify({ parentTaskId: "task_1", orderedIds: ["subtask_2", "subtask_1"] })
+        })
+      );
+    });
   });
 
   it("reloads tasks when an AI confirmation refresh event is dispatched", async () => {

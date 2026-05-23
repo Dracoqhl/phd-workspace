@@ -1,7 +1,7 @@
 "use client";
 
-import { Calendar, Check, ChevronDown, ChevronRight, CornerDownRight, Plus, Trash2 } from "lucide-react";
-import { FormEvent, KeyboardEvent, MouseEvent, RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Calendar, Check, ChevronDown, ChevronRight, CornerDownRight, GripVertical, Plus, Trash2 } from "lucide-react";
+import { DragEvent, FormEvent, KeyboardEvent, MouseEvent, RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useSyncStatus } from "@/components/sync/SyncStatusProvider";
 import { getTaskDueState, getTaskProgress } from "@/lib/domain/tasks";
@@ -31,6 +31,8 @@ const emptyForm = {
   dueDate: ""
 };
 
+const taskGridColumns = "grid-cols-[1.75rem_2rem_minmax(0,1fr)_6.5rem_4.5rem_5.5rem_4.5rem]";
+
 export function TaskManager() {
   const { trackSync } = useSyncStatus();
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -42,6 +44,7 @@ export function TaskManager() {
   const [expandedTaskIds, setExpandedTaskIds] = useState<Set<string>>(() => new Set());
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [addingSubtaskFor, setAddingSubtaskFor] = useState<string | null>(null);
+  const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null);
   const [subtaskTitle, setSubtaskTitle] = useState("");
   const [subtaskStatus, setSubtaskStatus] = useState<TaskStatus>("not_started");
   const [subtaskPriority, setSubtaskPriority] = useState<TaskPriority>("low");
@@ -317,6 +320,45 @@ export function TaskManager() {
     }
   }
 
+  async function reorderTask(draggedTaskId: string, targetTaskId: string, placement: "before" | "after") {
+    if (draggedTaskId === targetTaskId) return;
+
+    const draggedTask = tasks.find((task) => task.id === draggedTaskId);
+    const targetTask = tasks.find((task) => task.id === targetTaskId);
+    if (!draggedTask || !targetTask || draggedTask.parentTaskId !== targetTask.parentTaskId) {
+      return;
+    }
+
+    const previousTasks = tasks;
+    const { tasks: nextTasks, orderedIds } = reorderTasksInScope(tasks, draggedTask.parentTaskId, draggedTaskId, targetTaskId, placement);
+    if (orderedIds.length === 0) return;
+
+    hasLocalWrites.current = true;
+    setError(null);
+    setTasks(nextTasks);
+
+    try {
+      const payload = await requestJson<{ tasks?: Task[]; error?: string }>(
+        "/api/tasks/reorder",
+        {
+          method: "PATCH",
+          body: JSON.stringify({
+            parentTaskId: draggedTask.parentTaskId,
+            orderedIds
+          })
+        },
+        "Unable to reorder tasks."
+      );
+
+      if (payload.tasks) {
+        setTasks(sortTasks(payload.tasks));
+      }
+    } catch (caught) {
+      setTasks(previousTasks);
+      setError(caught instanceof Error ? caught.message : "Unable to reorder tasks.");
+    }
+  }
+
   async function writeTask(url: string, init: RequestInit): Promise<Task | null> {
     setError(null);
     const payload = await requestJson<{ task?: Task; error?: string }>(url, init, "Unable to save task.");
@@ -447,7 +489,8 @@ export function TaskManager() {
 
       {!loading && topLevelTasks.length > 0 ? (
         <div aria-label="Task list" className="task-table -mx-5 -mb-5" role="table">
-          <div className="grid grid-cols-[2rem_minmax(0,1fr)_6.5rem_4.5rem_5.5rem_4.5rem] items-center gap-2 border-b border-slate-200 px-5 py-1.5 text-[11px] font-medium text-slate-500" role="row">
+          <div className={`grid ${taskGridColumns} items-center gap-2 border-b border-slate-200 px-5 py-1.5 text-[11px] font-medium text-slate-500`} role="row">
+            <div aria-label="Drag" className="text-center" role="columnheader" />
             <div aria-label="Expand" className="text-center" role="columnheader" />
             <div className="text-center" role="columnheader">任务</div>
             <div className="text-center" role="columnheader">状态</div>
@@ -467,6 +510,15 @@ export function TaskManager() {
                   pendingCompletion={pendingCompletionTaskIds.has(task.id)}
                   onAddSubtask={startAddSubtask}
                   onDelete={deleteTask}
+                  onDragEnd={() => setDraggingTaskId(null)}
+                  onDragOver={(event, targetTask) => handleTaskDragOver(event, draggingTaskId, targetTask, tasks)}
+                  onDragStart={setDraggingTaskId}
+                  onDrop={(event, targetTask) => {
+                    const placement = getDropPlacement(event);
+                    const draggedId = draggingTaskId;
+                    setDraggingTaskId(null);
+                    if (draggedId) void reorderTask(draggedId, targetTask.id, placement);
+                  }}
                   onPriorityChange={(taskId, priority) => updateTask(taskId, { priority })}
                   onStatusChange={(taskId, status) => updateTask(taskId, { status })}
                   onStatusToggle={(taskToToggle) => updateTask(taskToToggle.id, { status: taskToToggle.status === "completed" ? "not_started" : "completed" }, { completionFeedback: true })}
@@ -503,6 +555,15 @@ export function TaskManager() {
                     key={child.id}
                     pendingCompletion={pendingCompletionTaskIds.has(child.id)}
                     onDelete={deleteSubtask}
+                    onDragEnd={() => setDraggingTaskId(null)}
+                    onDragOver={(event, targetTask) => handleTaskDragOver(event, draggingTaskId, targetTask, tasks)}
+                    onDragStart={setDraggingTaskId}
+                    onDrop={(event, targetTask) => {
+                      const placement = getDropPlacement(event);
+                      const draggedId = draggingTaskId;
+                      setDraggingTaskId(null);
+                      if (draggedId) void reorderTask(draggedId, targetTask.id, placement);
+                    }}
                     onPriorityChange={(taskId, priority) => updateTask(taskId, { priority })}
                     onStatusChange={(taskId, status) => updateTask(taskId, { status })}
                     onStatusToggle={(taskToToggle) => updateTask(taskToToggle.id, { status: taskToToggle.status === "completed" ? "not_started" : "completed" }, { completionFeedback: true })}
@@ -535,6 +596,10 @@ interface TaskRowProps {
   onToggleExpanded?: (taskId: string) => void;
   onSelect: (taskId: string) => void;
   onAddSubtask?: (taskId: string) => void;
+  onDragStart: (taskId: string) => void;
+  onDragEnd: () => void;
+  onDragOver: (event: DragEvent<HTMLDivElement>, task: Task) => void;
+  onDrop: (event: DragEvent<HTMLDivElement>, task: Task) => void;
   onTitleSave: (taskId: string, title: string) => Promise<void>;
   onStatusToggle: (task: Task) => Promise<void>;
   onStatusChange: (taskId: string, status: TaskStatus) => Promise<void>;
@@ -543,7 +608,7 @@ interface TaskRowProps {
   onDelete: (task: Task) => Promise<void>;
 }
 
-function TaskRow({ task, isSubtask, canExpand, expanded, progress, selected, pendingCompletion, selectedTaskId, onToggleExpanded, onSelect, onAddSubtask, onTitleSave, onStatusToggle, onStatusChange, onPriorityChange, onDueDateChange, onDelete }: TaskRowProps) {
+function TaskRow({ task, isSubtask, canExpand, expanded, progress, selected, pendingCompletion, selectedTaskId, onToggleExpanded, onSelect, onAddSubtask, onDragStart, onDragEnd, onDragOver, onDrop, onTitleSave, onStatusToggle, onStatusChange, onPriorityChange, onDueDateChange, onDelete }: TaskRowProps) {
   const rowClass = pendingCompletion
     ? "bg-success-soft"
     : task.status === "completed"
@@ -557,7 +622,25 @@ function TaskRow({ task, isSubtask, canExpand, expanded, progress, selected, pen
   }
 
   return (
-    <div aria-busy={pendingCompletion} aria-selected={selected} className={`grid grid-cols-[2rem_minmax(0,1fr)_6.5rem_4.5rem_5.5rem_4.5rem] items-center gap-2 border-b border-slate-200 px-5 py-2 text-sm transition-colors duration-150 ${rowClass} ${selected ? "ring-1 ring-inset ring-moss" : ""} ${pendingCompletion ? "ring-1 ring-inset ring-success" : ""} ${task.status === "completed" ? "text-slate-400" : "text-slate-700"}`} data-task-row="true" onClick={selectFromRow} role="row">
+    <div aria-busy={pendingCompletion} aria-selected={selected} className={`grid ${taskGridColumns} items-center gap-2 border-b border-slate-200 px-5 py-2 text-sm transition-colors duration-150 ${rowClass} ${selected ? "ring-1 ring-inset ring-moss" : ""} ${pendingCompletion ? "ring-1 ring-inset ring-success" : ""} ${task.status === "completed" ? "text-slate-400" : "text-slate-700"}`} data-task-row="true" onClick={selectFromRow} onDragOver={(event) => onDragOver(event, task)} onDrop={(event) => onDrop(event, task)} role="row">
+      <div className="flex items-center justify-center" role="cell">
+        <button
+          aria-label={`${isSubtask ? "拖动子任务" : "拖动任务"} ${task.title}`}
+          className="inline-flex h-7 w-7 cursor-grab items-center justify-center rounded-md text-action-muted hover:bg-slate-100 active:cursor-grabbing"
+          draggable
+          onDragEnd={onDragEnd}
+          onDragStart={(event) => {
+            event.dataTransfer?.setData("text/plain", task.id);
+            if (event.dataTransfer) {
+              event.dataTransfer.effectAllowed = "move";
+            }
+            onDragStart(task.id);
+          }}
+          type="button"
+        >
+          <GripVertical aria-hidden="true" size={14} />
+        </button>
+      </div>
       <div className="flex items-center" role="cell">
         {!isSubtask && canExpand ? (
           <button aria-label={`${expanded ? "Collapse" : "Expand"} subtasks for ${task.title}`} className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100" onClick={() => onToggleExpanded?.(task.id)} type="button">
@@ -747,7 +830,8 @@ function SubtaskInput({ parentTitle, title, status, priority, dueDate, draftRowR
   }
 
   return (
-    <div className="grid grid-cols-[2rem_minmax(0,1fr)_6.5rem_4.5rem_5.5rem_4.5rem] items-center gap-2 border-b border-slate-200 bg-task-child px-5 py-2" ref={draftRowRef} role="row">
+    <div className={`grid ${taskGridColumns} items-center gap-2 border-b border-slate-200 bg-task-child px-5 py-2`} ref={draftRowRef} role="row">
+      <div role="cell" />
       <div role="cell" />
       <div className="min-w-0 pl-5 pr-1" role="cell">
         <input aria-label={`New subtask for ${parentTitle}`} autoFocus className={`h-8 w-full rounded-md border px-2 text-sm ${fieldControlClass}`} onChange={(event) => onTitleChange(event.target.value)} onKeyDown={handleKeyDown} value={title} />
@@ -801,6 +885,50 @@ function NewSubtaskDueDateInput({ parentTitle, dueDate, onDueDateChange }: { par
       />
     </span>
   );
+}
+
+function handleTaskDragOver(event: DragEvent<HTMLDivElement>, draggedTaskId: string | null, targetTask: Task, tasks: Task[]) {
+  if (!draggedTaskId || draggedTaskId === targetTask.id) return;
+  const draggedTask = tasks.find((task) => task.id === draggedTaskId);
+  if (!draggedTask || draggedTask.parentTaskId !== targetTask.parentTaskId) return;
+  event.preventDefault();
+  if (event.dataTransfer) {
+    event.dataTransfer.dropEffect = "move";
+  }
+}
+
+function getDropPlacement(event: DragEvent<HTMLDivElement>): "before" | "after" {
+  const bounds = event.currentTarget.getBoundingClientRect();
+  return event.clientY > bounds.top + bounds.height / 2 ? "after" : "before";
+}
+
+function reorderTasksInScope(
+  tasks: Task[],
+  parentTaskId: string | null,
+  draggedTaskId: string,
+  targetTaskId: string,
+  placement: "before" | "after"
+): { tasks: Task[]; orderedIds: string[] } {
+  const scopedTasks = tasks.filter((task) => task.parentTaskId === parentTaskId);
+  const orderedIds = scopedTasks.map((task) => task.id).filter((id) => id !== draggedTaskId);
+  const targetIndex = orderedIds.indexOf(targetTaskId);
+  if (targetIndex === -1) {
+    return { tasks, orderedIds: [] };
+  }
+
+  orderedIds.splice(placement === "before" ? targetIndex : targetIndex + 1, 0, draggedTaskId);
+  const sortOrderById = new Map(orderedIds.map((id, index) => [id, index]));
+  return {
+    orderedIds,
+    tasks: sortTasks(tasks.map((task) => {
+      const sortOrder = sortOrderById.get(task.id);
+      return sortOrder === undefined ? task : { ...task, sortOrder };
+    }))
+  };
+}
+
+function sortTasks(tasks: Task[]): Task[] {
+  return [...tasks].sort((left, right) => left.sortOrder - right.sortOrder || left.createdAt.localeCompare(right.createdAt));
 }
 
 function priorityDotClass(priority: TaskPriority): string {
