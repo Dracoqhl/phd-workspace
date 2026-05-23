@@ -245,7 +245,7 @@ export function AiAssistantPanel() {
             </p>
           ) : (
             chatMessages.map((chatMessage) => (
-              <ChatMessageBubble
+              <ChatMessageEntry
                 chatMessage={chatMessage}
                 key={chatMessage.id}
                 onActionStateChange={(actionState, actionStatus) => {
@@ -299,13 +299,32 @@ export function AiAssistantPanel() {
   );
 }
 
-function ChatMessageBubble({
+function ChatMessageEntry({
   chatMessage,
   onActionStateChange
 }: {
   chatMessage: ChatMessage;
   onActionStateChange: (actionState: ChatMessage["actionState"], actionStatus: string) => void;
 }) {
+  const proposals = chatMessage.role === "assistant" ? chatMessage.proposals ?? [] : [];
+
+  return (
+    <div className="flex flex-col gap-2">
+      <ChatMessageBubble chatMessage={chatMessage} />
+      {proposals.length > 0 ? (
+        <ProposalCard
+          actionState={chatMessage.actionState ?? "pending"}
+          actionStatus={chatMessage.actionStatus}
+          onActionStateChange={onActionStateChange}
+          proposals={proposals}
+          userMessage={chatMessage.proposalUserMessage ?? ""}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function ChatMessageBubble({ chatMessage }: { chatMessage: ChatMessage }) {
   return (
     <div
       className={`max-w-[92%] rounded-md px-3 py-2 text-sm leading-6 ${
@@ -313,6 +332,7 @@ function ChatMessageBubble({
           ? "ml-auto bg-ink text-white"
           : "mr-auto border border-slate-200 bg-white text-slate-700"
       }`}
+      data-testid={`chat-message-${chatMessage.role}-bubble`}
     >
       {chatMessage.status === "pending" ? (
         <div
@@ -330,15 +350,6 @@ function ChatMessageBubble({
       ) : (
         <MessageContent chatMessage={chatMessage} />
       )}
-      {chatMessage.role === "assistant" && chatMessage.proposals && chatMessage.proposals.length > 0 ? (
-        <ProposalCard
-          actionState={chatMessage.actionState ?? "pending"}
-          actionStatus={chatMessage.actionStatus}
-          onActionStateChange={onActionStateChange}
-          proposals={chatMessage.proposals}
-          userMessage={chatMessage.proposalUserMessage ?? ""}
-        />
-      ) : null}
     </div>
   );
 }
@@ -442,7 +453,10 @@ function ProposalCard({
   }
 
   return (
-    <div className="mt-2 rounded-md border border-proposal bg-proposal-soft p-2 text-xs text-primary">
+    <div
+      className="mr-auto w-full max-w-[92%] rounded-md border border-proposal bg-proposal-soft p-2 text-xs text-primary shadow-sm"
+      data-testid="ai-proposal-card"
+    >
       <div className="mb-2 flex items-center justify-between gap-2">
         <span className="font-semibold text-proposal-text">操作建议</span>
         {actionState !== "pending" ? <span className="text-slate-600">{actionStatus}</span> : null}

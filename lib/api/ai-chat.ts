@@ -8,7 +8,7 @@ export const INVALID_AI_CHAT_PAYLOAD = "Invalid AI chat payload";
 export const AI_CHAT_FAILED = "AI chat failed";
 export const DATA_DIR_CONFIG_ERROR = "Data directory is not configured";
 export const AI_CHAT_BOUNDARY_REPLY =
-  "我只能帮助维护博士工作台中的任务、习惯、今日计划和 Quote 设置。这个请求不在当前 AI 助手的使用范围内。";
+  "我只能帮助维护当前工作台中的任务、习惯、今日计划和 Quote 设置。这个请求不在当前 AI 助手的使用范围内。";
 
 const MAX_MESSAGE_LENGTH = 2000;
 const MAX_CONTEXT_HABITS = 20;
@@ -22,7 +22,7 @@ const WORKSPACE_INTENT_PATTERNS = [
   /quote|金句/i,
   /心灵|关怀/,
   /能量|focus/i,
-  /博士|论文|实验|阅读|写作|科研/,
+  /项目|学习|阅读|写作|复盘|记录/,
   /ddl|截止|优先级|状态/i,
   /工作台/,
   /拆解|梳理|整理/,

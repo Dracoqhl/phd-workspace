@@ -61,7 +61,7 @@ describe("generateAiCareQuoteBatch", () => {
       )
     );
 
-    await expect(generateAiCareQuoteBatch(config, "更短，更科研", 3)).resolves.toEqual([
+    await expect(generateAiCareQuoteBatch(config, "更短，更适合长期计划", 3)).resolves.toEqual([
       "今天先推进一个最小动作。",
       "把复杂问题留给连续的小步。",
       "给自己一点缓冲。"

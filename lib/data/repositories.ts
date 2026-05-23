@@ -48,7 +48,7 @@ class TaskRepository {
   ) {}
 
   async list(): Promise<Task[]> {
-    return (await this.store.read()).items;
+    return (await this.store.read()).items.map(normalizeTask).sort(compareTasksByOrder);
   }
 
   async get(taskId: string): Promise<Task | null> {
@@ -64,6 +64,7 @@ class TaskRepository {
         validateParentTask(input.parentTaskId, tasks);
 
         const now = new Date().toISOString();
+        const normalizedTasks = tasks.map(normalizeTask);
         task = {
           id: randomUUID(),
           title: input.title,
@@ -72,12 +73,13 @@ class TaskRepository {
           priority: input.priority,
           dueDate: input.dueDate,
           parentTaskId: input.parentTaskId,
+          sortOrder: nextTaskSortOrder(normalizedTasks, input.parentTaskId),
           createdAt: now,
           updatedAt: now,
           completedAt: input.status === "completed" ? now : null
         };
 
-        return [...tasks, task];
+        return [...normalizedTasks, task];
       });
 
       if (!task) {
@@ -121,7 +123,7 @@ class TaskRepository {
       await this.store.updateItems((tasks) => {
         const now = new Date().toISOString();
 
-        return tasks.map((task) => {
+        return tasks.map(normalizeTask).map((task) => {
           if (task.id !== taskId) {
             return task;
           }
@@ -143,6 +145,26 @@ class TaskRepository {
       });
 
       return updatedTask;
+    });
+  }
+
+  async reorder(parentTaskId: string | null, orderedIds: string[]): Promise<Task[]> {
+    return this.enqueueMutation(async () => {
+      let reorderedTasks: Task[] = [];
+
+      await this.store.updateItems((tasks) => {
+        const normalizedTasks = tasks.map(normalizeTask);
+        validateTaskReorder(parentTaskId, orderedIds, normalizedTasks);
+        const orderById = new Map(orderedIds.map((id, index) => [id, index]));
+        const now = new Date().toISOString();
+        reorderedTasks = normalizedTasks.map((task) => {
+          const sortOrder = orderById.get(task.id);
+          return sortOrder === undefined ? task : { ...task, sortOrder, updatedAt: now };
+        });
+        return reorderedTasks;
+      });
+
+      return reorderedTasks.sort(compareTasksByOrder);
     });
   }
 
@@ -464,6 +486,34 @@ function validateParentTask(parentTaskId: string | null, tasks: Task[]): void {
   }
 }
 
+function validateTaskReorder(parentTaskId: string | null, orderedIds: string[], tasks: Task[]): void {
+  const scopedTasks = tasks.filter((task) => task.parentTaskId === parentTaskId);
+  if (orderedIds.length !== scopedTasks.length) {
+    throw new Error("Invalid task order");
+  }
+
+  const scopedIds = new Set(scopedTasks.map((task) => task.id));
+  if (orderedIds.some((id) => !scopedIds.has(id)) || new Set(orderedIds).size !== orderedIds.length) {
+    throw new Error("Invalid task order");
+  }
+}
+
+function normalizeTask(task: Task): Task {
+  return {
+    ...task,
+    sortOrder: Number.isFinite(task.sortOrder) ? task.sortOrder : 0
+  };
+}
+
+function compareTasksByOrder(left: Task, right: Task): number {
+  return left.sortOrder - right.sortOrder || left.createdAt.localeCompare(right.createdAt);
+}
+
+function nextTaskSortOrder(tasks: Task[], parentTaskId: string | null): number {
+  const scopedOrders = tasks.filter((task) => task.parentTaskId === parentTaskId).map((task) => task.sortOrder);
+  return scopedOrders.length === 0 ? 0 : Math.max(...scopedOrders) + 1;
+}
+
 function isTask(value: unknown): value is Task {
   if (!isRecord(value)) {
     return false;
@@ -476,6 +526,7 @@ function isTask(value: unknown): value is Task {
     isTaskStatus(value.status) &&
     isTaskPriority(value.priority) &&
     isStringOrNull(value.parentTaskId) &&
+    (value.sortOrder === undefined || typeof value.sortOrder === "number") &&
     typeof value.createdAt === "string" &&
     typeof value.updatedAt === "string" &&
     isStringOrNull(value.completedAt) &&

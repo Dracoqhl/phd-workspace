@@ -157,7 +157,7 @@ describe("AI chat route", () => {
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
       ok: true,
-      reply: "我只能帮助维护博士工作台中的任务、习惯、今日计划和 Quote 设置。这个请求不在当前 AI 助手的使用范围内。",
+      reply: "我只能帮助维护当前工作台中的任务、习惯、今日计划和 Quote 设置。这个请求不在当前 AI 助手的使用范围内。",
       boundary: "out_of_scope"
     });
     expect(fetchMock).not.toHaveBeenCalled();
@@ -274,7 +274,7 @@ describe("AI chat route", () => {
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
       ok: true,
-      reply: "我只能帮助维护博士工作台中的任务、习惯、今日计划和 Quote 设置。这个请求不在当前 AI 助手的使用范围内。",
+      reply: "我只能帮助维护当前工作台中的任务、习惯、今日计划和 Quote 设置。这个请求不在当前 AI 助手的使用范围内。",
       boundary: "unsafe_output"
     });
   });

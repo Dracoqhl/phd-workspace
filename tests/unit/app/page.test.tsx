@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import Page from "@/app/page";
@@ -28,6 +28,10 @@ vi.mock("@/components/tasks/TaskManager", () => ({
   TaskManager: () => <section aria-label="任务管理">Task manager</section>
 }));
 
+vi.mock("@/components/notes/QuickNotesPanel", () => ({
+  QuickNotesPanel: () => <section aria-label="随手记">Quick notes</section>
+}));
+
 vi.mock("@/components/habits/HabitManager", () => ({
   HabitManager: () => <section aria-label="每日健康习惯">Habit manager</section>
 }));
@@ -54,13 +58,17 @@ const mockedVerifySessionToken = vi.mocked(verifySessionToken);
 
 beforeEach(() => {
   vi.clearAllMocks();
+  window.localStorage.clear();
 });
 
 describe("workspace page shell", () => {
   it("renders the login screen when unauthenticated", () => {
     render(<WorkspacePageContent authenticated={false} />);
 
-    expect(screen.getByRole("heading", { name: "博士工作台" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /我的\s*工作台/ })).toBeInTheDocument();
+    expect(screen.queryByText("可自定义")).not.toBeInTheDocument();
+    expect(screen.queryByText("点击高亮文字修改工作台名称")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "查看 V1.1 更新日志" })).toBeInTheDocument();
     expect(screen.queryByText(/MVP|最小可运行页面壳/)).not.toBeInTheDocument();
     expect(screen.getByLabelText("Access password")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Log In" })).toBeInTheDocument();
@@ -80,7 +88,9 @@ describe("workspace page shell", () => {
   it("renders the workspace regions when authenticated", () => {
     render(<WorkspacePageContent authenticated={true} user={{ email: "student@example.com", role: "user" }} />);
 
-    expect(screen.getByRole("heading", { name: "博士工作台" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /我的\s*工作台/ })).toBeInTheDocument();
+    expect(screen.queryByText("PhD Workspace")).not.toBeInTheDocument();
+    expect(screen.getByText("管理任务、每日习惯、心灵关怀和 AI 辅助整理的个人工作台。")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open GitHub repository Dracoqhl/phd-workspace" })).toHaveAttribute(
       "href",
       "https://github.com/Dracoqhl/phd-workspace"
@@ -94,10 +104,53 @@ describe("workspace page shell", () => {
     expect(screen.getByLabelText("Account controls")).toHaveTextContent("student@example.com");
     expect(screen.getByLabelText("Account controls")).toContainElement(screen.getByRole("button", { name: "Logout" }));
     expect(screen.getByRole("region", { name: "任务管理" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "随手记" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "每日健康习惯" })).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "心灵关怀" })).toBeInTheDocument();
     expect(screen.getByRole("complementary", { name: "AI 助手" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Test AI" })).toBeInTheDocument();
+  });
+
+  it("shows release notes on first visit to a new version and remembers dismissal", async () => {
+    const { unmount } = render(<WorkspacePageContent authenticated={true} user={{ email: "user@example.com", role: "user" }} />);
+
+    expect(await screen.findByRole("dialog", { name: /V1\.1 更通用的个人工作台/ })).toBeInTheDocument();
+    expect(screen.getByText("新增随手记模块，用于记录灵感、复盘和临时想法。")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "关闭" }));
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(window.localStorage.getItem("phd-workspace-last-seen-version")).toBe("1.1");
+
+    unmount();
+    render(<WorkspacePageContent authenticated={true} user={{ email: "user@example.com", role: "user" }} />);
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("opens release notes from the version badge and can show previous versions", async () => {
+    window.localStorage.setItem("phd-workspace-last-seen-version", "1.1");
+    render(<WorkspacePageContent authenticated={true} user={{ email: "user@example.com", role: "user" }} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "查看 V1.1 更新日志" }));
+
+    expect(await screen.findByRole("dialog", { name: /V1\.1 更通用的个人工作台/ })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "V1.0" }));
+
+    expect(screen.getByRole("dialog", { name: /V1\.0 基础工作台/ })).toBeInTheDocument();
+    expect(screen.getByText("支持任务和子任务管理，包含状态、优先级、截止日期和完成状态。")).toBeInTheDocument();
+  });
+
+  it("lets users customize the workspace title prefix locally with a six Chinese character limit", () => {
+    window.localStorage.setItem("phd-workspace-last-seen-version", "1.1");
+    render(<WorkspacePageContent authenticated={true} user={{ email: "user@example.com", role: "user" }} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "修改工作台名称前缀" }));
+    const input = screen.getByLabelText("工作台名称前缀");
+    fireEvent.change(input, { target: { value: "智慧博士生的日常" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    expect(screen.getByRole("heading", { name: /智慧博士生的\s*工作台/ })).toBeInTheDocument();
+    expect(window.localStorage.getItem("phd-workspace-title-prefix")).toBe("智慧博士生的");
   });
 
   it("renders only the admin dashboard for admin users", () => {
@@ -105,6 +158,7 @@ describe("workspace page shell", () => {
 
     expect(screen.getByRole("region", { name: "管理员工作台" })).toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "任务管理" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "随手记" })).not.toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "每日健康习惯" })).not.toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "心灵关怀" })).not.toBeInTheDocument();
     expect(screen.queryByRole("complementary", { name: "AI 助手" })).not.toBeInTheDocument();

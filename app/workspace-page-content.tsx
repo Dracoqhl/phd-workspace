@@ -5,9 +5,11 @@ import { AdminDashboard } from "@/components/admin/AdminDashboard";
 import { AiAssistantPanel } from "@/components/assistant/AiAssistantPanel";
 import { CarePanel } from "@/components/care/CarePanel";
 import { HabitManager } from "@/components/habits/HabitManager";
+import { QuickNotesPanel } from "@/components/notes/QuickNotesPanel";
 import { SyncStatusBadge, SyncStatusProvider } from "@/components/sync/SyncStatusProvider";
 import { ThemeProvider, ThemeSelect } from "@/components/theme/ThemeProvider";
 import { TaskManager } from "@/components/tasks/TaskManager";
+import { WorkspaceTitle } from "@/components/workspace/WorkspaceTitle";
 import { getHabitBusinessDate } from "@/lib/domain/habits";
 import type { PublicUser } from "@/types/user";
 
@@ -70,10 +72,9 @@ function WorkspaceShell({
           <header className="border-b border-slate-200 pb-5">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <p className="text-sm font-medium text-moss">PhD Workspace</p>
-                <h1 className="mt-2 text-3xl font-semibold tracking-normal text-ink">博士工作台</h1>
+                <WorkspaceTitle />
                 <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600">
-                  管理科研任务、每日习惯、心灵关怀和 AI 辅助整理的个人工作台。
+                  管理任务、每日习惯、心灵关怀和 AI 辅助整理的个人工作台。
                 </p>
               </div>
               <div aria-label="Workspace status" className="flex shrink-0 flex-wrap items-center gap-2">
@@ -131,6 +132,7 @@ function WorkspaceSections() {
         <HabitManager />
       </div>
       <TaskManager />
+      <QuickNotesPanel />
     </div>
   );
 }

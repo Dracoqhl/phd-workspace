@@ -40,6 +40,7 @@ export function ensureDatabaseSchema(db: SqliteDatabase): void {
       priority TEXT NOT NULL,
       due_date TEXT,
       parent_task_id TEXT,
+      sort_order INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
       completed_at TEXT
@@ -116,6 +117,16 @@ export function ensureDatabaseSchema(db: SqliteDatabase): void {
       created_at TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS quick_notes (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      tag TEXT NOT NULL,
+      title TEXT NOT NULL,
+      content TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS trash_entries (
       id TEXT PRIMARY KEY,
       user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -130,11 +141,13 @@ export function ensureDatabaseSchema(db: SqliteDatabase): void {
     CREATE INDEX IF NOT EXISTS idx_care_records_user_id ON care_records(user_id);
     CREATE INDEX IF NOT EXISTS idx_ai_action_logs_user_id ON ai_action_logs(user_id);
     CREATE INDEX IF NOT EXISTS idx_ai_chat_messages_user_created_at ON ai_chat_messages(user_id, created_at);
+    CREATE INDEX IF NOT EXISTS idx_quick_notes_user_created_at ON quick_notes(user_id, created_at);
   `);
 
   ensureColumn(db, "ai_chat_messages", "proposals_json", "TEXT NOT NULL DEFAULT '[]'");
   ensureColumn(db, "ai_chat_messages", "action_state", "TEXT NOT NULL DEFAULT 'pending'");
   ensureColumn(db, "ai_chat_messages", "action_status", "TEXT NOT NULL DEFAULT ''");
+  ensureColumn(db, "tasks", "sort_order", "INTEGER NOT NULL DEFAULT 0");
   ensureAdminUser(db);
 }
 

@@ -105,6 +105,25 @@ export function parseUpdateTaskInput(body: Record<string, unknown>): UpdateTaskI
   return input;
 }
 
+export function parseReorderTasksInput(body: Record<string, unknown>): { parentTaskId: string | null; orderedIds: string[] } | null {
+  const parentTaskId = body.parentTaskId === null || body.parentTaskId === undefined
+    ? null
+    : typeof body.parentTaskId === "string"
+      ? body.parentTaskId
+      : undefined;
+
+  if (parentTaskId === undefined || !Array.isArray(body.orderedIds)) {
+    return null;
+  }
+
+  const orderedIds = body.orderedIds;
+  if (orderedIds.length === 0 || orderedIds.some((id) => typeof id !== "string")) {
+    return null;
+  }
+
+  return { parentTaskId, orderedIds };
+}
+
 function parseTitle(value: unknown): string | null {
   if (typeof value !== "string") {
     return null;

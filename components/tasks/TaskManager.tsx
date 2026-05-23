@@ -1,7 +1,7 @@
 "use client";
 
-import { Calendar, Check, ChevronDown, ChevronRight, CornerDownRight, Plus, Trash2 } from "lucide-react";
-import { FormEvent, KeyboardEvent, MouseEvent, RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Calendar, Check, ChevronDown, ChevronRight, CornerDownRight, GripVertical, Plus, Trash2 } from "lucide-react";
+import { DragEvent, FormEvent, KeyboardEvent, MouseEvent, RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useSyncStatus } from "@/components/sync/SyncStatusProvider";
 import { getTaskDueState, getTaskProgress } from "@/lib/domain/tasks";
@@ -31,16 +31,21 @@ const emptyForm = {
   dueDate: ""
 };
 
+const taskGridColumns = "grid-cols-[1.75rem_2rem_minmax(0,1fr)_6.5rem_4.5rem_5.5rem_4.5rem]";
+
 export function TaskManager() {
   const { trackSync } = useSyncStatus();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [form, setForm] = useState(emptyForm);
+  const [addingTask, setAddingTask] = useState(false);
   const [showCompleted, setShowCompleted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedTaskIds, setExpandedTaskIds] = useState<Set<string>>(() => new Set());
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [addingSubtaskFor, setAddingSubtaskFor] = useState<string | null>(null);
+  const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null);
+  const [dropIndicator, setDropIndicator] = useState<{ taskId: string; placement: "before" | "after" } | null>(null);
   const [subtaskTitle, setSubtaskTitle] = useState("");
   const [subtaskStatus, setSubtaskStatus] = useState<TaskStatus>("not_started");
   const [subtaskPriority, setSubtaskPriority] = useState<TaskPriority>("low");
@@ -48,6 +53,7 @@ export function TaskManager() {
   const [pendingCompletionTaskIds, setPendingCompletionTaskIds] = useState<Set<string>>(() => new Set());
   const hasLocalWrites = useRef(false);
   const taskMutationSequences = useRef(new Map<string, number>());
+  const taskTitleInputRef = useRef<HTMLInputElement>(null);
   const subtaskDraftRowRef = useRef<HTMLDivElement>(null);
   const creatingSubtaskRef = useRef(false);
 
@@ -117,6 +123,12 @@ export function TaskManager() {
   }, [selectedTaskId]);
 
   useEffect(() => {
+    if (addingTask) {
+      taskTitleInputRef.current?.focus();
+    }
+  }, [addingTask]);
+
+  useEffect(() => {
     if (!addingSubtaskFor) return;
 
     function submitSubtaskOnOutsideClick(event: globalThis.MouseEvent) {
@@ -174,6 +186,7 @@ export function TaskManager() {
       if (created) {
         setTasks((current) => [...current, created]);
         setForm(emptyForm);
+        setAddingTask(false);
       }
     } catch {
       setError("Unable to save task.");
@@ -308,6 +321,64 @@ export function TaskManager() {
     }
   }
 
+  async function reorderTask(draggedTaskId: string, targetTaskId: string, placement: "before" | "after") {
+    if (draggedTaskId === targetTaskId) return;
+
+    const draggedTask = tasks.find((task) => task.id === draggedTaskId);
+    const targetTask = tasks.find((task) => task.id === targetTaskId);
+    if (!draggedTask || !targetTask || draggedTask.parentTaskId !== targetTask.parentTaskId) {
+      return;
+    }
+
+    const previousTasks = tasks;
+    const { tasks: nextTasks, orderedIds } = reorderTasksInScope(tasks, draggedTask.parentTaskId, draggedTaskId, targetTaskId, placement);
+    if (orderedIds.length === 0) return;
+
+    hasLocalWrites.current = true;
+    setError(null);
+    setTasks(nextTasks);
+
+    try {
+      const payload = await requestJson<{ tasks?: Task[]; error?: string }>(
+        "/api/tasks/reorder",
+        {
+          method: "PATCH",
+          body: JSON.stringify({
+            parentTaskId: draggedTask.parentTaskId,
+            orderedIds
+          })
+        },
+        "Unable to reorder tasks."
+      );
+
+      if (payload.tasks) {
+        setTasks(sortTasks(payload.tasks));
+      }
+    } catch (caught) {
+      setTasks(previousTasks);
+      setError(caught instanceof Error ? caught.message : "Unable to reorder tasks.");
+    }
+  }
+
+  function startTaskDrag(taskId: string) {
+    setDraggingTaskId(taskId);
+    setDropIndicator(null);
+  }
+
+  function endTaskDrag() {
+    setDraggingTaskId(null);
+    setDropIndicator(null);
+  }
+
+  function updateTaskDropIndicator(event: DragEvent<HTMLDivElement>, targetTask: Task) {
+    if (!canDropTask(draggingTaskId, targetTask, tasks)) return;
+    event.preventDefault();
+    if (event.dataTransfer) {
+      event.dataTransfer.dropEffect = "move";
+    }
+    setDropIndicator({ taskId: targetTask.id, placement: getDropPlacement(event) });
+  }
+
   async function writeTask(url: string, init: RequestInit): Promise<Task | null> {
     setError(null);
     const payload = await requestJson<{ task?: Task; error?: string }>(url, init, "Unable to save task.");
@@ -377,41 +448,59 @@ export function TaskManager() {
     setSubtaskDueDate("");
   }
 
+  function cancelTaskDraft() {
+    setForm(emptyForm);
+    setAddingTask(false);
+    setError(null);
+  }
+
   return (
     <section
       aria-label="任务管理"
       className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm"
     >
-      <div className="flex flex-col gap-3 border-b border-slate-200 pb-4 md:flex-row md:items-start md:justify-between">
-        <div>
+      <div className="-mx-5 flex flex-col gap-3 border-b border-slate-200 px-5 pb-4 md:flex-row md:items-center md:justify-between">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
           <h2 className="text-base font-semibold text-ink">任务管理</h2>
-          <p className="mt-2 text-sm leading-6 text-slate-600">紧凑展示一级任务和子任务，点击标题、优先级或截止日期快速修改。</p>
+          <span aria-hidden="true" className="hidden h-4 w-px bg-slate-200 sm:block" />
+          <p className="text-xs leading-5 text-slate-500">集中管理阶段目标、论文推进和待办层级。</p>
         </div>
-        <button className="h-9 rounded-md border border-slate-300 px-3 text-sm font-medium text-slate-700 hover:bg-slate-50" onClick={() => setShowCompleted((value) => !value)} type="button">
-          {showCompleted ? "Hide Completed" : "Show Completed"}
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button className="inline-flex h-8 items-center justify-center gap-1.5 rounded-md bg-ink px-2.5 text-xs font-semibold text-white hover:bg-slate-700" onClick={() => setAddingTask(true)} type="button">
+            <Plus aria-hidden="true" size={14} />
+            新建任务
+          </button>
+          <button className="h-8 rounded-md border border-slate-300 px-2.5 text-xs font-medium text-slate-700 hover:bg-slate-50" onClick={() => setShowCompleted((value) => !value)} type="button">
+            {showCompleted ? "隐藏完成" : "展示全部"}
+          </button>
+        </div>
       </div>
 
-      <form className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_9rem_10rem_auto]" onSubmit={createTask}>
-        <label className="grid gap-1 text-sm font-medium text-slate-700">
-          Task title
-          <input className={`h-10 rounded-md border px-3 text-sm font-normal ${fieldControlClass}`} onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))} value={form.title} />
-        </label>
-        <label className="grid gap-1 text-sm font-medium text-slate-700">
-          Task priority
-          <select className={`h-10 rounded-md border px-3 text-sm font-normal ${fieldControlClass}`} onChange={(event) => setForm((current) => ({ ...current, priority: event.target.value as TaskPriority }))} value={form.priority}>
-            {priorityOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-          </select>
-        </label>
-        <label className="grid gap-1 text-sm font-medium text-slate-700">
-          Due date
-          <input className={`h-10 rounded-md border px-3 text-sm font-normal ${fieldControlClass}`} onChange={(event) => setForm((current) => ({ ...current, dueDate: event.target.value }))} type="date" value={form.dueDate} />
-        </label>
-        <button className="mt-6 inline-flex h-10 items-center justify-center gap-2 rounded-md bg-ink px-4 text-sm font-semibold text-white hover:bg-slate-700" type="submit">
-          <Plus aria-hidden="true" size={16} />
-          Create Task
-        </button>
-      </form>
+      {addingTask ? (
+        <form className="mt-3 grid gap-3 md:grid-cols-[minmax(0,1fr)_9rem_10rem_auto_auto]" onSubmit={createTask}>
+          <label className="grid gap-1 text-sm font-medium text-slate-700">
+            Task title
+            <input ref={taskTitleInputRef} className={`h-10 rounded-md border px-3 text-sm font-normal ${fieldControlClass}`} onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))} value={form.title} />
+          </label>
+          <label className="grid gap-1 text-sm font-medium text-slate-700">
+            Task priority
+            <select className={`h-10 rounded-md border px-3 text-sm font-normal ${fieldControlClass}`} onChange={(event) => setForm((current) => ({ ...current, priority: event.target.value as TaskPriority }))} value={form.priority}>
+              {priorityOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+            </select>
+          </label>
+          <label className="grid gap-1 text-sm font-medium text-slate-700">
+            Due date
+            <input className={`h-10 rounded-md border px-3 text-sm font-normal ${fieldControlClass}`} onChange={(event) => setForm((current) => ({ ...current, dueDate: event.target.value }))} type="date" value={form.dueDate} />
+          </label>
+          <button className="mt-6 inline-flex h-10 items-center justify-center gap-2 rounded-md bg-ink px-4 text-sm font-semibold text-white hover:bg-slate-700" type="submit">
+            <Plus aria-hidden="true" size={16} />
+            Create Task
+          </button>
+          <button className="mt-6 inline-flex h-10 items-center justify-center rounded-md border border-slate-300 px-3 text-sm font-medium text-slate-700 hover:bg-slate-50" onClick={cancelTaskDraft} type="button">
+            Cancel
+          </button>
+        </form>
+      ) : null}
 
       {error ? <p className="mt-4 rounded-md border border-danger bg-danger-soft px-3 py-2 text-sm text-danger-text" role="alert">{error}</p> : null}
       {loading ? <p className="mt-5 text-sm text-slate-600">Loading tasks...</p> : null}
@@ -421,13 +510,14 @@ export function TaskManager() {
       ) : null}
 
       {!loading && topLevelTasks.length > 0 ? (
-        <div aria-label="Task list" className="rounded-list-frame mt-5 border border-slate-200" role="table">
-          <div className="rounded-list-row grid grid-cols-[2rem_minmax(0,1fr)_6.5rem_4.5rem_5.5rem_4.5rem] items-center gap-2 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-500" role="row">
+        <div aria-label="Task list" className="task-table -mx-5 -mb-5" role="table">
+          <div className={`grid ${taskGridColumns} items-center gap-2 border-b border-slate-200 px-5 py-1.5 text-[11px] font-medium text-slate-500`} role="row">
+            <div aria-label="Drag" className="text-center" role="columnheader" />
             <div aria-label="Expand" className="text-center" role="columnheader" />
-            <div className="text-center" role="columnheader">Task</div>
-            <div className="text-center" role="columnheader">Status</div>
-            <div className="text-center" role="columnheader">Priority</div>
-            <div className="text-center" role="columnheader">Due</div>
+            <div className="text-center" role="columnheader">任务</div>
+            <div className="text-center" role="columnheader">状态</div>
+            <div className="text-center" role="columnheader">优先级</div>
+            <div className="text-center" role="columnheader">截止</div>
             <div aria-label="Actions" className="text-center" role="columnheader" />
           </div>
           {topLevelTasks.map((task) => {
@@ -440,8 +530,19 @@ export function TaskManager() {
                   expanded={expanded}
                   isSubtask={false}
                   pendingCompletion={pendingCompletionTaskIds.has(task.id)}
+                  dropPlacement={dropIndicator?.taskId === task.id ? dropIndicator.placement : null}
                   onAddSubtask={startAddSubtask}
                   onDelete={deleteTask}
+                  onDragEnd={endTaskDrag}
+                  onDragLeave={() => setDropIndicator((current) => current?.taskId === task.id ? null : current)}
+                  onDragOver={updateTaskDropIndicator}
+                  onDragStart={startTaskDrag}
+                  onDrop={(event, targetTask) => {
+                    const placement = dropIndicator?.taskId === targetTask.id ? dropIndicator.placement : getDropPlacement(event);
+                    const draggedId = draggingTaskId;
+                    endTaskDrag();
+                    if (draggedId) void reorderTask(draggedId, targetTask.id, placement);
+                  }}
                   onPriorityChange={(taskId, priority) => updateTask(taskId, { priority })}
                   onStatusChange={(taskId, status) => updateTask(taskId, { status })}
                   onStatusToggle={(taskToToggle) => updateTask(taskToToggle.id, { status: taskToToggle.status === "completed" ? "not_started" : "completed" }, { completionFeedback: true })}
@@ -477,7 +578,18 @@ export function TaskManager() {
                     isSubtask={true}
                     key={child.id}
                     pendingCompletion={pendingCompletionTaskIds.has(child.id)}
+                    dropPlacement={dropIndicator?.taskId === child.id ? dropIndicator.placement : null}
                     onDelete={deleteSubtask}
+                    onDragEnd={endTaskDrag}
+                    onDragLeave={() => setDropIndicator((current) => current?.taskId === child.id ? null : current)}
+                    onDragOver={updateTaskDropIndicator}
+                    onDragStart={startTaskDrag}
+                    onDrop={(event, targetTask) => {
+                      const placement = dropIndicator?.taskId === targetTask.id ? dropIndicator.placement : getDropPlacement(event);
+                      const draggedId = draggingTaskId;
+                      endTaskDrag();
+                      if (draggedId) void reorderTask(draggedId, targetTask.id, placement);
+                    }}
                     onPriorityChange={(taskId, priority) => updateTask(taskId, { priority })}
                     onStatusChange={(taskId, status) => updateTask(taskId, { status })}
                     onStatusToggle={(taskToToggle) => updateTask(taskToToggle.id, { status: taskToToggle.status === "completed" ? "not_started" : "completed" }, { completionFeedback: true })}
@@ -506,10 +618,16 @@ interface TaskRowProps {
   progress?: { completed: number; total: number };
   selected: boolean;
   pendingCompletion: boolean;
+  dropPlacement: "before" | "after" | null;
   selectedTaskId: string | null;
   onToggleExpanded?: (taskId: string) => void;
   onSelect: (taskId: string) => void;
   onAddSubtask?: (taskId: string) => void;
+  onDragStart: (taskId: string) => void;
+  onDragEnd: () => void;
+  onDragLeave: () => void;
+  onDragOver: (event: DragEvent<HTMLDivElement>, task: Task) => void;
+  onDrop: (event: DragEvent<HTMLDivElement>, task: Task) => void;
   onTitleSave: (taskId: string, title: string) => Promise<void>;
   onStatusToggle: (task: Task) => Promise<void>;
   onStatusChange: (taskId: string, status: TaskStatus) => Promise<void>;
@@ -518,13 +636,18 @@ interface TaskRowProps {
   onDelete: (task: Task) => Promise<void>;
 }
 
-function TaskRow({ task, isSubtask, canExpand, expanded, progress, selected, pendingCompletion, selectedTaskId, onToggleExpanded, onSelect, onAddSubtask, onTitleSave, onStatusToggle, onStatusChange, onPriorityChange, onDueDateChange, onDelete }: TaskRowProps) {
+function TaskRow({ task, isSubtask, canExpand, expanded, progress, selected, pendingCompletion, dropPlacement, selectedTaskId, onToggleExpanded, onSelect, onAddSubtask, onDragStart, onDragEnd, onDragLeave, onDragOver, onDrop, onTitleSave, onStatusToggle, onStatusChange, onPriorityChange, onDueDateChange, onDelete }: TaskRowProps) {
   const rowClass = pendingCompletion
     ? "bg-success-soft"
     : task.status === "completed"
       ? isSubtask ? "bg-task-child" : "bg-task-parent"
       : isSubtask ? "bg-task-child" : "bg-task-parent";
   const hierarchyMarkerClass = isSubtask ? "text-muted" : "";
+  const dropIndicatorClass = dropPlacement === "before"
+    ? "before:absolute before:left-5 before:right-5 before:top-0 before:h-0.5 before:rounded-full before:bg-moss"
+    : dropPlacement === "after"
+      ? "after:absolute after:bottom-0 after:left-5 after:right-5 after:h-0.5 after:rounded-full after:bg-moss"
+      : "";
 
   function selectFromRow(event: MouseEvent<HTMLDivElement>) {
     if ((event.target as HTMLElement).closest("button,input,select,label")) return;
@@ -532,7 +655,25 @@ function TaskRow({ task, isSubtask, canExpand, expanded, progress, selected, pen
   }
 
   return (
-    <div aria-busy={pendingCompletion} aria-selected={selected} className={`rounded-list-row grid grid-cols-[2rem_minmax(0,1fr)_6.5rem_4.5rem_5.5rem_4.5rem] items-center gap-2 border-t border-slate-200 px-3 py-2 text-sm transition-colors duration-150 ${rowClass} ${selected ? "ring-1 ring-inset ring-moss" : ""} ${pendingCompletion ? "ring-1 ring-inset ring-success" : ""} ${task.status === "completed" ? "text-slate-400" : "text-slate-700"}`} data-task-row="true" onClick={selectFromRow} role="row">
+    <div aria-busy={pendingCompletion} aria-selected={selected} className={`relative grid ${taskGridColumns} items-center gap-2 border-b border-slate-200 px-5 py-2 text-sm transition-colors duration-150 ${rowClass} ${dropIndicatorClass} ${selected ? "ring-1 ring-inset ring-moss" : ""} ${pendingCompletion ? "ring-1 ring-inset ring-success" : ""} ${task.status === "completed" ? "text-slate-400" : "text-slate-700"}`} data-drop-placement={dropPlacement ?? undefined} data-task-row="true" onClick={selectFromRow} onDragLeave={onDragLeave} onDragOver={(event) => onDragOver(event, task)} onDrop={(event) => onDrop(event, task)} role="row">
+      <div className="flex items-center justify-center" role="cell">
+        <button
+          aria-label={`${isSubtask ? "拖动子任务" : "拖动任务"} ${task.title}`}
+          className="inline-flex h-7 w-7 cursor-grab items-center justify-center rounded-md text-action-muted active:cursor-grabbing"
+          draggable
+          onDragEnd={onDragEnd}
+          onDragStart={(event) => {
+            event.dataTransfer?.setData("text/plain", task.id);
+            if (event.dataTransfer) {
+              event.dataTransfer.effectAllowed = "move";
+            }
+            onDragStart(task.id);
+          }}
+          type="button"
+        >
+          <GripVertical aria-hidden="true" size={14} />
+        </button>
+      </div>
       <div className="flex items-center" role="cell">
         {!isSubtask && canExpand ? (
           <button aria-label={`${expanded ? "Collapse" : "Expand"} subtasks for ${task.title}`} className="inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100" onClick={() => onToggleExpanded?.(task.id)} type="button">
@@ -722,7 +863,8 @@ function SubtaskInput({ parentTitle, title, status, priority, dueDate, draftRowR
   }
 
   return (
-    <div className="rounded-list-row grid grid-cols-[2rem_minmax(0,1fr)_6.5rem_4.5rem_5.5rem_4.5rem] items-center gap-2 border-t border-slate-200 bg-task-child px-3 py-2" ref={draftRowRef} role="row">
+    <div className={`grid ${taskGridColumns} items-center gap-2 border-b border-slate-200 bg-task-child px-5 py-2`} ref={draftRowRef} role="row">
+      <div role="cell" />
       <div role="cell" />
       <div className="min-w-0 pl-5 pr-1" role="cell">
         <input aria-label={`New subtask for ${parentTitle}`} autoFocus className={`h-8 w-full rounded-md border px-2 text-sm ${fieldControlClass}`} onChange={(event) => onTitleChange(event.target.value)} onKeyDown={handleKeyDown} value={title} />
@@ -776,6 +918,46 @@ function NewSubtaskDueDateInput({ parentTitle, dueDate, onDueDateChange }: { par
       />
     </span>
   );
+}
+
+function canDropTask(draggedTaskId: string | null, targetTask: Task, tasks: Task[]): boolean {
+  if (!draggedTaskId || draggedTaskId === targetTask.id) return false;
+  const draggedTask = tasks.find((task) => task.id === draggedTaskId);
+  return Boolean(draggedTask && draggedTask.parentTaskId === targetTask.parentTaskId);
+}
+
+function getDropPlacement(event: DragEvent<HTMLDivElement>): "before" | "after" {
+  const bounds = event.currentTarget.getBoundingClientRect();
+  return event.clientY > bounds.top + bounds.height / 2 ? "after" : "before";
+}
+
+function reorderTasksInScope(
+  tasks: Task[],
+  parentTaskId: string | null,
+  draggedTaskId: string,
+  targetTaskId: string,
+  placement: "before" | "after"
+): { tasks: Task[]; orderedIds: string[] } {
+  const scopedTasks = tasks.filter((task) => task.parentTaskId === parentTaskId);
+  const orderedIds = scopedTasks.map((task) => task.id).filter((id) => id !== draggedTaskId);
+  const targetIndex = orderedIds.indexOf(targetTaskId);
+  if (targetIndex === -1) {
+    return { tasks, orderedIds: [] };
+  }
+
+  orderedIds.splice(placement === "before" ? targetIndex : targetIndex + 1, 0, draggedTaskId);
+  const sortOrderById = new Map(orderedIds.map((id, index) => [id, index]));
+  return {
+    orderedIds,
+    tasks: sortTasks(tasks.map((task) => {
+      const sortOrder = sortOrderById.get(task.id);
+      return sortOrder === undefined ? task : { ...task, sortOrder };
+    }))
+  };
+}
+
+function sortTasks(tasks: Task[]): Task[] {
+  return [...tasks].sort((left, right) => left.sortOrder - right.sortOrder || left.createdAt.localeCompare(right.createdAt));
 }
 
 function priorityDotClass(priority: TaskPriority): string {

@@ -5,6 +5,7 @@ import type { AiActionLog } from "@/types/assistant";
 import type { AiChatActionState, AiChatMessage } from "@/types/ai-chat";
 import type { CareQuotePreference, CareRecord } from "@/types/care";
 import type { CreateHabitInput, Habit, HabitCheckin, UpdateHabitInput } from "@/types/habit";
+import type { QuickNote, UpdateQuickNoteInput } from "@/types/note";
 import type { CreateTaskInput, Task, UpdateTaskInput } from "@/types/task";
 import type { TrashEntry } from "@/types/trash";
 
@@ -18,7 +19,8 @@ export function createSqliteRepositories(db: SqliteDatabase, userId: string) {
     careRecords: new SqliteCareRecordRepository(db, userId),
     careQuotePreferences: new SqliteCareQuotePreferenceRepository(db, userId),
     aiLogs: new SqliteAiLogRepository(db, userId),
-    aiChatMessages: new SqliteAiChatMessageRepository(db, userId)
+    aiChatMessages: new SqliteAiChatMessageRepository(db, userId),
+    notes: new SqliteQuickNoteRepository(db, userId)
   };
 }
 
@@ -30,7 +32,7 @@ class SqliteTaskRepository {
   ) {}
 
   async list(): Promise<Task[]> {
-    const rows = this.db.prepare("SELECT * FROM tasks WHERE user_id = ? ORDER BY created_at ASC").all(this.userId) as TaskRow[];
+    const rows = this.db.prepare("SELECT * FROM tasks WHERE user_id = ? ORDER BY sort_order ASC, created_at ASC").all(this.userId) as TaskRow[];
     return rows.map(mapTask);
   }
 
@@ -43,6 +45,7 @@ class SqliteTaskRepository {
     const tasks = await this.list();
     validateParentTask(input.parentTaskId, tasks);
     const now = new Date().toISOString();
+    const sortOrder = nextTaskSortOrder(tasks, input.parentTaskId);
     const task: Task = {
       id: randomUUID(),
       title: input.title,
@@ -51,6 +54,7 @@ class SqliteTaskRepository {
       priority: input.priority,
       dueDate: input.dueDate,
       parentTaskId: input.parentTaskId,
+      sortOrder,
       createdAt: now,
       updatedAt: now,
       completedAt: input.status === "completed" ? now : null
@@ -58,8 +62,8 @@ class SqliteTaskRepository {
 
     this.db.prepare(
       `INSERT INTO tasks
-       (id, user_id, title, description, status, priority, due_date, parent_task_id, created_at, updated_at, completed_at)
-       VALUES (@id, @userId, @title, @description, @status, @priority, @dueDate, @parentTaskId, @createdAt, @updatedAt, @completedAt)`
+       (id, user_id, title, description, status, priority, due_date, parent_task_id, sort_order, created_at, updated_at, completed_at)
+       VALUES (@id, @userId, @title, @description, @status, @priority, @dueDate, @parentTaskId, @sortOrder, @createdAt, @updatedAt, @completedAt)`
     ).run({ ...task, userId: this.userId });
 
     return task;
@@ -84,11 +88,26 @@ class SqliteTaskRepository {
     this.db.prepare(
       `UPDATE tasks
        SET title = @title, description = @description, status = @status, priority = @priority,
-           due_date = @dueDate, parent_task_id = @parentTaskId, updated_at = @updatedAt, completed_at = @completedAt
+           due_date = @dueDate, parent_task_id = @parentTaskId, sort_order = @sortOrder, updated_at = @updatedAt, completed_at = @completedAt
        WHERE id = @id AND user_id = @userId`
     ).run({ ...task, userId: this.userId });
 
     return task;
+  }
+
+  async reorder(parentTaskId: string | null, orderedIds: string[]): Promise<Task[]> {
+    const tasks = await this.list();
+    validateTaskReorder(parentTaskId, orderedIds, tasks);
+    const now = new Date().toISOString();
+    const transaction = this.db.transaction(() => {
+      orderedIds.forEach((id, index) => {
+        this.db
+          .prepare("UPDATE tasks SET sort_order = ?, updated_at = ? WHERE id = ? AND user_id = ?")
+          .run(index, now, id, this.userId);
+      });
+    });
+    transaction();
+    return this.list();
   }
 
   async delete(taskId: string, deletedAt = new Date().toISOString()): Promise<void> {
@@ -446,6 +465,69 @@ class SqliteTrashRepository {
   }
 }
 
+class SqliteQuickNoteRepository {
+  constructor(
+    private readonly db: SqliteDatabase,
+    private readonly userId: string
+  ) {}
+
+  async list(): Promise<QuickNote[]> {
+    const rows = this.db
+      .prepare("SELECT * FROM quick_notes WHERE user_id = ? ORDER BY created_at DESC, rowid DESC")
+      .all(this.userId) as QuickNoteRow[];
+    return rows.map(mapQuickNote);
+  }
+
+  async get(noteId: string): Promise<QuickNote | null> {
+    const row = this.db
+      .prepare("SELECT * FROM quick_notes WHERE id = ? AND user_id = ?")
+      .get(noteId, this.userId) as QuickNoteRow | undefined;
+    return row ? mapQuickNote(row) : null;
+  }
+
+  async create(): Promise<QuickNote> {
+    const now = new Date().toISOString();
+    const note: QuickNote = {
+      id: randomUUID(),
+      tag: "",
+      title: "",
+      content: "",
+      createdAt: now,
+      updatedAt: now
+    };
+    this.db
+      .prepare(
+        `INSERT INTO quick_notes (id, user_id, tag, title, content, created_at, updated_at)
+         VALUES (@id, @userId, @tag, @title, @content, @createdAt, @updatedAt)`
+      )
+      .run({ ...note, userId: this.userId });
+    return note;
+  }
+
+  async update(noteId: string, input: UpdateQuickNoteInput): Promise<QuickNote | null> {
+    const existing = await this.get(noteId);
+    if (!existing) return null;
+
+    const note: QuickNote = {
+      ...existing,
+      ...input,
+      updatedAt: new Date().toISOString()
+    };
+    this.db
+      .prepare(
+        `UPDATE quick_notes
+         SET tag = @tag, title = @title, content = @content, updated_at = @updatedAt
+         WHERE id = @id AND user_id = @userId`
+      )
+      .run({ ...note, userId: this.userId });
+    return note;
+  }
+
+  async delete(noteId: string): Promise<void> {
+    this.db.prepare("DELETE FROM quick_notes WHERE id = ? AND user_id = ?").run(noteId, this.userId);
+  }
+}
+
 interface TaskRow {
   id: string;
   title: string;
@@ -454,6 +536,7 @@ interface TaskRow {
   priority: Task["priority"];
   due_date: string | null;
   parent_task_id: string | null;
+  sort_order: number;
   created_at: string;
   updated_at: string;
   completed_at: string | null;
@@ -530,12 +613,38 @@ interface TrashRow {
   original_data: string;
 }
 
+interface QuickNoteRow {
+  id: string;
+  tag: string;
+  title: string;
+  content: string;
+  created_at: string;
+  updated_at: string;
+}
+
 function validateParentTask(parentTaskId: string | null, tasks: Task[]): void {
   if (parentTaskId === null) return;
   const parent = tasks.find((task) => task.id === parentTaskId);
   if (!parent || parent.parentTaskId !== null) {
     throw new Error("Parent task does not exist");
   }
+}
+
+function validateTaskReorder(parentTaskId: string | null, orderedIds: string[], tasks: Task[]): void {
+  const scopedTasks = tasks.filter((task) => task.parentTaskId === parentTaskId);
+  if (orderedIds.length !== scopedTasks.length) {
+    throw new Error("Invalid task order");
+  }
+
+  const scopedIds = new Set(scopedTasks.map((task) => task.id));
+  if (orderedIds.some((id) => !scopedIds.has(id)) || new Set(orderedIds).size !== orderedIds.length) {
+    throw new Error("Invalid task order");
+  }
+}
+
+function nextTaskSortOrder(tasks: Task[], parentTaskId: string | null): number {
+  const scopedOrders = tasks.filter((task) => task.parentTaskId === parentTaskId).map((task) => task.sortOrder);
+  return scopedOrders.length === 0 ? 0 : Math.max(...scopedOrders) + 1;
 }
 
 function mapTask(row: TaskRow): Task {
@@ -547,6 +656,7 @@ function mapTask(row: TaskRow): Task {
     priority: row.priority,
     dueDate: row.due_date,
     parentTaskId: row.parent_task_id,
+    sortOrder: row.sort_order,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     completedAt: row.completed_at
@@ -649,6 +759,17 @@ function mapTrash(row: TrashRow): TrashEntry {
     deletedAt: row.deleted_at,
     originalId: row.original_id,
     originalData: JSON.parse(row.original_data) as TrashEntry["originalData"]
+  };
+}
+
+function mapQuickNote(row: QuickNoteRow): QuickNote {
+  return {
+    id: row.id,
+    tag: row.tag,
+    title: row.title,
+    content: row.content,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
   };
 }
 

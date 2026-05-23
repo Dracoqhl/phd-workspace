@@ -1,6 +1,6 @@
 # Architecture
 
-This document defines the intended project layout and file placement rules for 博士工作台 / PhD Workspace. It should be updated whenever the code structure, ownership boundaries, or dependency rules change.
+This document defines the intended project layout and file placement rules for the personal workspace app. It should be updated whenever the code structure, ownership boundaries, or dependency rules change.
 
 ## Planned File Tree
 

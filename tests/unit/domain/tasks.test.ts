@@ -18,6 +18,7 @@ function task(overrides: Partial<Task>): Task {
     priority: "medium",
     dueDate: null,
     parentTaskId: null,
+    sortOrder: 0,
     createdAt: "2026-05-07T08:00:00.000Z",
     updatedAt: "2026-05-07T08:00:00.000Z",
     completedAt: null,

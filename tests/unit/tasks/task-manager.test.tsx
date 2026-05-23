@@ -15,6 +15,7 @@ function task(overrides: Partial<Task>): Task {
     priority: "high",
     dueDate: "2026-05-09",
     parentTaskId: null,
+    sortOrder: 0,
     createdAt: now,
     updatedAt: now,
     completedAt: null,
@@ -45,8 +46,24 @@ function mockFetch(tasks: Task[]) {
           status: "not_started",
           priority: body.priority as Task["priority"],
           dueDate: (body.dueDate as string | null) ?? null,
-          parentTaskId: null
+          parentTaskId: null,
+          sortOrder: tasks.filter((item) => item.parentTaskId === null).length
         })
+      });
+    }
+
+    if (url === "/api/tasks/reorder" && method === "PATCH") {
+      const body = parseBody(init);
+      const parentTaskId = (body.parentTaskId as string | null) ?? null;
+      const orderedIds = body.orderedIds as string[];
+      const orderById = new Map(orderedIds.map((id, index) => [id, index]));
+      return Response.json({
+        tasks: tasks
+          .map((item) => {
+            const sortOrder = orderById.get(item.id);
+            return item.parentTaskId === parentTaskId && sortOrder !== undefined ? { ...item, sortOrder } : item;
+          })
+          .sort((left, right) => left.sortOrder - right.sortOrder || left.createdAt.localeCompare(right.createdAt))
       });
     }
 
@@ -60,7 +77,8 @@ function mockFetch(tasks: Task[]) {
           status: body.status as Task["status"],
           priority: body.priority as Task["priority"],
           dueDate: (body.dueDate as string | null) ?? null,
-          parentTaskId: "task_1"
+          parentTaskId: "task_1",
+          sortOrder: tasks.filter((item) => item.parentTaskId === "task_1").length
         })
       });
     }
@@ -111,20 +129,20 @@ describe("TaskManager", () => {
 
     render(<TaskManager />);
 
-    expect(await screen.findByRole("table", { name: "Task list" })).toHaveClass("rounded-list-frame");
-    expect(await screen.findByRole("columnheader", { name: "Task" })).toBeInTheDocument();
-    expect(screen.getByRole("columnheader", { name: "Status" })).toBeInTheDocument();
-    expect(screen.getByRole("columnheader", { name: "Priority" })).toBeInTheDocument();
-    expect(screen.getByRole("columnheader", { name: "Due" })).toBeInTheDocument();
-    expect(screen.getByRole("columnheader", { name: "Task" })).toHaveClass("text-center");
-    expect(screen.getByRole("columnheader", { name: "Status" })).toHaveClass("text-center");
-    expect(screen.getByRole("columnheader", { name: "Priority" })).toHaveClass("text-center");
-    expect(screen.getByRole("columnheader", { name: "Due" })).toHaveClass("text-center");
+    expect(await screen.findByRole("table", { name: "Task list" })).not.toHaveClass("rounded-list-frame");
+    expect(screen.getByText("集中管理阶段目标、论文推进和待办层级。")).toBeInTheDocument();
+    expect(await screen.findByRole("columnheader", { name: "任务" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "状态" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "优先级" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "截止" })).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "任务" })).toHaveClass("text-center");
+    expect(screen.getByRole("columnheader", { name: "状态" })).toHaveClass("text-center");
+    expect(screen.getByRole("columnheader", { name: "优先级" })).toHaveClass("text-center");
+    expect(screen.getByRole("columnheader", { name: "截止" })).toHaveClass("text-center");
     expect(screen.getByTestId("status-cell-task_1")).toHaveClass("justify-center");
     expect(screen.getByTestId("priority-cell-task_1")).toHaveClass("justify-center");
     expect(screen.getByTestId("due-cell-task_1")).toHaveClass("justify-center");
     expect(screen.getByRole("row", { name: /Draft dissertation chapter/ })).toHaveClass("bg-task-parent");
-    expect(screen.getByRole("row", { name: /Draft dissertation chapter/ })).toHaveClass("rounded-list-row");
     expect(screen.getByRole("row", { name: /Draft dissertation chapter/ })).not.toHaveClass("hover:bg-task-row-hover");
     expect(screen.getByRole("button", { name: "Delete task Draft dissertation chapter" })).toHaveClass("text-action-muted", "hover:text-delete");
     expect(screen.getByText("1/2")).toBeInTheDocument();
@@ -135,7 +153,6 @@ describe("TaskManager", () => {
     expect(screen.getByText("Collect figures")).toBeInTheDocument();
     expect(screen.getByText("Revise intro")).toBeInTheDocument();
     expect(screen.getByRole("row", { name: /Revise intro/ })).toHaveClass("bg-task-child");
-    expect(screen.getByRole("row", { name: /Revise intro/ })).toHaveClass("rounded-list-row");
     expect(screen.getByTestId("subtask-marker-subtask_2")).toHaveClass("text-muted");
     expect(screen.getByRole("button", { name: "Delete subtask Collect figures" })).toHaveClass("text-action-muted", "hover:text-delete");
   });
@@ -192,9 +209,23 @@ describe("TaskManager", () => {
     expect(await screen.findByText("Active task")).toBeInTheDocument();
     expect(screen.queryByText("Done task")).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Show Completed" }));
+    fireEvent.click(screen.getByRole("button", { name: "展示全部" }));
 
     expect(screen.getByText("Done task")).toBeInTheDocument();
+  });
+
+  it("keeps top-level task creation collapsed until requested", async () => {
+    mockFetch([]);
+
+    render(<TaskManager />);
+
+    expect(await screen.findByRole("button", { name: "新建任务" })).toBeInTheDocument();
+    expect(screen.queryByText("紧凑展示一级任务和子任务，点击标题、优先级或截止日期快速修改。")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Task title")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "新建任务" }));
+
+    await waitFor(() => expect(screen.getByLabelText("Task title")).toHaveFocus());
   });
 
   it("creates a top-level task", async () => {
@@ -202,11 +233,13 @@ describe("TaskManager", () => {
 
     render(<TaskManager />);
 
+    fireEvent.click(await screen.findByRole("button", { name: "新建任务" }));
     fireEvent.change(screen.getByLabelText("Task title"), { target: { value: "Prepare committee slides" } });
     fireEvent.change(screen.getByLabelText("Task priority"), { target: { value: "high" } });
     fireEvent.click(screen.getByRole("button", { name: "Create Task" }));
 
     expect(await screen.findByText("Prepare committee slides")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Task title")).not.toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/tasks",
       expect.objectContaining({
@@ -228,6 +261,7 @@ describe("TaskManager", () => {
 
     render(<TaskManager />);
 
+    fireEvent.click(await screen.findByRole("button", { name: "新建任务" }));
     fireEvent.change(screen.getByLabelText("Task title"), { target: { value: "Default priority task" } });
     fireEvent.click(screen.getByRole("button", { name: "Create Task" }));
 
@@ -239,6 +273,62 @@ describe("TaskManager", () => {
         body: expect.stringContaining('"priority":"low"')
       })
     );
+  });
+
+  it("reorders top-level tasks with the drag handle", async () => {
+    const fetchMock = mockFetch([
+      task({ id: "task_1", title: "First task", sortOrder: 0 }),
+      task({ id: "task_2", title: "Second task", sortOrder: 1 })
+    ]);
+
+    render(<TaskManager />);
+
+    const dragButton = await screen.findByRole("button", { name: "拖动任务 Second task" });
+    const targetRow = screen.getByRole("row", { name: /First task/ });
+    expect(dragButton).not.toHaveClass("hover:bg-slate-100");
+
+    fireEvent.dragStart(dragButton);
+    fireEvent.dragOver(targetRow);
+    expect(targetRow).toHaveAttribute("data-drop-placement", "before");
+    expect(targetRow).toHaveClass("before:bg-moss");
+    fireEvent.drop(targetRow);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/tasks/reorder",
+        expect.objectContaining({
+          method: "PATCH",
+          body: JSON.stringify({ parentTaskId: null, orderedIds: ["task_2", "task_1"] })
+        })
+      );
+    });
+  });
+
+  it("reorders subtasks only within the same parent", async () => {
+    const fetchMock = mockFetch([
+      task({ id: "task_1", title: "Parent task", sortOrder: 0 }),
+      task({ id: "subtask_1", title: "First child", parentTaskId: "task_1", sortOrder: 0 }),
+      task({ id: "subtask_2", title: "Second child", parentTaskId: "task_1", sortOrder: 1 })
+    ]);
+
+    render(<TaskManager />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Expand subtasks for Parent task" }));
+    const targetRow = screen.getByRole("row", { name: /First child/ });
+    fireEvent.dragStart(screen.getByRole("button", { name: "拖动子任务 Second child" }));
+    fireEvent.dragOver(targetRow);
+    expect(targetRow).toHaveAttribute("data-drop-placement", "before");
+    fireEvent.drop(targetRow);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/tasks/reorder",
+        expect.objectContaining({
+          method: "PATCH",
+          body: JSON.stringify({ parentTaskId: "task_1", orderedIds: ["subtask_2", "subtask_1"] })
+        })
+      );
+    });
   });
 
   it("reloads tasks when an AI confirmation refresh event is dispatched", async () => {
@@ -441,7 +531,7 @@ describe("TaskManager", () => {
 
     render(<TaskManager />);
 
-    fireEvent.click(await screen.findByRole("button", { name: "Show Completed" }));
+    fireEvent.click(await screen.findByRole("button", { name: "展示全部" }));
     fireEvent.click(await screen.findByRole("button", { name: "Reopen task Draft dissertation chapter" }));
 
     expect(fetchMock).toHaveBeenCalledWith(

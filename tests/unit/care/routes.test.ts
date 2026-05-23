@@ -93,7 +93,7 @@ describe("care routes", () => {
     const response = await generateCare(
       authRequest(`${baseUrl}/api/care/generate`, {
         method: "POST",
-        body: JSON.stringify({ preferenceText: "偏科研，短一点" })
+        body: JSON.stringify({ preferenceText: "偏长期计划，短一点" })
       })
     );
 
@@ -129,7 +129,7 @@ describe("care routes", () => {
     const response = await generateCare(
       authRequest(`${baseUrl}/api/care/generate`, {
         method: "POST",
-        body: JSON.stringify({ preferenceText: "偏科研，短一点" })
+        body: JSON.stringify({ preferenceText: "偏长期计划，短一点" })
       })
     );
 
@@ -173,7 +173,7 @@ describe("care routes", () => {
     vi.stubEnv("AI_BASE_URL", "https://example.test/v1/");
     const fetchMock = vi.fn().mockResolvedValue(
       Response.json({
-        choices: [{ message: { content: JSON.stringify(["第一条科研 quote。", "第二条科研 quote。", "第三条科研 quote。"]) } }]
+        choices: [{ message: { content: JSON.stringify(["第一条计划 quote。", "第二条计划 quote。", "第三条计划 quote。"]) } }]
       })
     );
     vi.stubGlobal("fetch", fetchMock);
@@ -182,21 +182,21 @@ describe("care routes", () => {
       authRequest(`${baseUrl}/api/care/generate`, {
         method: "POST",
         headers: { Cookie: dbCookie, "Content-Type": "application/json" },
-        body: JSON.stringify({ preferenceText: "偏科研，短一点" })
+        body: JSON.stringify({ preferenceText: "偏长期计划，短一点" })
       })
     );
     expect(firstResponse.status).toBe(200);
     await expect(firstResponse.json()).resolves.toMatchObject({
-      care: { content: "第一条科研 quote。", source: "ai_generated" },
-      quotePreference: "偏科研，短一点",
-      quoteBatch: ["第一条科研 quote。", "第二条科研 quote。", "第三条科研 quote。"],
+      care: { content: "第一条计划 quote。", source: "ai_generated" },
+      quotePreference: "偏长期计划，短一点",
+      quoteBatch: ["第一条计划 quote。", "第二条计划 quote。", "第三条计划 quote。"],
       quoteIndex: 0
     });
 
     const todayResponse = await getTodayCare(authRequest(`${baseUrl}/api/care/today`, { headers: { Cookie: dbCookie } }));
     await expect(todayResponse.json()).resolves.toMatchObject({
-      quotePreference: "偏科研，短一点",
-      quoteBatch: ["第一条科研 quote。", "第二条科研 quote。", "第三条科研 quote。"],
+      quotePreference: "偏长期计划，短一点",
+      quoteBatch: ["第一条计划 quote。", "第二条计划 quote。", "第三条计划 quote。"],
       quoteIndex: 0
     });
     expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -205,7 +205,7 @@ describe("care routes", () => {
       authRequest(`${baseUrl}/api/care/generate`, {
         method: "POST",
         headers: { Cookie: dbCookie, "Content-Type": "application/json" },
-        body: JSON.stringify({ preferenceText: "偏科研，短一点" })
+        body: JSON.stringify({ preferenceText: "偏长期计划，短一点" })
       })
     );
     expect(reusedResponse.status).toBe(200);
