@@ -79,7 +79,7 @@ export function WorkspaceTitle() {
 
   return (
     <>
-      <h1 className="flex flex-wrap items-baseline gap-x-1.5 gap-y-1 font-semibold tracking-normal text-ink">
+      <h1 className="flex flex-wrap items-baseline gap-x-0.5 gap-y-1 font-semibold tracking-normal text-ink">
         {editing ? (
           <input
             aria-label="工作台名称前缀"
@@ -103,11 +103,25 @@ export function WorkspaceTitle() {
         ) : (
           <button
             aria-label="修改工作台名称前缀"
-            className="rounded-md bg-moss/10 px-2 py-1 text-4xl font-semibold leading-none text-moss transition hover:bg-moss/15 focus:outline-none focus:ring-2 focus:ring-moss/25 sm:text-5xl"
+            className="group relative inline-flex rounded-md px-1 pb-2 pt-1 text-4xl font-semibold leading-none text-moss transition hover:bg-moss/10 focus:outline-none focus:ring-2 focus:ring-moss/25 sm:text-5xl"
             onClick={startEditing}
             type="button"
           >
-            {prefix}
+            <span className="relative z-10">{prefix}</span>
+            <svg
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-x-0 -bottom-0.5 h-3 w-full text-moss/70 transition group-hover:text-moss"
+              preserveAspectRatio="none"
+              viewBox="0 0 120 18"
+            >
+              <path
+                d="M3 10 C 14 1, 25 17, 36 8 S 58 17, 69 8 S 91 17, 102 8 S 113 1, 117 10"
+                fill="none"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeWidth="5"
+              />
+            </svg>
           </button>
         )}
         <span className="text-2xl font-semibold leading-none text-ink sm:text-3xl">工作台</span>
