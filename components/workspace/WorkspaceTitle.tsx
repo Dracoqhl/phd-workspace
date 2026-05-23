@@ -79,11 +79,11 @@ export function WorkspaceTitle() {
 
   return (
     <>
-      <h1 className="flex flex-wrap items-center gap-2 text-3xl font-semibold tracking-normal text-ink">
+      <h1 className="flex flex-wrap items-baseline gap-x-3 gap-y-1 font-semibold tracking-normal text-ink">
         {editing ? (
           <input
             aria-label="工作台名称前缀"
-            className="min-w-0 max-w-48 rounded-md border border-moss bg-white px-2 py-1 text-2xl font-semibold text-ink outline-none ring-2 ring-moss/15"
+            className="min-w-0 max-w-56 rounded-md border border-moss bg-white px-2 py-1 text-4xl font-semibold leading-none text-ink outline-none ring-2 ring-moss/15 sm:text-5xl"
             maxLength={MAX_PREFIX_LENGTH}
             onBlur={savePrefix}
             onChange={(event) => setDraft(event.target.value)}
@@ -103,21 +103,21 @@ export function WorkspaceTitle() {
         ) : (
           <button
             aria-label="修改工作台名称前缀"
-            className="rounded-md bg-moss/10 px-2 py-1 text-3xl font-semibold text-moss transition hover:bg-moss/15 focus:outline-none focus:ring-2 focus:ring-moss/25"
+            className="rounded-md bg-moss/10 px-2 py-1 text-4xl font-semibold leading-none text-moss transition hover:bg-moss/15 focus:outline-none focus:ring-2 focus:ring-moss/25 sm:text-5xl"
             onClick={startEditing}
             type="button"
           >
             {prefix}
           </button>
         )}
-        <span>工作台</span>
+        <span className="text-2xl font-semibold leading-none text-ink sm:text-3xl">工作台</span>
         <button
-          aria-label={`查看 v${APP_VERSION} 更新日志`}
-          className="mt-1 inline-flex h-6 items-center rounded-full border border-slate-200 bg-white px-2 text-xs font-semibold text-slate-500 shadow-sm transition hover:border-moss/35 hover:bg-moss/10 hover:text-moss focus:outline-none focus:ring-2 focus:ring-moss/20"
+          aria-label={`查看 V${APP_VERSION} 更新日志`}
+          className="inline-flex h-5 items-center rounded-full border border-slate-200 bg-white px-1.5 text-[10px] font-semibold leading-none text-slate-500 shadow-sm transition hover:border-moss/35 hover:bg-moss/10 hover:text-moss focus:outline-none focus:ring-2 focus:ring-moss/20"
           onClick={openReleaseNotes}
           type="button"
         >
-          v{APP_VERSION}
+          V{APP_VERSION}
         </button>
       </h1>
       {releaseNotesOpen ? (
@@ -154,7 +154,7 @@ function ReleaseNotesDialog({
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.12em] text-moss">版本更新</p>
             <h2 className="mt-1 text-lg font-semibold text-ink" id="release-notes-title">
-              v{selectedNote.version} {selectedNote.title}
+              V{selectedNote.version} {selectedNote.title}
             </h2>
             <p className="mt-1 text-xs text-slate-500">{selectedNote.date}</p>
           </div>
@@ -181,7 +181,7 @@ function ReleaseNotesDialog({
               role="tab"
               type="button"
             >
-              v{note.version}
+              V{note.version}
             </button>
           ))}
         </div>
