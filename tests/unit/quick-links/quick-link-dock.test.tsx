@@ -129,6 +129,7 @@ describe("QuickLinkDock", () => {
     await screen.findByText("bilibili");
     const image = document.querySelector("img");
     expect(image).not.toBeNull();
+    expect(image).toHaveAttribute("src", "/api/quick-links/icon?domain=bilibili.com");
     fireEvent.error(image!);
 
     expect(screen.getByText("b")).toBeInTheDocument();

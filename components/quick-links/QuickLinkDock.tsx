@@ -85,7 +85,7 @@ export function QuickLinkDock() {
                   alt=""
                   className="h-8 w-8 rounded-md"
                   onError={() => setFailedIconIds((current) => new Set(current).add(group.id))}
-                  src={group.iconUrl}
+                  src={getQuickLinkIconSrc(group)}
                 />
               )}
             </button>
@@ -135,6 +135,10 @@ function AddQuickLinkButton({ onClick }: { onClick: () => void }) {
       <Plus aria-hidden="true" size={20} />
     </button>
   );
+}
+
+function getQuickLinkIconSrc(group: QuickLinkGroup): string {
+  return `/api/quick-links/icon?domain=${encodeURIComponent(group.domain)}`;
 }
 
 function AddQuickLinkDialog({ onClose, onGroupsChange }: { onClose: () => void; onGroupsChange: (groups: QuickLinkGroup[]) => void }) {

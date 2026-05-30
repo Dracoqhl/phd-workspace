@@ -10,6 +10,7 @@ import { POST as register } from "@/app/api/auth/register/route";
 import { DELETE as deleteQuickLink, PATCH as updateQuickLink } from "@/app/api/quick-links/[id]/route";
 import { POST as setDefaultQuickLink } from "@/app/api/quick-links/[id]/default/route";
 import { DELETE as deleteQuickLinkGroup, PATCH as updateQuickLinkGroup } from "@/app/api/quick-links/groups/[id]/route";
+import { GET as getQuickLinkIcon } from "@/app/api/quick-links/icon/route";
 import { GET as listQuickLinks, POST as createQuickLink } from "@/app/api/quick-links/route";
 import { closeDatabase, getDatabase } from "@/lib/db/database";
 import { ensureDatabaseSchema } from "@/lib/db/schema";
@@ -35,6 +36,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
+  vi.unstubAllGlobals();
   vi.unstubAllEnvs();
   closeDatabase();
 
@@ -150,6 +152,28 @@ describe("quick link routes", () => {
     });
 
     expect(await readGroups(response)).toEqual([]);
+  });
+
+  it("proxies favicons through the server and falls back to the site favicon", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("google.com/s2/favicons")) {
+        return new Response(new Uint8Array([0]), { status: 404, headers: { "Content-Type": "image/png" } });
+      }
+      if (url === "https://xiaohongshu.com/favicon.ico") {
+        return new Response(new Uint8Array([1, 2, 3]), { headers: { "Content-Type": "image/x-icon" } });
+      }
+      throw new Error(`Unexpected favicon request ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await getQuickLinkIcon(authRequest(userCookie, `${baseUrl}/api/quick-links/icon?domain=xiaohongshu.com`));
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Content-Type")).toBe("image/x-icon");
+    await expect(response.arrayBuffer()).resolves.toHaveProperty("byteLength", 3);
+    expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("google.com/s2/favicons"), expect.any(Object));
+    expect(fetchMock).toHaveBeenCalledWith("https://xiaohongshu.com/favicon.ico", expect.any(Object));
   });
 });
 
