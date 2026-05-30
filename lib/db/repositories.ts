@@ -6,8 +6,10 @@ import type { AiChatActionState, AiChatMessage } from "@/types/ai-chat";
 import type { CareQuotePreference, CareRecord } from "@/types/care";
 import type { CreateHabitInput, Habit, HabitCheckin, UpdateHabitInput } from "@/types/habit";
 import type { QuickNote, UpdateQuickNoteInput } from "@/types/note";
+import type { CreateQuickLinkInput, QuickLink, QuickLinkGroup, UpdateQuickLinkGroupInput, UpdateQuickLinkInput } from "@/types/quick-link";
 import type { CreateTaskInput, Task, UpdateTaskInput } from "@/types/task";
 import type { TrashEntry } from "@/types/trash";
+import { limitQuickLinkName, parseQuickLinkUrl } from "@/lib/domain/quick-links";
 
 export function createSqliteRepositories(db: SqliteDatabase, userId: string) {
   const trash = new SqliteTrashRepository(db, userId);
@@ -20,7 +22,8 @@ export function createSqliteRepositories(db: SqliteDatabase, userId: string) {
     careQuotePreferences: new SqliteCareQuotePreferenceRepository(db, userId),
     aiLogs: new SqliteAiLogRepository(db, userId),
     aiChatMessages: new SqliteAiChatMessageRepository(db, userId),
-    notes: new SqliteQuickNoteRepository(db, userId)
+    notes: new SqliteQuickNoteRepository(db, userId),
+    quickLinks: new SqliteQuickLinkRepository(db, userId)
   };
 }
 
@@ -528,6 +531,258 @@ class SqliteQuickNoteRepository {
   }
 }
 
+class SqliteQuickLinkRepository {
+  constructor(
+    private readonly db: SqliteDatabase,
+    private readonly userId: string
+  ) {}
+
+  async listGroups(): Promise<QuickLinkGroup[]> {
+    return this.listGroupsSync();
+  }
+
+  async createLink(input: CreateQuickLinkInput): Promise<QuickLinkGroup[]> {
+    const parsed = parseQuickLinkUrl(input.url);
+    if (!parsed) throw new Error("Invalid quick link URL");
+
+    const now = new Date().toISOString();
+    const transaction = this.db.transaction(() => {
+      let group = this.getGroupByDomainSync(parsed.domain);
+      if (!group) {
+        group = {
+          id: randomUUID(),
+          domain: parsed.domain,
+          displayName: parsed.defaultName,
+          iconUrl: parsed.iconUrl,
+          defaultLinkId: "",
+          sortOrder: this.nextGroupSortOrder(),
+          createdAt: now,
+          updatedAt: now
+        };
+        this.db
+          .prepare(
+            `INSERT INTO quick_link_groups
+             (id, user_id, domain, display_name, icon_url, default_link_id, sort_order, created_at, updated_at)
+             VALUES (@id, @userId, @domain, @displayName, @iconUrl, '', @sortOrder, @createdAt, @updatedAt)`
+          )
+          .run({ ...group, userId: this.userId });
+      }
+
+      const link: QuickLink = {
+        id: randomUUID(),
+        groupId: group.id,
+        title: limitQuickLinkName(input.title ?? "") || group.displayName,
+        url: parsed.url,
+        sortOrder: this.nextLinkSortOrder(group.id),
+        createdAt: now,
+        updatedAt: now
+      };
+      this.insertLinkSync(link);
+
+      if (!group.defaultLinkId) {
+        this.db
+          .prepare("UPDATE quick_link_groups SET default_link_id = ?, updated_at = ? WHERE id = ? AND user_id = ?")
+          .run(link.id, now, group.id, this.userId);
+      }
+    });
+
+    transaction();
+    return this.listGroupsSync();
+  }
+
+  async updateGroup(groupId: string, input: UpdateQuickLinkGroupInput): Promise<QuickLinkGroup[] | null> {
+    if (!this.getGroupSync(groupId)) return null;
+
+    const displayName = input.displayName ? limitQuickLinkName(input.displayName) : "";
+    if (!displayName) throw new Error("Invalid quick link group name");
+
+    this.db
+      .prepare("UPDATE quick_link_groups SET display_name = ?, updated_at = ? WHERE id = ? AND user_id = ?")
+      .run(displayName, new Date().toISOString(), groupId, this.userId);
+    return this.listGroupsSync();
+  }
+
+  async updateLink(linkId: string, input: UpdateQuickLinkInput): Promise<QuickLinkGroup[] | null> {
+    const existing = this.getLinkSync(linkId);
+    if (!existing) return null;
+
+    const parsed = input.url ? parseQuickLinkUrl(input.url) : null;
+    if (input.url && !parsed) throw new Error("Invalid quick link URL");
+    const now = new Date().toISOString();
+
+    const transaction = this.db.transaction(() => {
+      let groupId = existing.groupId;
+      if (parsed) {
+        const oldGroupId = existing.groupId;
+        let nextGroup = this.getGroupByDomainSync(parsed.domain);
+        if (!nextGroup) {
+          nextGroup = {
+            id: randomUUID(),
+            domain: parsed.domain,
+            displayName: parsed.defaultName,
+            iconUrl: parsed.iconUrl,
+            defaultLinkId: "",
+            sortOrder: this.nextGroupSortOrder(),
+            createdAt: now,
+            updatedAt: now
+          };
+          this.db
+            .prepare(
+              `INSERT INTO quick_link_groups
+               (id, user_id, domain, display_name, icon_url, default_link_id, sort_order, created_at, updated_at)
+               VALUES (@id, @userId, @domain, @displayName, @iconUrl, '', @sortOrder, @createdAt, @updatedAt)`
+            )
+            .run({ ...nextGroup, userId: this.userId });
+        }
+
+        groupId = nextGroup.id;
+        if (groupId !== oldGroupId) {
+          this.ensureGroupDefaultAfterLinkRemoval(oldGroupId, existing.id, now);
+        }
+      }
+
+      const nextUrl = parsed?.url ?? existing.url;
+      const nextTitle = input.title ? limitQuickLinkName(input.title) : existing.title;
+      this.db
+        .prepare(
+          `UPDATE quick_links
+           SET group_id = ?, title = ?, url = ?, updated_at = ?
+           WHERE id = ? AND user_id = ?`
+        )
+        .run(groupId, nextTitle, nextUrl, now, existing.id, this.userId);
+
+      const group = this.getGroupSync(groupId);
+      if (group && !group.defaultLinkId) {
+        this.db
+          .prepare("UPDATE quick_link_groups SET default_link_id = ?, updated_at = ? WHERE id = ? AND user_id = ?")
+          .run(existing.id, now, groupId, this.userId);
+      }
+    });
+
+    transaction();
+    return this.listGroupsSync();
+  }
+
+  async setDefaultLink(linkId: string): Promise<QuickLinkGroup[] | null> {
+    const link = this.getLinkSync(linkId);
+    if (!link) return null;
+
+    this.db
+      .prepare("UPDATE quick_link_groups SET default_link_id = ?, updated_at = ? WHERE id = ? AND user_id = ?")
+      .run(link.id, new Date().toISOString(), link.groupId, this.userId);
+    return this.listGroupsSync();
+  }
+
+  async deleteLink(linkId: string): Promise<QuickLinkGroup[] | null> {
+    const link = this.getLinkSync(linkId);
+    if (!link) return null;
+
+    const now = new Date().toISOString();
+    const transaction = this.db.transaction(() => {
+      this.db.prepare("DELETE FROM quick_links WHERE id = ? AND user_id = ?").run(link.id, this.userId);
+      this.ensureGroupDefaultAfterLinkRemoval(link.groupId, link.id, now);
+    });
+    transaction();
+    return this.listGroupsSync();
+  }
+
+  async deleteGroup(groupId: string): Promise<QuickLinkGroup[] | null> {
+    const group = this.getGroupSync(groupId);
+    if (!group) return null;
+
+    const transaction = this.db.transaction(() => {
+      this.db.prepare("DELETE FROM quick_links WHERE group_id = ? AND user_id = ?").run(groupId, this.userId);
+      this.db.prepare("DELETE FROM quick_link_groups WHERE id = ? AND user_id = ?").run(groupId, this.userId);
+    });
+    transaction();
+    return this.listGroupsSync();
+  }
+
+  private listGroupsSync(): QuickLinkGroup[] {
+    const groups = (this.db
+      .prepare("SELECT * FROM quick_link_groups WHERE user_id = ? ORDER BY sort_order ASC, created_at ASC")
+      .all(this.userId) as QuickLinkGroupRow[]).map(mapQuickLinkGroupBase);
+    const linksByGroupId = new Map<string, QuickLink[]>();
+    const links = (this.db
+      .prepare("SELECT * FROM quick_links WHERE user_id = ? ORDER BY sort_order ASC, created_at ASC")
+      .all(this.userId) as QuickLinkRow[]).map(mapQuickLink);
+
+    links.forEach((link) => {
+      const groupLinks = linksByGroupId.get(link.groupId) ?? [];
+      groupLinks.push(link);
+      linksByGroupId.set(link.groupId, groupLinks);
+    });
+
+    return groups.map((group) => ({
+      ...group,
+      links: orderQuickLinksForGroup(linksByGroupId.get(group.id) ?? [], group.defaultLinkId)
+    }));
+  }
+
+  private getGroupByDomainSync(domain: string): Omit<QuickLinkGroup, "links"> | null {
+    const row = this.db
+      .prepare("SELECT * FROM quick_link_groups WHERE domain = ? AND user_id = ?")
+      .get(domain, this.userId) as QuickLinkGroupRow | undefined;
+    return row ? mapQuickLinkGroupBase(row) : null;
+  }
+
+  private getGroupSync(groupId: string): Omit<QuickLinkGroup, "links"> | null {
+    const row = this.db
+      .prepare("SELECT * FROM quick_link_groups WHERE id = ? AND user_id = ?")
+      .get(groupId, this.userId) as QuickLinkGroupRow | undefined;
+    return row ? mapQuickLinkGroupBase(row) : null;
+  }
+
+  private getLinkSync(linkId: string): QuickLink | null {
+    const row = this.db
+      .prepare("SELECT * FROM quick_links WHERE id = ? AND user_id = ?")
+      .get(linkId, this.userId) as QuickLinkRow | undefined;
+    return row ? mapQuickLink(row) : null;
+  }
+
+  private insertLinkSync(link: QuickLink): void {
+    this.db
+      .prepare(
+        `INSERT INTO quick_links (id, user_id, group_id, title, url, sort_order, created_at, updated_at)
+         VALUES (@id, @userId, @groupId, @title, @url, @sortOrder, @createdAt, @updatedAt)`
+      )
+      .run({ ...link, userId: this.userId });
+  }
+
+  private nextGroupSortOrder(): number {
+    const row = this.db.prepare("SELECT MAX(sort_order) AS maxSortOrder FROM quick_link_groups WHERE user_id = ?").get(this.userId) as {
+      maxSortOrder: number | null;
+    };
+    return row.maxSortOrder === null ? 0 : row.maxSortOrder + 1;
+  }
+
+  private nextLinkSortOrder(groupId: string): number {
+    const row = this.db
+      .prepare("SELECT MAX(sort_order) AS maxSortOrder FROM quick_links WHERE user_id = ? AND group_id = ?")
+      .get(this.userId, groupId) as { maxSortOrder: number | null };
+    return row.maxSortOrder === null ? 0 : row.maxSortOrder + 1;
+  }
+
+  private ensureGroupDefaultAfterLinkRemoval(groupId: string, removedLinkId: string, now: string): void {
+    const group = this.getGroupSync(groupId);
+    if (!group) return;
+
+    const remaining = (this.db
+      .prepare("SELECT * FROM quick_links WHERE user_id = ? AND group_id = ? AND id != ? ORDER BY sort_order ASC, created_at ASC")
+      .all(this.userId, groupId, removedLinkId) as QuickLinkRow[]).map(mapQuickLink);
+    if (remaining.length === 0) {
+      this.db.prepare("DELETE FROM quick_link_groups WHERE id = ? AND user_id = ?").run(groupId, this.userId);
+      return;
+    }
+
+    if (group.defaultLinkId === removedLinkId) {
+      this.db
+        .prepare("UPDATE quick_link_groups SET default_link_id = ?, updated_at = ? WHERE id = ? AND user_id = ?")
+        .run(remaining[0].id, now, groupId, this.userId);
+    }
+  }
+}
+
 interface TaskRow {
   id: string;
   title: string;
@@ -618,6 +873,27 @@ interface QuickNoteRow {
   tag: string;
   title: string;
   content: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface QuickLinkGroupRow {
+  id: string;
+  domain: string;
+  display_name: string;
+  icon_url: string;
+  default_link_id: string;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+interface QuickLinkRow {
+  id: string;
+  group_id: string;
+  title: string;
+  url: string;
+  sort_order: number;
   created_at: string;
   updated_at: string;
 }
@@ -771,6 +1047,39 @@ function mapQuickNote(row: QuickNoteRow): QuickNote {
     createdAt: row.created_at,
     updatedAt: row.updated_at
   };
+}
+
+function mapQuickLinkGroupBase(row: QuickLinkGroupRow): Omit<QuickLinkGroup, "links"> {
+  return {
+    id: row.id,
+    domain: row.domain,
+    displayName: row.display_name,
+    iconUrl: row.icon_url,
+    defaultLinkId: row.default_link_id,
+    sortOrder: row.sort_order,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
+}
+
+function mapQuickLink(row: QuickLinkRow): QuickLink {
+  return {
+    id: row.id,
+    groupId: row.group_id,
+    title: row.title,
+    url: row.url,
+    sortOrder: row.sort_order,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
+}
+
+function orderQuickLinksForGroup(links: QuickLink[], defaultLinkId: string): QuickLink[] {
+  return [...links].sort((a, b) => {
+    if (a.id === defaultLinkId) return -1;
+    if (b.id === defaultLinkId) return 1;
+    return a.sortOrder - b.sortOrder || a.createdAt.localeCompare(b.createdAt);
+  });
 }
 
 function toCareParams(record: CareRecord, userId: string) {

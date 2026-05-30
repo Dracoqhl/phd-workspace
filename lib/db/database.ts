@@ -11,12 +11,12 @@ export class SqliteDatabase {
   constructor(readonly path: string) {
     mkdirSync(dirname(path), { recursive: true });
     if (!existsSync(path)) {
-      execFileSync("sqlite3", [path, "PRAGMA user_version;"], { encoding: "utf8" });
+      execSqlite(path, "PRAGMA user_version;");
     }
   }
 
   exec(sql: string): void {
-    execFileSync("sqlite3", [this.path, sql], { encoding: "utf8" });
+    execSqlite(this.path, sql);
   }
 
   prepare(sql: string): SqliteStatement {
@@ -43,7 +43,7 @@ export class SqliteStatement {
   ) {}
 
   run(...params: unknown[]): void {
-    execFileSync("sqlite3", [this.path, interpolateSql(this.sql, params)], { encoding: "utf8" });
+    execSqlite(this.path, interpolateSql(this.sql, params));
   }
 
   get(...params: unknown[]): unknown {
@@ -53,7 +53,7 @@ export class SqliteStatement {
 
   all(...params: unknown[]): unknown[] {
     const sql = interpolateSql(this.sql, params);
-    const output = execFileSync("sqlite3", ["-json", this.path, sql], { encoding: "utf8" }).trim();
+    const output = execFileSync("sqlite3", ["-cmd", ".timeout 5000", "-json", this.path, sql], { encoding: "utf8" }).trim();
     return output ? (JSON.parse(output) as unknown[]) : [];
   }
 }
@@ -101,6 +101,10 @@ function interpolateSql(sql: string, params: unknown[]): string {
 
   let index = 0;
   return sql.replace(/\?/g, () => toSqlLiteral(params[index++]));
+}
+
+function execSqlite(path: string, sql: string): void {
+  execFileSync("sqlite3", ["-cmd", ".timeout 5000", path, sql], { encoding: "utf8" });
 }
 
 function toSqlLiteral(value: unknown): string {

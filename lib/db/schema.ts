@@ -127,6 +127,30 @@ export function ensureDatabaseSchema(db: SqliteDatabase): void {
       updated_at TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS quick_link_groups (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      domain TEXT NOT NULL,
+      display_name TEXT NOT NULL,
+      icon_url TEXT NOT NULL,
+      default_link_id TEXT NOT NULL,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      UNIQUE(user_id, domain)
+    );
+
+    CREATE TABLE IF NOT EXISTS quick_links (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      group_id TEXT NOT NULL,
+      title TEXT NOT NULL,
+      url TEXT NOT NULL,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS trash_entries (
       id TEXT PRIMARY KEY,
       user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -142,6 +166,8 @@ export function ensureDatabaseSchema(db: SqliteDatabase): void {
     CREATE INDEX IF NOT EXISTS idx_ai_action_logs_user_id ON ai_action_logs(user_id);
     CREATE INDEX IF NOT EXISTS idx_ai_chat_messages_user_created_at ON ai_chat_messages(user_id, created_at);
     CREATE INDEX IF NOT EXISTS idx_quick_notes_user_created_at ON quick_notes(user_id, created_at);
+    CREATE INDEX IF NOT EXISTS idx_quick_link_groups_user_order ON quick_link_groups(user_id, sort_order, created_at);
+    CREATE INDEX IF NOT EXISTS idx_quick_links_user_group_order ON quick_links(user_id, group_id, sort_order, created_at);
   `);
 
   ensureColumn(db, "ai_chat_messages", "proposals_json", "TEXT NOT NULL DEFAULT '[]'");
@@ -159,11 +185,6 @@ function ensureColumn(db: SqliteDatabase, tableName: string, columnName: string,
 }
 
 function ensureAdminUser(db: SqliteDatabase): void {
-  const count = db.prepare("SELECT COUNT(*) AS count FROM users").get() as { count: number };
-  if (count.count > 0) {
-    return;
-  }
-
   const email = normalizeEmail(process.env.ADMIN_EMAIL ?? "");
   const password = process.env.ADMIN_PASSWORD ?? "";
   if (!email || !password) {
@@ -172,8 +193,9 @@ function ensureAdminUser(db: SqliteDatabase): void {
 
   const now = new Date().toISOString();
   db.prepare(
-    `INSERT INTO users (id, email, password_hash, role, created_at, updated_at)
-     VALUES (@id, @email, @passwordHash, 'admin', @createdAt, @updatedAt)`
+    `INSERT OR IGNORE INTO users (id, email, password_hash, role, created_at, updated_at)
+     SELECT @id, @email, @passwordHash, 'admin', @createdAt, @updatedAt
+     WHERE NOT EXISTS (SELECT 1 FROM users)`
   ).run({
     id: randomUUID(),
     email,

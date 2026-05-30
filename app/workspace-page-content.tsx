@@ -6,6 +6,7 @@ import { AiAssistantPanel } from "@/components/assistant/AiAssistantPanel";
 import { CarePanel } from "@/components/care/CarePanel";
 import { HabitManager } from "@/components/habits/HabitManager";
 import { QuickNotesPanel } from "@/components/notes/QuickNotesPanel";
+import { QuickLinkDock } from "@/components/quick-links/QuickLinkDock";
 import { SyncStatusBadge, SyncStatusProvider } from "@/components/sync/SyncStatusProvider";
 import { ThemeProvider, ThemeSelect } from "@/components/theme/ThemeProvider";
 import { TaskManager } from "@/components/tasks/TaskManager";
@@ -127,6 +128,7 @@ function RepositoryBar() {
 function WorkspaceSections() {
   return (
     <div className="grid gap-4">
+      <QuickLinkDock />
       <div className="grid gap-4 xl:grid-cols-2">
         <CarePanel />
         <HabitManager />
