@@ -3,7 +3,7 @@ import { buildGoogleFaviconUrl, parseQuickLinkUrl } from "@/lib/domain/quick-lin
 
 const ICON_CACHE_HEADER = "public, max-age=86400, stale-while-revalidate=604800";
 const INFTAB_LOGO_API = "https://api.inftab.com/v2/icon/get_logo_list";
-const MIN_LOGO_PIXELS = 96;
+const MIN_LOGO_PIXELS = 128;
 
 interface InftabLogoListResponse {
   code?: number;
@@ -36,25 +36,34 @@ export async function GET(request: Request): Promise<Response> {
   });
 }
 
+interface IconCandidate {
+  body: ArrayBuffer;
+  contentType: string;
+  pixels: number | null;
+}
+
 async function fetchFirstAvailableIcon(domain: string): Promise<{ body: ArrayBuffer; contentType: string } | null> {
   const inftabIcon = await fetchInftabIcon(domain);
   if (inftabIcon) return inftabIcon;
 
   const candidates = [buildGoogleFaviconUrl(domain), `https://${domain}/favicon.ico`, `https://www.${domain}/favicon.ico`];
+  let lowResolutionFallback: IconCandidate | null = null;
 
   for (const candidate of candidates) {
     const icon = await fetchIcon(candidate);
-    if (icon) return icon;
+    if (!icon) continue;
+    if (isHighResolutionIcon(icon)) return icon;
+    lowResolutionFallback ??= icon;
   }
 
-  return null;
+  return lowResolutionFallback;
 }
 
 async function fetchInftabIcon(domain: string): Promise<{ body: ArrayBuffer; contentType: string } | null> {
   try {
     const url = new URL(INFTAB_LOGO_API);
     url.searchParams.set("host", domain);
-    url.searchParams.set("limit", "3");
+    url.searchParams.set("limit", "5");
 
     const response = await fetch(url.toString(), {
       headers: {
@@ -64,20 +73,22 @@ async function fetchInftabIcon(domain: string): Promise<{ body: ArrayBuffer; con
     if (!response.ok) return null;
 
     const payload = (await response.json()) as InftabLogoListResponse;
-    const sources = payload.data?.map((item) => item.src).filter((src): src is string => Boolean(src)) ?? [];
+    const sources = payload.data?.map((item) => item.src).filter((src): src is string => Boolean(src)).slice(0, 5) ?? [];
+    const candidates: IconCandidate[] = [];
     for (const source of sources) {
       const icon = await fetchIcon(source);
-      if (!icon || !isLargeEnoughPng(icon.body)) continue;
-      return icon;
+      if (icon && isHighResolutionIcon(icon)) {
+        candidates.push(icon);
+      }
     }
 
-    return null;
+    return candidates.sort((a, b) => (b.pixels ?? 0) - (a.pixels ?? 0))[0] ?? null;
   } catch {
     return null;
   }
 }
 
-async function fetchIcon(url: string): Promise<{ body: ArrayBuffer; contentType: string } | null> {
+async function fetchIcon(url: string): Promise<IconCandidate | null> {
   try {
     const response = await fetch(url, {
       redirect: "follow",
@@ -90,21 +101,30 @@ async function fetchIcon(url: string): Promise<{ body: ArrayBuffer; contentType:
       return null;
     }
 
-    return { body: await response.arrayBuffer(), contentType };
+    const body = await response.arrayBuffer();
+    return { body, contentType, pixels: getIconPixels(body, contentType) };
   } catch {
     return null;
   }
 }
 
-function isLargeEnoughPng(body: ArrayBuffer): boolean {
+function isHighResolutionIcon(icon: IconCandidate): boolean {
+  return icon.contentType.includes("svg") || (icon.pixels !== null && icon.pixels >= MIN_LOGO_PIXELS * MIN_LOGO_PIXELS);
+}
+
+function getIconPixels(body: ArrayBuffer, contentType: string): number | null {
+  if (contentType.includes("svg")) {
+    return Number.MAX_SAFE_INTEGER;
+  }
+
   const bytes = new Uint8Array(body);
   const pngSignature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
   if (bytes.length < 24 || !pngSignature.every((value, index) => bytes[index] === value)) {
-    return false;
+    return null;
   }
 
   const view = new DataView(body);
   const width = view.getUint32(16);
   const height = view.getUint32(20);
-  return width >= MIN_LOGO_PIXELS && height >= MIN_LOGO_PIXELS;
+  return width * height;
 }

@@ -146,6 +146,9 @@ describe("QuickLinkDock", () => {
   it("reorders groups through the organize dialog without dragging logos", async () => {
     const reorderedGroups = [secondGroup, firstGroup];
     const linksReorderedGroup = { ...firstGroup, links: [firstGroup.links[1], firstGroup.links[0]] };
+    const titleEditedGroup = { ...linksReorderedGroup, links: [{ ...firstGroup.links[1], title: "个人空间" }, firstGroup.links[0]] };
+    const defaultChangedGroup = { ...titleEditedGroup, defaultLinkId: "link_space" };
+    const linkDeletedGroup = { ...defaultChangedGroup, links: [{ ...firstGroup.links[1], title: "个人空间" }], defaultLinkId: "link_space" };
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
       if (url === "/api/quick-links" && !init) return Response.json({ groups: [firstGroup, secondGroup] });
@@ -153,6 +156,9 @@ describe("QuickLinkDock", () => {
       if (url === "/api/quick-links/groups/group_bilibili/links/reorder" && init?.method === "PATCH") {
         return Response.json({ groups: [linksReorderedGroup, secondGroup] });
       }
+      if (url === "/api/quick-links/link_space" && init?.method === "PATCH") return Response.json({ groups: [titleEditedGroup, secondGroup] });
+      if (url === "/api/quick-links/link_space/default" && init?.method === "POST") return Response.json({ groups: [defaultChangedGroup, secondGroup] });
+      if (url === "/api/quick-links/link_video" && init?.method === "DELETE") return Response.json({ groups: [linkDeletedGroup, secondGroup] });
       throw new Error(`Unexpected request ${url} ${String(init?.method ?? "GET")}`);
     });
     vi.stubGlobal("fetch", fetchMock);
@@ -194,6 +200,25 @@ describe("QuickLinkDock", () => {
         })
       )
     );
+
+    fireEvent.change(screen.getByLabelText("子网站名称 空间"), { target: { value: "个人空间" } });
+    fireEvent.click(screen.getByRole("button", { name: "保存子网站 空间" }));
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/quick-links/link_space",
+        expect.objectContaining({
+          method: "PATCH",
+          body: JSON.stringify({ title: "个人空间", url: "https://space.bilibili.com/123" })
+        })
+      )
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "设为默认 个人空间" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/quick-links/link_space/default", { method: "POST" }));
+
+    fireEvent.click(screen.getByRole("button", { name: "删除子网站 视频" }));
+    fireEvent.click(await screen.findByRole("button", { name: "确认删除" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/quick-links/link_video", { method: "DELETE" }));
   });
 
   it("shows a fallback letter when favicon loading fails", async () => {

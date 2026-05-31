@@ -100,6 +100,36 @@ export function QuickLinkDock() {
     await saveGroupOrder(nextGroups);
   }
 
+  async function updateLink(link: QuickLink, title: string, url: string) {
+    const response = await fetch(`/api/quick-links/${link.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title, url })
+    });
+    const payload = (await response.json()) as Partial<QuickLinkResponse>;
+    if (response.ok && payload.groups) {
+      setGroups(payload.groups);
+    }
+  }
+
+  async function setDefaultLink(linkId: string) {
+    const response = await fetch(`/api/quick-links/${linkId}/default`, { method: "POST" });
+    const payload = (await response.json()) as Partial<QuickLinkResponse>;
+    if (response.ok && payload.groups) {
+      setGroups(payload.groups);
+    }
+  }
+
+  async function deleteLink(link: QuickLink) {
+    await requestDelete("确认删除这个子网页？如果这是该域名下最后一个子网页，域名入口也会一并移除。", async () => {
+      const response = await fetch(`/api/quick-links/${link.id}`, { method: "DELETE" });
+      const payload = (await response.json()) as Partial<QuickLinkResponse>;
+      if (response.ok && payload.groups) {
+        setGroups(payload.groups);
+      }
+    });
+  }
+
   async function reorderLinks(groupId: string, draggedLinkId: string, targetLinkId: string, placement: "before" | "after") {
     if (draggedLinkId === targetLinkId) return;
     const group = groups.find((candidate) => candidate.id === groupId);
@@ -150,7 +180,7 @@ export function QuickLinkDock() {
   return (
     <div className="relative">
       <div
-        className="relative flex min-h-[82px] items-center justify-center gap-2 overflow-visible px-9 py-2"
+        className="relative flex min-h-[74px] items-center justify-center gap-2 overflow-visible px-9 py-2"
         onWheel={(event) => {
           if (!hasLoop) return;
           const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
@@ -166,7 +196,7 @@ export function QuickLinkDock() {
           >
             <button
               aria-label={`打开 ${group.displayName}`}
-              className="flex h-16 w-16 items-center justify-center rounded-[20px] bg-surface shadow-sm ring-1 ring-slate-200/70 transition duration-150 hover:-translate-y-1 hover:scale-110 hover:shadow-md hover:ring-moss/30 focus:outline-none focus:ring-2 focus:ring-moss/25"
+              className="flex h-14 w-14 items-center justify-center rounded-2xl bg-surface shadow-sm ring-1 ring-slate-200/70 transition duration-150 hover:-translate-y-1 hover:scale-110 hover:shadow-md hover:ring-moss/30 focus:outline-none focus:ring-2 focus:ring-moss/25"
               onClick={() => void openDefaultLink(group)}
               type="button"
             >
@@ -175,7 +205,7 @@ export function QuickLinkDock() {
               ) : (
                 <img
                   alt=""
-                  className="h-[62px] w-[62px] rounded-[18px] object-cover"
+                  className="h-[52px] w-[52px] rounded-[14px] object-cover"
                   onError={() => setFailedIconIds((current) => new Set(current).add(group.id))}
                   src={getQuickLinkIconSrc(group)}
                 />
@@ -189,24 +219,28 @@ export function QuickLinkDock() {
             >
               <MoreHorizontal aria-hidden="true" size={13} />
             </button>
-            <div className="pointer-events-none absolute left-1/2 top-[70px] z-40 w-52 -translate-x-1/2 rounded-lg border border-slate-200 bg-surface p-1.5 opacity-0 shadow-lg transition group-hover/link:pointer-events-auto group-hover/link:opacity-100 group-focus-within/link:pointer-events-auto group-focus-within/link:opacity-100">
+            <div className="pointer-events-none absolute left-1/2 top-[54px] z-40 w-56 -translate-x-1/2 pt-2 opacity-0 transition group-hover/link:pointer-events-auto group-hover/link:opacity-100 group-focus-within/link:pointer-events-auto group-focus-within/link:opacity-100">
+              <div className="rounded-lg border border-slate-200 bg-surface p-1.5 shadow-lg">
               {group.links.map((link) => (
                 <button
+                  aria-label={`打开子网页 ${getQuickLinkTitle(link)}`}
                   className="flex w-full items-center justify-between gap-3 rounded-md px-2 py-1.5 text-left text-xs font-semibold text-ink transition hover:bg-surface-muted"
                   key={link.id}
                   onClick={() => window.open(link.url, "_blank", "noopener,noreferrer")}
+                  title={link.url}
                   type="button"
                 >
-                  <span className="min-w-0 truncate">{link.title}</span>
+                  <span className="min-w-0 truncate">{getQuickLinkTitle(link)}</span>
                   {group.defaultLinkId === link.id ? <Star aria-hidden="true" className="shrink-0 text-moss" size={12} /> : null}
                 </button>
               ))}
+              </div>
             </div>
           </div>
         ))}
         <AddQuickLinkButton onClick={() => setAddOpen(true)} />
         {hasLoop ? <DockLoopButton direction="right" onClick={() => loopDock(1)} /> : null}
-        {groups.length > 1 ? <OrderQuickLinksButton onClick={() => setOrderOpen(true)} /> : null}
+        {groups.length > 0 ? <OrderQuickLinksButton onClick={() => setOrderOpen(true)} /> : null}
       </div>
 
       {addOpen ? <AddQuickLinkDialog onClose={() => setAddOpen(false)} onGroupsChange={setGroups} /> : null}
@@ -216,6 +250,7 @@ export function QuickLinkDock() {
           groups={groups}
           linkDropTarget={linkDropTarget}
           onClose={() => setOrderOpen(false)}
+          onDeleteLink={(link) => void deleteLink(link)}
           onLinkDragEnd={() => {
             setDraggingLinkId(null);
             setLinkDropTarget(null);
@@ -242,6 +277,8 @@ export function QuickLinkDock() {
             setLinkDropTarget(null);
             if (draggedLinkId) void reorderLinks(group.id, draggedLinkId, targetLink.id, placement);
           }}
+          onSetDefaultLink={(linkId) => void setDefaultLink(linkId)}
+          onUpdateLink={(link, title, url) => void updateLink(link, title, url)}
           onMoveGroup={moveGroup}
         />
       ) : null}
@@ -301,7 +338,7 @@ function AddQuickLinkButton({ onClick }: { onClick: () => void }) {
   return (
     <button
       aria-label="新增网页导航"
-      className="z-10 flex h-16 w-16 shrink-0 items-center justify-center rounded-[20px] border border-dashed border-slate-300 bg-surface text-slate-500 transition duration-150 hover:-translate-y-1 hover:scale-110 hover:border-moss/35 hover:bg-moss/10 hover:text-moss focus:outline-none focus:ring-2 focus:ring-moss/25"
+      className="z-10 flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-surface text-slate-500 transition duration-150 hover:-translate-y-1 hover:scale-110 hover:border-moss/35 hover:bg-moss/10 hover:text-moss focus:outline-none focus:ring-2 focus:ring-moss/25"
       onClick={onClick}
       type="button"
     >
@@ -314,6 +351,20 @@ function getQuickLinkIconSrc(group: QuickLinkGroup): string {
   return `/api/quick-links/icon?domain=${encodeURIComponent(group.domain)}`;
 }
 
+function getQuickLinkTitle(link: QuickLink): string {
+  return link.title.trim() || getQuickLinkUrlLabel(link.url);
+}
+
+function getQuickLinkUrlLabel(value: string): string {
+  try {
+    const url = new URL(value);
+    const path = `${url.pathname}${url.search}${url.hash}`;
+    return path && path !== "/" ? path : url.href;
+  } catch {
+    return value;
+  }
+}
+
 function getDropPlacement(element: HTMLElement, clientY: number): "before" | "after" {
   const rect = element.getBoundingClientRect();
   return clientY < rect.top + rect.height / 2 ? "before" : "after";
@@ -324,20 +375,26 @@ function OrderQuickLinkGroupsDialog({
   groups,
   linkDropTarget,
   onClose,
+  onDeleteLink,
   onLinkDragEnd,
   onLinkDragOver,
   onLinkDragStart,
   onLinkDrop,
+  onSetDefaultLink,
+  onUpdateLink,
   onMoveGroup
 }: {
   draggingLinkId: string | null;
   groups: QuickLinkGroup[];
   linkDropTarget: { linkId: string; placement: "before" | "after" } | null;
   onClose: () => void;
+  onDeleteLink: (link: QuickLink) => void;
   onLinkDragEnd: () => void;
   onLinkDragOver: (event: DragEvent<HTMLDivElement>, targetLink: QuickLink) => void;
   onLinkDragStart: (event: DragEvent<HTMLButtonElement>, linkId: string) => void;
   onLinkDrop: (event: DragEvent<HTMLDivElement>, group: QuickLinkGroup, targetLink: QuickLink) => void;
+  onSetDefaultLink: (linkId: string) => void;
+  onUpdateLink: (link: QuickLink, title: string, url: string) => void;
   onMoveGroup: (groupId: string, direction: -1 | 1) => Promise<void>;
 }) {
   return (
@@ -387,10 +444,13 @@ function OrderQuickLinkGroupsDialog({
                   group={group}
                   key={link.id}
                   link={link}
+                  onDelete={onDeleteLink}
                   onDragEnd={onLinkDragEnd}
                   onDragOver={onLinkDragOver}
                   onDragStart={onLinkDragStart}
                   onDrop={onLinkDrop}
+                  onSetDefault={onSetDefaultLink}
+                  onUpdate={onUpdateLink}
                 />
               ))}
             </div>
@@ -406,20 +466,35 @@ function QuickLinkOrderRow({
   dropPlacement,
   group,
   link,
+  onDelete,
   onDragEnd,
   onDragOver,
   onDragStart,
-  onDrop
+  onDrop,
+  onSetDefault,
+  onUpdate
 }: {
   dragging: boolean;
   dropPlacement: "before" | "after" | null;
   group: QuickLinkGroup;
   link: QuickLink;
+  onDelete: (link: QuickLink) => void;
   onDragEnd: () => void;
   onDragOver: (event: DragEvent<HTMLDivElement>, targetLink: QuickLink) => void;
   onDragStart: (event: DragEvent<HTMLButtonElement>, linkId: string) => void;
   onDrop: (event: DragEvent<HTMLDivElement>, group: QuickLinkGroup, targetLink: QuickLink) => void;
+  onSetDefault: (linkId: string) => void;
+  onUpdate: (link: QuickLink, title: string, url: string) => void;
 }) {
+  const [title, setTitle] = useState(link.title);
+  const [url, setUrl] = useState(link.url);
+  const isDefault = group.defaultLinkId === link.id;
+
+  useEffect(() => {
+    setTitle(link.title);
+    setUrl(link.url);
+  }, [link.title, link.url]);
+
   const indicatorClass =
     dropPlacement === "before"
       ? "before:absolute before:left-2 before:right-2 before:top-0 before:h-0.5 before:rounded-full before:bg-moss"
@@ -429,22 +504,70 @@ function QuickLinkOrderRow({
 
   return (
     <div
-      className={`relative flex items-center gap-2 rounded-md bg-surface px-2 py-1.5 text-xs transition ${indicatorClass} ${dragging ? "opacity-60" : ""}`}
+      className={`relative grid gap-2 rounded-md bg-surface px-2 py-2 text-xs transition ${indicatorClass} ${dragging ? "opacity-60" : ""}`}
       onDragOver={(event) => onDragOver(event, link)}
       onDrop={(event) => onDrop(event, group, link)}
     >
-      <button
-        aria-label={`拖动子网站 ${link.title}`}
-        className="inline-flex h-6 w-6 cursor-grab items-center justify-center rounded-md text-action-muted active:cursor-grabbing"
-        draggable
-        onDragEnd={onDragEnd}
-        onDragStart={(event) => onDragStart(event, link.id)}
-        type="button"
-      >
-        <GripVertical aria-hidden="true" size={13} />
-      </button>
-      <span className="min-w-0 flex-1 truncate font-semibold text-ink">{link.title}</span>
-      {group.defaultLinkId === link.id ? <Star aria-hidden="true" className="shrink-0 text-moss" size={12} /> : null}
+      <div className="flex items-center gap-2">
+        <button
+          aria-label={`拖动子网站 ${getQuickLinkTitle(link)}`}
+          className="inline-flex h-7 w-7 cursor-grab items-center justify-center rounded-md text-action-muted active:cursor-grabbing"
+          draggable
+          onDragEnd={onDragEnd}
+          onDragStart={(event) => onDragStart(event, link.id)}
+          type="button"
+        >
+          <GripVertical aria-hidden="true" size={13} />
+        </button>
+        <input
+          aria-label={`子网站名称 ${getQuickLinkTitle(link)}`}
+          className="min-w-0 flex-1 rounded-md border border-line bg-field px-2 py-1.5 text-xs font-semibold text-ink outline-none focus:border-moss focus:ring-2 focus:ring-moss/20"
+          onChange={(event) => setTitle(event.target.value)}
+          value={title}
+        />
+        {isDefault ? <Star aria-hidden="true" className="shrink-0 text-moss" size={13} /> : null}
+      </div>
+      <div className="flex items-center gap-2 pl-9">
+        <input
+          aria-label={`子网站 URL ${getQuickLinkTitle(link)}`}
+          className="min-w-0 flex-1 rounded-md border border-line bg-field px-2 py-1.5 text-xs text-muted outline-none focus:border-moss focus:ring-2 focus:ring-moss/20"
+          onChange={(event) => setUrl(event.target.value)}
+          title={link.url}
+          value={url}
+        />
+      </div>
+      <div className="flex items-center justify-between gap-2 pl-9">
+        <span className="min-w-0 truncate text-[11px] text-muted" title={link.url}>
+          {getQuickLinkUrlLabel(link.url)}
+        </span>
+        <div className="flex shrink-0 items-center gap-1">
+          <button
+            aria-label={`保存子网站 ${getQuickLinkTitle(link)}`}
+            className="rounded-md border border-line px-2 py-1 text-[11px] font-semibold text-muted transition hover:text-moss"
+            onClick={() => onUpdate(link, title, url)}
+            type="button"
+          >
+            保存
+          </button>
+          <button
+            aria-label={`设为默认 ${getQuickLinkTitle(link)}`}
+            className="rounded-md border border-line px-2 py-1 text-[11px] font-semibold text-muted transition hover:text-moss disabled:opacity-35"
+            disabled={isDefault}
+            onClick={() => onSetDefault(link.id)}
+            type="button"
+          >
+            默认
+          </button>
+          <button
+            aria-label={`删除子网站 ${getQuickLinkTitle(link)}`}
+            className="rounded-md border border-danger px-2 py-1 text-[11px] font-semibold text-danger-text transition hover:bg-danger-soft"
+            onClick={() => onDelete(link)}
+            type="button"
+          >
+            删除
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

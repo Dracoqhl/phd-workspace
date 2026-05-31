@@ -240,6 +240,40 @@ describe("quick link routes", () => {
     await expect(response.arrayBuffer()).resolves.toHaveProperty("byteLength", 24);
     expect(fetchMock).not.toHaveBeenCalledWith(expect.stringContaining("google.com/s2/favicons"), expect.any(Object));
   });
+
+  it("chooses the largest high resolution inftab logo candidate", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("api.inftab.com/v2/icon/get_logo_list")) {
+        return Response.json({
+          code: 0,
+          data: [
+            { src: "https://icons.example.com/xhs-128.png" },
+            { src: "https://icons.example.com/xhs-360.png" },
+            { src: "https://icons.example.com/xhs-96.png" }
+          ]
+        });
+      }
+      if (url === "https://icons.example.com/xhs-128.png") {
+        return new Response(createPngBytes(128, 128), { headers: { "Content-Type": "image/png" } });
+      }
+      if (url === "https://icons.example.com/xhs-360.png") {
+        return new Response(createPngBytes(360, 360), { headers: { "Content-Type": "image/png" } });
+      }
+      if (url === "https://icons.example.com/xhs-96.png") {
+        return new Response(createPngBytes(96, 96), { headers: { "Content-Type": "image/png" } });
+      }
+      throw new Error(`Unexpected favicon request ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await getQuickLinkIcon(authRequest(userCookie, `${baseUrl}/api/quick-links/icon?domain=xiaohongshu.com`));
+    const body = new DataView(await response.arrayBuffer());
+
+    expect(response.status).toBe(200);
+    expect(body.getUint32(16)).toBe(360);
+    expect(body.getUint32(20)).toBe(360);
+  });
 });
 
 async function createInviteCode(cookie: string): Promise<string> {
