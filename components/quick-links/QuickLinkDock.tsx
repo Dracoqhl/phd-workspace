@@ -1,8 +1,9 @@
 "use client";
 
-import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, ExternalLink, MoreHorizontal, Plus, Settings2, Star, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, ExternalLink, GripVertical, MoreHorizontal, Plus, Settings2, Star, Trash2 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
+import type { DragEvent } from "react";
 
 import type { QuickLink, QuickLinkGroup } from "@/types/quick-link";
 
@@ -19,6 +20,8 @@ export function QuickLinkDock() {
   const [addOpen, setAddOpen] = useState(false);
   const [orderOpen, setOrderOpen] = useState(false);
   const [dockStartIndex, setDockStartIndex] = useState(0);
+  const [draggingLinkId, setDraggingLinkId] = useState<string | null>(null);
+  const [linkDropTarget, setLinkDropTarget] = useState<{ linkId: string; placement: "before" | "after" } | null>(null);
   const [managedGroupId, setManagedGroupId] = useState<string | null>(null);
   const [failedIconIds, setFailedIconIds] = useState<Set<string>>(() => new Set());
   const [pendingDelete, setPendingDelete] = useState<{ message: string; action: () => Promise<void> } | null>(null);
@@ -97,6 +100,41 @@ export function QuickLinkDock() {
     await saveGroupOrder(nextGroups);
   }
 
+  async function reorderLinks(groupId: string, draggedLinkId: string, targetLinkId: string, placement: "before" | "after") {
+    if (draggedLinkId === targetLinkId) return;
+    const group = groups.find((candidate) => candidate.id === groupId);
+    if (!group) return;
+
+    const linkIds = group.links.map((link) => link.id).filter((linkId) => linkId !== draggedLinkId);
+    const targetIndex = linkIds.indexOf(targetLinkId);
+    if (targetIndex < 0) return;
+
+    linkIds.splice(placement === "before" ? targetIndex : targetIndex + 1, 0, draggedLinkId);
+    const nextGroups = groups.map((candidate) =>
+      candidate.id === groupId
+        ? {
+            ...candidate,
+            links: linkIds.map((linkId, index) => {
+              const link = group.links.find((candidateLink) => candidateLink.id === linkId);
+              if (!link) throw new Error("Quick link order is inconsistent.");
+              return { ...link, sortOrder: index };
+            })
+          }
+        : candidate
+    );
+    setGroups(nextGroups);
+
+    const response = await fetch(`/api/quick-links/groups/${groupId}/links/reorder`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ linkIds })
+    });
+    const payload = (await response.json()) as Partial<QuickLinkResponse>;
+    if (response.ok && payload.groups) {
+      setGroups(payload.groups);
+    }
+  }
+
   if (!loading && groups.length === 0) {
     return (
       <div className="relative">
@@ -112,7 +150,7 @@ export function QuickLinkDock() {
   return (
     <div className="relative">
       <div
-        className="relative flex min-h-[84px] items-center justify-center gap-2 overflow-visible px-9 py-2"
+        className="relative flex min-h-[82px] items-center justify-center gap-2 overflow-visible px-9 py-2"
         onWheel={(event) => {
           if (!hasLoop) return;
           const delta = Math.abs(event.deltaX) > Math.abs(event.deltaY) ? event.deltaX : event.deltaY;
@@ -120,10 +158,6 @@ export function QuickLinkDock() {
           loopDock(delta > 0 ? 1 : -1);
         }}
       >
-        <svg aria-hidden="true" className="pointer-events-none absolute left-10 right-10 top-[52px] h-8 text-line/80" preserveAspectRatio="none" viewBox="0 0 100 32">
-          <path d="M3 20 C22 31 78 31 97 20" fill="none" stroke="currentColor" strokeLinecap="round" strokeWidth="1.2" />
-          <path d="M12 18 C30 25 70 25 88 18" fill="none" stroke="currentColor" opacity="0.28" strokeLinecap="round" strokeWidth="4" />
-        </svg>
         {hasLoop ? <DockLoopButton direction="left" onClick={() => loopDock(-1)} /> : null}
         {visibleGroups.map((group) => (
           <div
@@ -132,7 +166,7 @@ export function QuickLinkDock() {
           >
             <button
               aria-label={`打开 ${group.displayName}`}
-              className="flex h-14 w-14 items-center justify-center rounded-2xl bg-surface shadow-sm ring-1 ring-slate-200/70 transition duration-150 hover:-translate-y-1 hover:scale-110 hover:shadow-md hover:ring-moss/30 focus:outline-none focus:ring-2 focus:ring-moss/25"
+              className="flex h-16 w-16 items-center justify-center rounded-[20px] bg-surface shadow-sm ring-1 ring-slate-200/70 transition duration-150 hover:-translate-y-1 hover:scale-110 hover:shadow-md hover:ring-moss/30 focus:outline-none focus:ring-2 focus:ring-moss/25"
               onClick={() => void openDefaultLink(group)}
               type="button"
             >
@@ -141,7 +175,7 @@ export function QuickLinkDock() {
               ) : (
                 <img
                   alt=""
-                  className="h-[52px] w-[52px] rounded-[14px] object-cover"
+                  className="h-[62px] w-[62px] rounded-[18px] object-cover"
                   onError={() => setFailedIconIds((current) => new Set(current).add(group.id))}
                   src={getQuickLinkIconSrc(group)}
                 />
@@ -149,13 +183,13 @@ export function QuickLinkDock() {
             </button>
             <button
               aria-label={`管理 ${group.displayName}`}
-              className="absolute right-1 top-0 inline-flex h-5 w-5 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 opacity-0 shadow-sm transition hover:text-moss focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-moss/20 group-hover/link:opacity-100"
+              className="absolute right-0 top-0 inline-flex h-5 w-5 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 opacity-0 shadow-sm transition hover:text-moss focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-moss/20 group-hover/link:opacity-100"
               onClick={() => setManagedGroupId(group.id)}
               type="button"
             >
               <MoreHorizontal aria-hidden="true" size={13} />
             </button>
-            <div className="pointer-events-none absolute left-1/2 top-[62px] z-40 w-52 -translate-x-1/2 rounded-lg border border-slate-200 bg-surface p-1.5 opacity-0 shadow-lg transition group-hover/link:pointer-events-auto group-hover/link:opacity-100 group-focus-within/link:pointer-events-auto group-focus-within/link:opacity-100">
+            <div className="pointer-events-none absolute left-1/2 top-[70px] z-40 w-52 -translate-x-1/2 rounded-lg border border-slate-200 bg-surface p-1.5 opacity-0 shadow-lg transition group-hover/link:pointer-events-auto group-hover/link:opacity-100 group-focus-within/link:pointer-events-auto group-focus-within/link:opacity-100">
               {group.links.map((link) => (
                 <button
                   className="flex w-full items-center justify-between gap-3 rounded-md px-2 py-1.5 text-left text-xs font-semibold text-ink transition hover:bg-surface-muted"
@@ -176,7 +210,41 @@ export function QuickLinkDock() {
       </div>
 
       {addOpen ? <AddQuickLinkDialog onClose={() => setAddOpen(false)} onGroupsChange={setGroups} /> : null}
-      {orderOpen ? <OrderQuickLinkGroupsDialog groups={groups} onClose={() => setOrderOpen(false)} onMoveGroup={moveGroup} /> : null}
+      {orderOpen ? (
+        <OrderQuickLinkGroupsDialog
+          draggingLinkId={draggingLinkId}
+          groups={groups}
+          linkDropTarget={linkDropTarget}
+          onClose={() => setOrderOpen(false)}
+          onLinkDragEnd={() => {
+            setDraggingLinkId(null);
+            setLinkDropTarget(null);
+          }}
+          onLinkDragOver={(event, targetLink) => {
+            if (!draggingLinkId || draggingLinkId === targetLink.id) return;
+            event.preventDefault();
+            const placement = getDropPlacement(event.currentTarget, event.clientY);
+            setLinkDropTarget({ linkId: targetLink.id, placement });
+          }}
+          onLinkDragStart={(event, linkId) => {
+            event.dataTransfer?.setData("text/plain", linkId);
+            if (event.dataTransfer) {
+              event.dataTransfer.effectAllowed = "move";
+            }
+            setDraggingLinkId(linkId);
+            setLinkDropTarget(null);
+          }}
+          onLinkDrop={(event, group, targetLink) => {
+            event.preventDefault();
+            const draggedLinkId = event.dataTransfer.getData("text/plain") || draggingLinkId;
+            const placement = linkDropTarget?.linkId === targetLink.id ? linkDropTarget.placement : getDropPlacement(event.currentTarget, event.clientY);
+            setDraggingLinkId(null);
+            setLinkDropTarget(null);
+            if (draggedLinkId) void reorderLinks(group.id, draggedLinkId, targetLink.id, placement);
+          }}
+          onMoveGroup={moveGroup}
+        />
+      ) : null}
       {managedGroup ? (
         <ManageQuickLinkGroupDialog
           group={managedGroup}
@@ -233,7 +301,7 @@ function AddQuickLinkButton({ onClick }: { onClick: () => void }) {
   return (
     <button
       aria-label="新增网页导航"
-      className="z-10 flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-surface text-slate-500 transition duration-150 hover:-translate-y-1 hover:scale-110 hover:border-moss/35 hover:bg-moss/10 hover:text-moss focus:outline-none focus:ring-2 focus:ring-moss/25"
+      className="z-10 flex h-16 w-16 shrink-0 items-center justify-center rounded-[20px] border border-dashed border-slate-300 bg-surface text-slate-500 transition duration-150 hover:-translate-y-1 hover:scale-110 hover:border-moss/35 hover:bg-moss/10 hover:text-moss focus:outline-none focus:ring-2 focus:ring-moss/25"
       onClick={onClick}
       type="button"
     >
@@ -246,13 +314,30 @@ function getQuickLinkIconSrc(group: QuickLinkGroup): string {
   return `/api/quick-links/icon?domain=${encodeURIComponent(group.domain)}`;
 }
 
+function getDropPlacement(element: HTMLElement, clientY: number): "before" | "after" {
+  const rect = element.getBoundingClientRect();
+  return clientY < rect.top + rect.height / 2 ? "before" : "after";
+}
+
 function OrderQuickLinkGroupsDialog({
+  draggingLinkId,
   groups,
+  linkDropTarget,
   onClose,
+  onLinkDragEnd,
+  onLinkDragOver,
+  onLinkDragStart,
+  onLinkDrop,
   onMoveGroup
 }: {
+  draggingLinkId: string | null;
   groups: QuickLinkGroup[];
+  linkDropTarget: { linkId: string; placement: "before" | "after" } | null;
   onClose: () => void;
+  onLinkDragEnd: () => void;
+  onLinkDragOver: (event: DragEvent<HTMLDivElement>, targetLink: QuickLink) => void;
+  onLinkDragStart: (event: DragEvent<HTMLButtonElement>, linkId: string) => void;
+  onLinkDrop: (event: DragEvent<HTMLDivElement>, group: QuickLinkGroup, targetLink: QuickLink) => void;
   onMoveGroup: (groupId: string, direction: -1 | 1) => Promise<void>;
 }) {
   return (
@@ -262,40 +347,105 @@ function OrderQuickLinkGroupsDialog({
           <h2 className="text-base font-semibold text-ink" id="quick-link-order-title">
             整理网页导航
           </h2>
-          <p className="mt-0.5 text-xs text-slate-500">用上下移动调整显示顺序</p>
+          <p className="mt-0.5 text-xs text-slate-500">域名入口用上下移动，子网站用手柄拖动</p>
         </div>
         <CloseButton onClick={onClose} />
       </div>
-      <div className="mt-4 grid gap-2">
+      <div className="custom-scrollbar mt-4 grid max-h-[62vh] gap-3 overflow-y-auto pr-1">
         {groups.map((group, index) => (
-          <div className="flex items-center gap-3 rounded-lg border border-line bg-surface-muted px-2 py-2" key={group.id}>
-            <img alt="" className="h-8 w-8 rounded-lg object-cover" src={getQuickLinkIconSrc(group)} />
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold text-ink">{group.displayName}</p>
-              <p className="truncate text-xs text-muted">{group.domain}</p>
+          <div className="rounded-lg border border-line bg-surface-muted p-2" key={group.id}>
+            <div className="flex items-center gap-3">
+              <img alt="" className="h-9 w-9 rounded-xl object-cover" src={getQuickLinkIconSrc(group)} />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-ink">{group.displayName}</p>
+                <p className="truncate text-xs text-muted">{group.domain}</p>
+              </div>
+              <button
+                aria-label={`上移 ${group.displayName}`}
+                className="flex h-8 w-8 items-center justify-center rounded-md border border-line bg-surface text-muted transition hover:text-moss disabled:opacity-35"
+                disabled={index === 0}
+                onClick={() => void onMoveGroup(group.id, -1)}
+                type="button"
+              >
+                <ArrowUp aria-hidden="true" size={15} />
+              </button>
+              <button
+                aria-label={`下移 ${group.displayName}`}
+                className="flex h-8 w-8 items-center justify-center rounded-md border border-line bg-surface text-muted transition hover:text-moss disabled:opacity-35"
+                disabled={index === groups.length - 1}
+                onClick={() => void onMoveGroup(group.id, 1)}
+                type="button"
+              >
+                <ArrowDown aria-hidden="true" size={15} />
+              </button>
             </div>
-            <button
-              aria-label={`上移 ${group.displayName}`}
-              className="flex h-8 w-8 items-center justify-center rounded-md border border-line bg-surface text-muted transition hover:text-moss disabled:opacity-35"
-              disabled={index === 0}
-              onClick={() => void onMoveGroup(group.id, -1)}
-              type="button"
-            >
-              <ArrowUp aria-hidden="true" size={15} />
-            </button>
-            <button
-              aria-label={`下移 ${group.displayName}`}
-              className="flex h-8 w-8 items-center justify-center rounded-md border border-line bg-surface text-muted transition hover:text-moss disabled:opacity-35"
-              disabled={index === groups.length - 1}
-              onClick={() => void onMoveGroup(group.id, 1)}
-              type="button"
-            >
-              <ArrowDown aria-hidden="true" size={15} />
-            </button>
+            <div className="mt-2 grid gap-1">
+              {group.links.map((link) => (
+                <QuickLinkOrderRow
+                  dragging={draggingLinkId === link.id}
+                  dropPlacement={linkDropTarget?.linkId === link.id ? linkDropTarget.placement : null}
+                  group={group}
+                  key={link.id}
+                  link={link}
+                  onDragEnd={onLinkDragEnd}
+                  onDragOver={onLinkDragOver}
+                  onDragStart={onLinkDragStart}
+                  onDrop={onLinkDrop}
+                />
+              ))}
+            </div>
           </div>
         ))}
       </div>
     </DialogFrame>
+  );
+}
+
+function QuickLinkOrderRow({
+  dragging,
+  dropPlacement,
+  group,
+  link,
+  onDragEnd,
+  onDragOver,
+  onDragStart,
+  onDrop
+}: {
+  dragging: boolean;
+  dropPlacement: "before" | "after" | null;
+  group: QuickLinkGroup;
+  link: QuickLink;
+  onDragEnd: () => void;
+  onDragOver: (event: DragEvent<HTMLDivElement>, targetLink: QuickLink) => void;
+  onDragStart: (event: DragEvent<HTMLButtonElement>, linkId: string) => void;
+  onDrop: (event: DragEvent<HTMLDivElement>, group: QuickLinkGroup, targetLink: QuickLink) => void;
+}) {
+  const indicatorClass =
+    dropPlacement === "before"
+      ? "before:absolute before:left-2 before:right-2 before:top-0 before:h-0.5 before:rounded-full before:bg-moss"
+      : dropPlacement === "after"
+        ? "after:absolute after:bottom-0 after:left-2 after:right-2 after:h-0.5 after:rounded-full after:bg-moss"
+        : "";
+
+  return (
+    <div
+      className={`relative flex items-center gap-2 rounded-md bg-surface px-2 py-1.5 text-xs transition ${indicatorClass} ${dragging ? "opacity-60" : ""}`}
+      onDragOver={(event) => onDragOver(event, link)}
+      onDrop={(event) => onDrop(event, group, link)}
+    >
+      <button
+        aria-label={`拖动子网站 ${link.title}`}
+        className="inline-flex h-6 w-6 cursor-grab items-center justify-center rounded-md text-action-muted active:cursor-grabbing"
+        draggable
+        onDragEnd={onDragEnd}
+        onDragStart={(event) => onDragStart(event, link.id)}
+        type="button"
+      >
+        <GripVertical aria-hidden="true" size={13} />
+      </button>
+      <span className="min-w-0 flex-1 truncate font-semibold text-ink">{link.title}</span>
+      {group.defaultLinkId === link.id ? <Star aria-hidden="true" className="shrink-0 text-moss" size={12} /> : null}
+    </div>
   );
 }
 

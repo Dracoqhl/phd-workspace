@@ -10,6 +10,7 @@ import { POST as register } from "@/app/api/auth/register/route";
 import { DELETE as deleteQuickLink, PATCH as updateQuickLink } from "@/app/api/quick-links/[id]/route";
 import { POST as setDefaultQuickLink } from "@/app/api/quick-links/[id]/default/route";
 import { DELETE as deleteQuickLinkGroup, PATCH as updateQuickLinkGroup } from "@/app/api/quick-links/groups/[id]/route";
+import { PATCH as reorderQuickLinks } from "@/app/api/quick-links/groups/[id]/links/reorder/route";
 import { POST as reorderQuickLinkGroups } from "@/app/api/quick-links/groups/reorder/route";
 import { GET as getQuickLinkIcon } from "@/app/api/quick-links/icon/route";
 import { GET as listQuickLinks, POST as createQuickLink } from "@/app/api/quick-links/route";
@@ -61,7 +62,7 @@ describe("quick link routes", () => {
     expect(firstGroups[0]).toMatchObject({
       domain: "bilibili.com",
       displayName: "bilibili",
-      iconUrl: "https://www.google.com/s2/favicons?domain=bilibili.com&sz=64"
+      iconUrl: "https://www.google.com/s2/favicons?domain=bilibili.com&sz=128"
     });
     expect(firstGroups[0].links).toHaveLength(1);
     expect(firstGroups[0].links[0]).toMatchObject({ title: "视频", url: "https://www.bilibili.com/video/BV1" });
@@ -169,6 +170,24 @@ describe("quick link routes", () => {
 
     groups = await readGroups(response);
     expect(groups.map((group) => group.domain)).toEqual(["notion.so", "github.com"]);
+  });
+
+  it("reorders quick links inside one domain group", async () => {
+    let groups = await createQuickLinkGroups(userCookie, { url: "https://www.bilibili.com/video/BV1", title: "视频" });
+    groups = await createQuickLinkGroups(userCookie, { url: "https://space.bilibili.com/123", title: "空间" });
+    const group = groups[0];
+    expect(group.links.map((link) => link.title)).toEqual(["视频", "空间"]);
+
+    const response = await reorderQuickLinks(
+      authRequest(userCookie, `${baseUrl}/api/quick-links/groups/${group.id}/links/reorder`, {
+        method: "PATCH",
+        body: JSON.stringify({ linkIds: [group.links[1].id, group.links[0].id] })
+      }),
+      { params: { id: group.id } }
+    );
+
+    groups = await readGroups(response);
+    expect(groups[0].links.map((link) => link.title)).toEqual(["空间", "视频"]);
   });
 
   it("proxies favicons through the server and falls back to the site favicon", async () => {

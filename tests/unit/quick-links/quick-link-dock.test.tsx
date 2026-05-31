@@ -8,7 +8,7 @@ const firstGroup: QuickLinkGroup = {
   id: "group_bilibili",
   domain: "bilibili.com",
   displayName: "bilibili",
-  iconUrl: "https://www.google.com/s2/favicons?domain=bilibili.com&sz=64",
+  iconUrl: "https://www.google.com/s2/favicons?domain=bilibili.com&sz=128",
   defaultLinkId: "link_video",
   sortOrder: 0,
   createdAt: "2026-05-30T10:00:00.000Z",
@@ -39,7 +39,7 @@ const secondGroup: QuickLinkGroup = {
   id: "group_notion",
   domain: "notion.so",
   displayName: "notion",
-  iconUrl: "https://www.google.com/s2/favicons?domain=notion.so&sz=64",
+  iconUrl: "https://www.google.com/s2/favicons?domain=notion.so&sz=128",
   defaultLinkId: "link_notion",
   sortOrder: 1,
   createdAt: "2026-05-30T10:02:00.000Z",
@@ -145,10 +145,14 @@ describe("QuickLinkDock", () => {
 
   it("reorders groups through the organize dialog without dragging logos", async () => {
     const reorderedGroups = [secondGroup, firstGroup];
+    const linksReorderedGroup = { ...firstGroup, links: [firstGroup.links[1], firstGroup.links[0]] };
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
       if (url === "/api/quick-links" && !init) return Response.json({ groups: [firstGroup, secondGroup] });
       if (url === "/api/quick-links/groups/reorder" && init?.method === "POST") return Response.json({ groups: reorderedGroups });
+      if (url === "/api/quick-links/groups/group_bilibili/links/reorder" && init?.method === "PATCH") {
+        return Response.json({ groups: [linksReorderedGroup, secondGroup] });
+      }
       throw new Error(`Unexpected request ${url} ${String(init?.method ?? "GET")}`);
     });
     vi.stubGlobal("fetch", fetchMock);
@@ -166,6 +170,27 @@ describe("QuickLinkDock", () => {
         expect.objectContaining({
           method: "POST",
           body: JSON.stringify({ groupIds: ["group_notion", "group_bilibili"] })
+        })
+      )
+    );
+
+    const dragData = new Map<string, string>();
+    const dataTransfer = {
+      effectAllowed: "move",
+      getData: (key: string) => dragData.get(key) ?? "",
+      setData: (key: string, value: string) => dragData.set(key, value)
+    };
+    fireEvent.dragStart(screen.getByRole("button", { name: "拖动子网站 视频" }), { dataTransfer });
+    const targetLinkRow = screen.getByRole("button", { name: "拖动子网站 空间" }).closest("div")!;
+    fireEvent.dragOver(targetLinkRow, { clientY: 100, dataTransfer });
+    fireEvent.drop(targetLinkRow, { clientY: 100, dataTransfer });
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/quick-links/groups/group_bilibili/links/reorder",
+        expect.objectContaining({
+          method: "PATCH",
+          body: JSON.stringify({ linkIds: ["link_space", "link_video"] })
         })
       )
     );

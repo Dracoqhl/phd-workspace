@@ -612,6 +612,7 @@ class SqliteQuickLinkRepository {
 
     const transaction = this.db.transaction(() => {
       let groupId = existing.groupId;
+      let sortOrder = existing.sortOrder;
       if (parsed) {
         const oldGroupId = existing.groupId;
         let nextGroup = this.getGroupByDomainSync(parsed.domain);
@@ -638,6 +639,7 @@ class SqliteQuickLinkRepository {
         groupId = nextGroup.id;
         if (groupId !== oldGroupId) {
           this.ensureGroupDefaultAfterLinkRemoval(oldGroupId, existing.id, now);
+          sortOrder = this.nextLinkSortOrder(groupId);
         }
       }
 
@@ -646,10 +648,10 @@ class SqliteQuickLinkRepository {
       this.db
         .prepare(
           `UPDATE quick_links
-           SET group_id = ?, title = ?, url = ?, updated_at = ?
+           SET group_id = ?, title = ?, url = ?, sort_order = ?, updated_at = ?
            WHERE id = ? AND user_id = ?`
         )
-        .run(groupId, nextTitle, nextUrl, now, existing.id, this.userId);
+        .run(groupId, nextTitle, nextUrl, sortOrder, now, existing.id, this.userId);
 
       const group = this.getGroupSync(groupId);
       if (group && !group.defaultLinkId) {
@@ -716,6 +718,29 @@ class SqliteQuickLinkRepository {
     return this.listGroupsSync();
   }
 
+  async reorderLinks(groupId: string, linkIds: string[]): Promise<QuickLinkGroup[] | null> {
+    const group = this.getGroupSync(groupId);
+    if (!group) return null;
+
+    const currentIds = (this.db
+      .prepare("SELECT id FROM quick_links WHERE user_id = ? AND group_id = ? ORDER BY sort_order ASC, created_at ASC")
+      .all(this.userId, groupId) as Array<{ id: string }>).map((row) => row.id);
+    if (linkIds.length !== currentIds.length || !currentIds.every((id) => linkIds.includes(id))) {
+      return null;
+    }
+
+    const now = new Date().toISOString();
+    const transaction = this.db.transaction(() => {
+      linkIds.forEach((linkId, index) => {
+        this.db
+          .prepare("UPDATE quick_links SET sort_order = ?, updated_at = ? WHERE id = ? AND user_id = ? AND group_id = ?")
+          .run(index, now, linkId, this.userId, groupId);
+      });
+    });
+    transaction();
+    return this.listGroupsSync();
+  }
+
   private listGroupsSync(): QuickLinkGroup[] {
     const groups = (this.db
       .prepare("SELECT * FROM quick_link_groups WHERE user_id = ? ORDER BY sort_order ASC, created_at ASC")
@@ -733,7 +758,7 @@ class SqliteQuickLinkRepository {
 
     return groups.map((group) => ({
       ...group,
-      links: orderQuickLinksForGroup(linksByGroupId.get(group.id) ?? [], group.defaultLinkId)
+      links: orderQuickLinksForGroup(linksByGroupId.get(group.id) ?? [])
     }));
   }
 
@@ -1092,12 +1117,8 @@ function mapQuickLink(row: QuickLinkRow): QuickLink {
   };
 }
 
-function orderQuickLinksForGroup(links: QuickLink[], defaultLinkId: string): QuickLink[] {
-  return [...links].sort((a, b) => {
-    if (a.id === defaultLinkId) return -1;
-    if (b.id === defaultLinkId) return 1;
-    return a.sortOrder - b.sortOrder || a.createdAt.localeCompare(b.createdAt);
-  });
+function orderQuickLinksForGroup(links: QuickLink[]): QuickLink[] {
+  return [...links].sort((a, b) => a.sortOrder - b.sortOrder || a.createdAt.localeCompare(b.createdAt));
 }
 
 function toCareParams(record: CareRecord, userId: string) {

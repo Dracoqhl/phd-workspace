@@ -58,7 +58,7 @@ export function limitQuickLinkName(value: string): string {
 }
 
 export function buildGoogleFaviconUrl(domain: string): string {
-  return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=64`;
+  return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=128`;
 }
 
 function getRegistrableDomain(hostname: string): string {
