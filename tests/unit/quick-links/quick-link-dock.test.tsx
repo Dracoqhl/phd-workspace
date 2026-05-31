@@ -35,6 +35,28 @@ const firstGroup: QuickLinkGroup = {
   ]
 };
 
+const secondGroup: QuickLinkGroup = {
+  id: "group_notion",
+  domain: "notion.so",
+  displayName: "notion",
+  iconUrl: "https://www.google.com/s2/favicons?domain=notion.so&sz=64",
+  defaultLinkId: "link_notion",
+  sortOrder: 1,
+  createdAt: "2026-05-30T10:02:00.000Z",
+  updatedAt: "2026-05-30T10:02:00.000Z",
+  links: [
+    {
+      id: "link_notion",
+      groupId: "group_notion",
+      title: "工作区",
+      url: "https://notion.so/work",
+      sortOrder: 0,
+      createdAt: "2026-05-30T10:02:00.000Z",
+      updatedAt: "2026-05-30T10:02:00.000Z"
+    }
+  ]
+};
+
 beforeEach(() => {
   vi.clearAllMocks();
   window.localStorage.clear();
@@ -119,6 +141,34 @@ describe("QuickLinkDock", () => {
 
     await waitFor(() => expect(window.localStorage.getItem("phd-workspace-quick-link-delete-skip-date")).toBe(new Date().toISOString().slice(0, 10)));
     expect(fetchMock).toHaveBeenCalledWith("/api/quick-links/link_space", { method: "DELETE" });
+  });
+
+  it("reorders groups through the organize dialog without dragging logos", async () => {
+    const reorderedGroups = [secondGroup, firstGroup];
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url === "/api/quick-links" && !init) return Response.json({ groups: [firstGroup, secondGroup] });
+      if (url === "/api/quick-links/groups/reorder" && init?.method === "POST") return Response.json({ groups: reorderedGroups });
+      throw new Error(`Unexpected request ${url} ${String(init?.method ?? "GET")}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<QuickLinkDock />);
+
+    const logoButton = await screen.findByRole("button", { name: "打开 bilibili" });
+    expect(logoButton).not.toHaveAttribute("draggable");
+    fireEvent.click(screen.getByRole("button", { name: "整理网页导航顺序" }));
+    fireEvent.click(screen.getByRole("button", { name: "下移 bilibili" }));
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/quick-links/groups/reorder",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({ groupIds: ["group_notion", "group_bilibili"] })
+        })
+      )
+    );
   });
 
   it("shows a fallback letter when favicon loading fails", async () => {
