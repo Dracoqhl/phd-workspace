@@ -157,6 +157,12 @@ describe("quick link routes", () => {
   it("proxies favicons through the server and falls back to the site favicon", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
+      if (url.includes("api.inftab.com/v2/icon/get_logo_list")) {
+        return Response.json({ code: 0, data: [{ src: "https://icons.example.com/tiny.png" }] });
+      }
+      if (url === "https://icons.example.com/tiny.png") {
+        return new Response(createPngBytes(64, 64), { headers: { "Content-Type": "image/png" } });
+      }
       if (url.includes("google.com/s2/favicons")) {
         return new Response(new Uint8Array([0]), { status: 404, headers: { "Content-Type": "image/png" } });
       }
@@ -172,8 +178,31 @@ describe("quick link routes", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("Content-Type")).toBe("image/x-icon");
     await expect(response.arrayBuffer()).resolves.toHaveProperty("byteLength", 3);
+    expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("api.inftab.com/v2/icon/get_logo_list"), expect.any(Object));
+    expect(fetchMock).toHaveBeenCalledWith("https://icons.example.com/tiny.png", expect.any(Object));
     expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("google.com/s2/favicons"), expect.any(Object));
     expect(fetchMock).toHaveBeenCalledWith("https://xiaohongshu.com/favicon.ico", expect.any(Object));
+  });
+
+  it("prefers a high resolution inftab logo before generic favicons", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("api.inftab.com/v2/icon/get_logo_list")) {
+        return Response.json({ code: 0, data: [{ src: "https://icons.example.com/xiaohongshu.png" }] });
+      }
+      if (url === "https://icons.example.com/xiaohongshu.png") {
+        return new Response(createPngBytes(300, 300), { headers: { "Content-Type": "image/png" } });
+      }
+      throw new Error(`Unexpected favicon request ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await getQuickLinkIcon(authRequest(userCookie, `${baseUrl}/api/quick-links/icon?domain=xiaohongshu.com`));
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Content-Type")).toBe("image/png");
+    await expect(response.arrayBuffer()).resolves.toHaveProperty("byteLength", 24);
+    expect(fetchMock).not.toHaveBeenCalledWith(expect.stringContaining("google.com/s2/favicons"), expect.any(Object));
   });
 });
 
@@ -244,4 +273,13 @@ function getSessionCookie(response: Response): string {
   }
 
   return setCookie.split(";")[0];
+}
+
+function createPngBytes(width: number, height: number): Uint8Array {
+  const bytes = new Uint8Array(24);
+  bytes.set([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a], 0);
+  const view = new DataView(bytes.buffer);
+  view.setUint32(16, width);
+  view.setUint32(20, height);
+  return bytes;
 }

@@ -58,7 +58,7 @@ export function QuickLinkDock() {
   if (!loading && groups.length === 0) {
     return (
       <div className="relative">
-        <div className="flex items-center">
+        <div className="flex justify-center py-1">
           <AddQuickLinkButton onClick={() => setAddOpen(true)} />
         </div>
         {addOpen ? <AddQuickLinkDialog onClose={() => setAddOpen(false)} onGroupsChange={setGroups} /> : null}
@@ -69,12 +69,13 @@ export function QuickLinkDock() {
 
   return (
     <div className="relative">
-      <div className="custom-scrollbar flex items-end gap-2 overflow-x-auto rounded-lg border border-slate-200 bg-white/75 px-3 py-2 shadow-sm">
+      <div className="custom-scrollbar relative flex items-start justify-center gap-3 overflow-x-auto px-2 pb-1 pt-2">
+        <div className="pointer-events-none absolute left-3 right-3 top-8 border-t border-dashed border-slate-300/80" />
         {groups.map((group) => (
-          <div className="group/link relative flex w-16 shrink-0 flex-col items-center gap-1" key={group.id}>
+          <div className="group/link relative z-10 flex w-[72px] shrink-0 flex-col items-center gap-1" key={group.id}>
             <button
               aria-label={`打开 ${group.displayName}`}
-              className="flex h-12 w-12 items-center justify-center rounded-xl border border-slate-200 bg-white shadow-sm transition duration-150 hover:-translate-y-1 hover:scale-110 hover:border-moss/35 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-moss/20"
+              className="flex h-14 w-14 items-center justify-center rounded-2xl bg-surface shadow-sm ring-1 ring-slate-200/80 transition duration-150 hover:-translate-y-1 hover:scale-110 hover:shadow-md hover:ring-moss/30 focus:outline-none focus:ring-2 focus:ring-moss/25"
               onClick={() => void openDefaultLink(group)}
               type="button"
             >
@@ -83,7 +84,7 @@ export function QuickLinkDock() {
               ) : (
                 <img
                   alt=""
-                  className="h-8 w-8 rounded-md"
+                  className="h-11 w-11 rounded-xl object-contain"
                   onError={() => setFailedIconIds((current) => new Set(current).add(group.id))}
                   src={getQuickLinkIconSrc(group)}
                 />
@@ -91,7 +92,7 @@ export function QuickLinkDock() {
             </button>
             <button
               aria-label={`管理 ${group.displayName}`}
-              className="absolute right-0 top-0 inline-flex h-5 w-5 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 opacity-0 shadow-sm transition hover:text-moss focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-moss/20 group-hover/link:opacity-100"
+              className="absolute right-1 top-0 inline-flex h-5 w-5 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 opacity-0 shadow-sm transition hover:text-moss focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-moss/20 group-hover/link:opacity-100"
               onClick={() => setManagedGroupId(group.id)}
               type="button"
             >
@@ -128,7 +129,7 @@ function AddQuickLinkButton({ onClick }: { onClick: () => void }) {
   return (
     <button
       aria-label="新增网页导航"
-      className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white/80 text-slate-500 transition duration-150 hover:-translate-y-1 hover:scale-110 hover:border-moss/45 hover:bg-moss/10 hover:text-moss focus:outline-none focus:ring-2 focus:ring-moss/20"
+      className="z-10 flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-surface text-slate-500 transition duration-150 hover:-translate-y-1 hover:scale-110 hover:border-moss/35 hover:bg-moss/10 hover:text-moss focus:outline-none focus:ring-2 focus:ring-moss/25"
       onClick={onClick}
       type="button"
     >
