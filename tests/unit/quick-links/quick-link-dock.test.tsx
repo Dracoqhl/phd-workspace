@@ -53,7 +53,7 @@ describe("QuickLinkDock", () => {
 
     render(<QuickLinkDock />);
 
-    expect(await screen.findByText("bilibili")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "打开 bilibili" })).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "打开 bilibili" }));
 
     expect(openSpy).toHaveBeenCalledWith("https://www.bilibili.com/video/BV1", "_blank", "noopener,noreferrer");
@@ -77,7 +77,7 @@ describe("QuickLinkDock", () => {
     fireEvent.change(screen.getByLabelText("网页名称"), { target: { value: "视频" } });
     fireEvent.click(screen.getAllByRole("button", { name: "保存" })[0]);
 
-    expect(await screen.findByText("bilibili")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "打开 bilibili" })).toBeInTheDocument();
     expect(fetchMock).toHaveBeenCalledWith(
       "/api/quick-links",
       expect.objectContaining({
@@ -106,7 +106,7 @@ describe("QuickLinkDock", () => {
     fireEvent.click(await screen.findByRole("button", { name: "管理 bilibili" }));
     fireEvent.change(screen.getByLabelText("Logo 名称"), { target: { value: "哔哩哔哩" } });
     fireEvent.click(screen.getAllByRole("button", { name: "保存" })[0]);
-    expect(await screen.findByText("哔哩哔哩")).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "打开 哔哩哔哩" })).toBeInTheDocument();
 
     fireEvent.click(screen.getAllByRole("button", { name: "设为默认" })[1]);
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/quick-links/link_space/default", { method: "POST" }));
@@ -126,7 +126,7 @@ describe("QuickLinkDock", () => {
 
     render(<QuickLinkDock />);
 
-    await screen.findByText("bilibili");
+    await screen.findByRole("button", { name: "打开 bilibili" });
     const image = document.querySelector("img");
     expect(image).not.toBeNull();
     expect(image).toHaveAttribute("src", "/api/quick-links/icon?domain=bilibili.com");

@@ -698,6 +698,24 @@ class SqliteQuickLinkRepository {
     return this.listGroupsSync();
   }
 
+  async reorderGroups(groupIds: string[]): Promise<QuickLinkGroup[] | null> {
+    const currentIds = this.listGroupsSync().map((group) => group.id);
+    if (groupIds.length !== currentIds.length || !currentIds.every((id) => groupIds.includes(id))) {
+      return null;
+    }
+
+    const now = new Date().toISOString();
+    const transaction = this.db.transaction(() => {
+      groupIds.forEach((groupId, index) => {
+        this.db
+          .prepare("UPDATE quick_link_groups SET sort_order = ?, updated_at = ? WHERE id = ? AND user_id = ?")
+          .run(index, now, groupId, this.userId);
+      });
+    });
+    transaction();
+    return this.listGroupsSync();
+  }
+
   private listGroupsSync(): QuickLinkGroup[] {
     const groups = (this.db
       .prepare("SELECT * FROM quick_link_groups WHERE user_id = ? ORDER BY sort_order ASC, created_at ASC")

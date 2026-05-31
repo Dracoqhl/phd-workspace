@@ -10,6 +10,7 @@ import { POST as register } from "@/app/api/auth/register/route";
 import { DELETE as deleteQuickLink, PATCH as updateQuickLink } from "@/app/api/quick-links/[id]/route";
 import { POST as setDefaultQuickLink } from "@/app/api/quick-links/[id]/default/route";
 import { DELETE as deleteQuickLinkGroup, PATCH as updateQuickLinkGroup } from "@/app/api/quick-links/groups/[id]/route";
+import { POST as reorderQuickLinkGroups } from "@/app/api/quick-links/groups/reorder/route";
 import { GET as getQuickLinkIcon } from "@/app/api/quick-links/icon/route";
 import { GET as listQuickLinks, POST as createQuickLink } from "@/app/api/quick-links/route";
 import { closeDatabase, getDatabase } from "@/lib/db/database";
@@ -152,6 +153,22 @@ describe("quick link routes", () => {
     });
 
     expect(await readGroups(response)).toEqual([]);
+  });
+
+  it("reorders quick link groups for the current user", async () => {
+    let groups = await createQuickLinkGroups(userCookie, { url: "https://github.com/openai", title: "GitHub" });
+    groups = await createQuickLinkGroups(userCookie, { url: "https://notion.so/work", title: "Notion" });
+    expect(groups.map((group) => group.domain)).toEqual(["github.com", "notion.so"]);
+
+    const response = await reorderQuickLinkGroups(
+      authRequest(userCookie, `${baseUrl}/api/quick-links/groups/reorder`, {
+        method: "POST",
+        body: JSON.stringify({ groupIds: [groups[1].id, groups[0].id] })
+      })
+    );
+
+    groups = await readGroups(response);
+    expect(groups.map((group) => group.domain)).toEqual(["notion.so", "github.com"]);
   });
 
   it("proxies favicons through the server and falls back to the site favicon", async () => {

@@ -2,7 +2,7 @@
 
 import { ExternalLink, MoreHorizontal, Plus, Star, Trash2 } from "lucide-react";
 import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { QuickLink, QuickLinkGroup } from "@/types/quick-link";
 
@@ -19,6 +19,10 @@ export function QuickLinkDock() {
   const [managedGroupId, setManagedGroupId] = useState<string | null>(null);
   const [failedIconIds, setFailedIconIds] = useState<Set<string>>(() => new Set());
   const [pendingDelete, setPendingDelete] = useState<{ message: string; action: () => Promise<void> } | null>(null);
+  const [draggingGroupId, setDraggingGroupId] = useState<string | null>(null);
+  const [iconScales, setIconScales] = useState<Record<string, number>>({});
+  const dockRef = useRef<HTMLDivElement | null>(null);
+  const itemRefs = useRef(new Map<string, HTMLDivElement>());
 
   useEffect(() => {
     let active = true;
@@ -41,6 +45,32 @@ export function QuickLinkDock() {
 
   const managedGroup = groups.find((group) => group.id === managedGroupId) ?? null;
 
+  const updateIconScales = useCallback(() => {
+    const dock = dockRef.current;
+    if (!dock) return;
+
+    const dockRect = dock.getBoundingClientRect();
+    const center = dockRect.left + dockRect.width / 2;
+    const nextScales: Record<string, number> = {};
+
+    groups.forEach((group) => {
+      const item = itemRefs.current.get(group.id);
+      if (!item) return;
+      const rect = item.getBoundingClientRect();
+      const distance = Math.abs(rect.left + rect.width / 2 - center);
+      const influence = Math.max(0, 1 - distance / 210);
+      nextScales[group.id] = Number((1 + influence * 0.24).toFixed(3));
+    });
+
+    setIconScales(nextScales);
+  }, [groups]);
+
+  useEffect(() => {
+    updateIconScales();
+    window.addEventListener("resize", updateIconScales);
+    return () => window.removeEventListener("resize", updateIconScales);
+  }, [updateIconScales]);
+
   async function openDefaultLink(group: QuickLinkGroup) {
     const defaultLink = group.links.find((link) => link.id === group.defaultLinkId) ?? group.links[0];
     if (!defaultLink) return;
@@ -53,6 +83,31 @@ export function QuickLinkDock() {
       return;
     }
     setPendingDelete({ message, action });
+  }
+
+  async function reorderGroup(sourceGroupId: string, targetGroupId: string) {
+    if (sourceGroupId === targetGroupId) return;
+
+    const sourceIndex = groups.findIndex((group) => group.id === sourceGroupId);
+    const targetIndex = groups.findIndex((group) => group.id === targetGroupId);
+    if (sourceIndex < 0 || targetIndex < 0) return;
+
+    const nextGroups = [...groups];
+    const [sourceGroup] = nextGroups.splice(sourceIndex, 1);
+    nextGroups.splice(targetIndex, 0, sourceGroup);
+    setGroups(nextGroups);
+    requestAnimationFrame(updateIconScales);
+
+    const response = await fetch("/api/quick-links/groups/reorder", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ groupIds: nextGroups.map((group) => group.id) })
+    });
+    const payload = (await response.json()) as Partial<QuickLinkResponse>;
+    if (response.ok && payload.groups) {
+      setGroups(payload.groups);
+      requestAnimationFrame(updateIconScales);
+    }
   }
 
   if (!loading && groups.length === 0) {
@@ -69,14 +124,49 @@ export function QuickLinkDock() {
 
   return (
     <div className="relative">
-      <div className="custom-scrollbar relative flex items-start justify-center gap-3 overflow-x-auto px-2 pb-1 pt-2">
-        <div className="pointer-events-none absolute left-3 right-3 top-8 border-t border-dashed border-slate-300/80" />
+      <div
+        className="custom-scrollbar relative flex min-h-28 items-start justify-center gap-2 overflow-x-auto px-2 pb-16 pt-4"
+        onMouseEnter={updateIconScales}
+        onMouseMove={updateIconScales}
+        onScroll={updateIconScales}
+        ref={dockRef}
+      >
+        <svg aria-hidden="true" className="pointer-events-none absolute left-2 right-2 top-4 h-12 text-slate-300/90" preserveAspectRatio="none" viewBox="0 0 100 48">
+          <path d="M2 34 C24 8 76 8 98 34" fill="none" stroke="currentColor" strokeDasharray="4 6" strokeLinecap="round" strokeWidth="1.5" />
+        </svg>
         {groups.map((group) => (
-          <div className="group/link relative z-10 flex w-[72px] shrink-0 flex-col items-center gap-1" key={group.id}>
+          <div
+            className="group/link relative z-10 flex w-[68px] shrink-0 flex-col items-center"
+            draggable
+            key={group.id}
+            onDragEnd={() => setDraggingGroupId(null)}
+            onDragOver={(event) => event.preventDefault()}
+            onDragStart={(event) => {
+              setDraggingGroupId(group.id);
+              event.dataTransfer.effectAllowed = "move";
+              event.dataTransfer.setData("text/plain", group.id);
+            }}
+            onDrop={(event) => {
+              event.preventDefault();
+              const sourceGroupId = event.dataTransfer.getData("text/plain") || draggingGroupId;
+              if (sourceGroupId) void reorderGroup(sourceGroupId, group.id);
+              setDraggingGroupId(null);
+            }}
+            ref={(node) => {
+              if (node) {
+                itemRefs.current.set(group.id, node);
+              } else {
+                itemRefs.current.delete(group.id);
+              }
+            }}
+          >
             <button
               aria-label={`打开 ${group.displayName}`}
-              className="flex h-14 w-14 items-center justify-center rounded-2xl bg-surface shadow-sm ring-1 ring-slate-200/80 transition duration-150 hover:-translate-y-1 hover:scale-110 hover:shadow-md hover:ring-moss/30 focus:outline-none focus:ring-2 focus:ring-moss/25"
+              className={`flex h-14 w-14 cursor-grab items-center justify-center rounded-2xl bg-surface shadow-sm ring-1 ring-slate-200/70 transition duration-150 hover:-translate-y-1 hover:shadow-md hover:ring-moss/30 active:cursor-grabbing focus:outline-none focus:ring-2 focus:ring-moss/25 ${
+                draggingGroupId === group.id ? "opacity-60 ring-moss/40" : ""
+              }`}
               onClick={() => void openDefaultLink(group)}
+              style={{ transform: `scale(${iconScales[group.id] ?? 1})` }}
               type="button"
             >
               {failedIconIds.has(group.id) ? (
@@ -84,7 +174,7 @@ export function QuickLinkDock() {
               ) : (
                 <img
                   alt=""
-                  className="h-11 w-11 rounded-xl object-contain"
+                  className="h-[52px] w-[52px] rounded-[14px] object-cover"
                   onError={() => setFailedIconIds((current) => new Set(current).add(group.id))}
                   src={getQuickLinkIconSrc(group)}
                 />
@@ -98,9 +188,19 @@ export function QuickLinkDock() {
             >
               <MoreHorizontal aria-hidden="true" size={13} />
             </button>
-            <span className="block w-full truncate text-center text-[11px] font-medium leading-4 text-slate-600" title={group.displayName}>
-              {group.displayName}
-            </span>
+            <div className="pointer-events-none absolute left-1/2 top-[62px] z-40 w-52 -translate-x-1/2 rounded-lg border border-slate-200 bg-surface p-1.5 opacity-0 shadow-lg transition group-hover/link:pointer-events-auto group-hover/link:opacity-100 group-focus-within/link:pointer-events-auto group-focus-within/link:opacity-100">
+              {group.links.map((link) => (
+                <button
+                  className="flex w-full items-center justify-between gap-3 rounded-md px-2 py-1.5 text-left text-xs font-semibold text-ink transition hover:bg-surface-muted"
+                  key={link.id}
+                  onClick={() => window.open(link.url, "_blank", "noopener,noreferrer")}
+                  type="button"
+                >
+                  <span className="min-w-0 truncate">{link.title}</span>
+                  {group.defaultLinkId === link.id ? <Star aria-hidden="true" className="shrink-0 text-moss" size={12} /> : null}
+                </button>
+              ))}
+            </div>
           </div>
         ))}
         <AddQuickLinkButton onClick={() => setAddOpen(true)} />
