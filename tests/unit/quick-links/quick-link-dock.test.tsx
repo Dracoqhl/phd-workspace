@@ -170,13 +170,23 @@ describe("QuickLinkDock", () => {
 
     render(<QuickLinkDock />);
 
+    const dragData = new Map<string, string>();
+    const dataTransfer = {
+      effectAllowed: "move",
+      getData: (key: string) => dragData.get(key) ?? "",
+      setData: (key: string, value: string) => dragData.set(key, value)
+    };
     const logoButton = await screen.findByRole("button", { name: "打开 bilibili" });
     expect(logoButton).not.toHaveAttribute("draggable");
     fireEvent.click(screen.getByRole("button", { name: "整理网页导航顺序" }));
     expect(screen.queryByText("/video/BV1")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "复制子网站 视频" }));
     await waitFor(() => expect(writeText).toHaveBeenCalledWith("https://www.bilibili.com/video/BV1"));
-    fireEvent.click(screen.getByRole("button", { name: "下移 bilibili" }));
+    expect(screen.queryByRole("button", { name: "下移 bilibili" })).not.toBeInTheDocument();
+    fireEvent.dragStart(screen.getByRole("button", { name: "拖动域名 bilibili" }), { dataTransfer });
+    const targetGroupRow = screen.getByRole("button", { name: "拖动域名 notion" }).closest("div")!;
+    fireEvent.dragOver(targetGroupRow, { clientY: 100, dataTransfer });
+    fireEvent.drop(targetGroupRow, { clientY: 100, dataTransfer });
 
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
@@ -188,12 +198,6 @@ describe("QuickLinkDock", () => {
       )
     );
 
-    const dragData = new Map<string, string>();
-    const dataTransfer = {
-      effectAllowed: "move",
-      getData: (key: string) => dragData.get(key) ?? "",
-      setData: (key: string, value: string) => dragData.set(key, value)
-    };
     fireEvent.dragStart(screen.getByRole("button", { name: "拖动子网站 视频" }), { dataTransfer });
     const targetLinkRow = screen.getByRole("button", { name: "拖动子网站 空间" }).closest("div")!;
     fireEvent.dragOver(targetLinkRow, { clientY: 100, dataTransfer });
@@ -209,8 +213,10 @@ describe("QuickLinkDock", () => {
       )
     );
 
-    fireEvent.change(screen.getByLabelText("子网站名称 空间"), { target: { value: "个人空间" } });
-    fireEvent.click(screen.getByRole("button", { name: "保存子网站 空间" }));
+    expect(screen.queryByRole("button", { name: "保存子网站 空间" })).not.toBeInTheDocument();
+    const titleInput = screen.getByLabelText("子网站名称 空间");
+    fireEvent.change(titleInput, { target: { value: "个人空间" } });
+    fireEvent.blur(titleInput);
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
         "/api/quick-links/link_space",
@@ -221,8 +227,9 @@ describe("QuickLinkDock", () => {
       )
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "设为默认 个人空间" }));
+    fireEvent.click(screen.getByRole("button", { name: "设为首选 个人空间" }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/quick-links/link_space/default", { method: "POST" }));
+    expect(await screen.findByRole("button", { name: "当前首选 个人空间" })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "删除子网站 视频" }));
     fireEvent.click(await screen.findByRole("button", { name: "确认删除" }));

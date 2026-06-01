@@ -1,9 +1,9 @@
 "use client";
 
-import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Copy, ExternalLink, GripVertical, MoreHorizontal, Plus, Settings2, Star, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Circle, CircleDot, Copy, ExternalLink, GripVertical, MoreHorizontal, Plus, Settings2, Star, Trash2 } from "lucide-react";
 import type { ReactNode } from "react";
-import { useEffect, useMemo, useState } from "react";
-import type { DragEvent } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { DragEvent, KeyboardEvent } from "react";
 
 import type { QuickLink, QuickLinkGroup } from "@/types/quick-link";
 
@@ -20,7 +20,9 @@ export function QuickLinkDock() {
   const [addOpen, setAddOpen] = useState(false);
   const [orderOpen, setOrderOpen] = useState(false);
   const [dockStartIndex, setDockStartIndex] = useState(0);
+  const [draggingGroupId, setDraggingGroupId] = useState<string | null>(null);
   const [draggingLinkId, setDraggingLinkId] = useState<string | null>(null);
+  const [groupDropTarget, setGroupDropTarget] = useState<{ groupId: string; placement: "before" | "after" } | null>(null);
   const [linkDropTarget, setLinkDropTarget] = useState<{ linkId: string; placement: "before" | "after" } | null>(null);
   const [managedGroupId, setManagedGroupId] = useState<string | null>(null);
   const [failedIconIds, setFailedIconIds] = useState<Set<string>>(() => new Set());
@@ -90,13 +92,19 @@ export function QuickLinkDock() {
     }
   }
 
-  async function moveGroup(groupId: string, direction: -1 | 1) {
-    const index = groups.findIndex((group) => group.id === groupId);
-    const targetIndex = index + direction;
-    if (index < 0 || targetIndex < 0 || targetIndex >= groups.length) return;
+  async function reorderGroups(draggedGroupId: string, targetGroupId: string, placement: "before" | "after") {
+    if (draggedGroupId === targetGroupId) return;
 
-    const nextGroups = [...groups];
-    [nextGroups[index], nextGroups[targetIndex]] = [nextGroups[targetIndex], nextGroups[index]];
+    const groupIds = groups.map((group) => group.id).filter((groupId) => groupId !== draggedGroupId);
+    const targetIndex = groupIds.indexOf(targetGroupId);
+    if (targetIndex < 0) return;
+
+    groupIds.splice(placement === "before" ? targetIndex : targetIndex + 1, 0, draggedGroupId);
+    const nextGroups = groupIds.map((groupId, index) => {
+      const group = groups.find((candidate) => candidate.id === groupId);
+      if (!group) throw new Error("Quick link group order is inconsistent.");
+      return { ...group, sortOrder: index };
+    });
     await saveGroupOrder(nextGroups);
   }
 
@@ -246,11 +254,39 @@ export function QuickLinkDock() {
       {addOpen ? <AddQuickLinkDialog onClose={() => setAddOpen(false)} onGroupsChange={setGroups} /> : null}
       {orderOpen ? (
         <OrderQuickLinkGroupsDialog
+          draggingGroupId={draggingGroupId}
           draggingLinkId={draggingLinkId}
+          groupDropTarget={groupDropTarget}
           groups={groups}
           linkDropTarget={linkDropTarget}
           onClose={() => setOrderOpen(false)}
           onDeleteLink={(link) => void deleteLink(link)}
+          onGroupDragEnd={() => {
+            setDraggingGroupId(null);
+            setGroupDropTarget(null);
+          }}
+          onGroupDragOver={(event, targetGroup) => {
+            if (!draggingGroupId || draggingGroupId === targetGroup.id) return;
+            event.preventDefault();
+            const placement = getDropPlacement(event.currentTarget, event.clientY);
+            setGroupDropTarget({ groupId: targetGroup.id, placement });
+          }}
+          onGroupDragStart={(event, groupId) => {
+            event.dataTransfer?.setData("text/plain", groupId);
+            if (event.dataTransfer) {
+              event.dataTransfer.effectAllowed = "move";
+            }
+            setDraggingGroupId(groupId);
+            setGroupDropTarget(null);
+          }}
+          onGroupDrop={(event, targetGroup) => {
+            event.preventDefault();
+            const draggedGroupId = event.dataTransfer.getData("text/plain") || draggingGroupId;
+            const placement = groupDropTarget?.groupId === targetGroup.id ? groupDropTarget.placement : getDropPlacement(event.currentTarget, event.clientY);
+            setDraggingGroupId(null);
+            setGroupDropTarget(null);
+            if (draggedGroupId) void reorderGroups(draggedGroupId, targetGroup.id, placement);
+          }}
           onLinkDragEnd={() => {
             setDraggingLinkId(null);
             setLinkDropTarget(null);
@@ -279,7 +315,6 @@ export function QuickLinkDock() {
           }}
           onSetDefaultLink={(linkId) => void setDefaultLink(linkId)}
           onUpdateLink={(link, title, url) => void updateLink(link, title, url)}
-          onMoveGroup={moveGroup}
         />
       ) : null}
       {managedGroup ? (
@@ -371,31 +406,41 @@ function getDropPlacement(element: HTMLElement, clientY: number): "before" | "af
 }
 
 function OrderQuickLinkGroupsDialog({
+  draggingGroupId,
   draggingLinkId,
+  groupDropTarget,
   groups,
   linkDropTarget,
   onClose,
   onDeleteLink,
+  onGroupDragEnd,
+  onGroupDragOver,
+  onGroupDragStart,
+  onGroupDrop,
   onLinkDragEnd,
   onLinkDragOver,
   onLinkDragStart,
   onLinkDrop,
   onSetDefaultLink,
-  onUpdateLink,
-  onMoveGroup
+  onUpdateLink
 }: {
+  draggingGroupId: string | null;
   draggingLinkId: string | null;
+  groupDropTarget: { groupId: string; placement: "before" | "after" } | null;
   groups: QuickLinkGroup[];
   linkDropTarget: { linkId: string; placement: "before" | "after" } | null;
   onClose: () => void;
   onDeleteLink: (link: QuickLink) => void;
+  onGroupDragEnd: () => void;
+  onGroupDragOver: (event: DragEvent<HTMLDivElement>, targetGroup: QuickLinkGroup) => void;
+  onGroupDragStart: (event: DragEvent<HTMLButtonElement>, groupId: string) => void;
+  onGroupDrop: (event: DragEvent<HTMLDivElement>, targetGroup: QuickLinkGroup) => void;
   onLinkDragEnd: () => void;
   onLinkDragOver: (event: DragEvent<HTMLDivElement>, targetLink: QuickLink) => void;
   onLinkDragStart: (event: DragEvent<HTMLButtonElement>, linkId: string) => void;
   onLinkDrop: (event: DragEvent<HTMLDivElement>, group: QuickLinkGroup, targetLink: QuickLink) => void;
   onSetDefaultLink: (linkId: string) => void;
   onUpdateLink: (link: QuickLink, title: string, url: string) => void;
-  onMoveGroup: (groupId: string, direction: -1 | 1) => Promise<void>;
 }) {
   return (
     <DialogFrame labelledBy="quick-link-order-title" maxWidth="max-w-3xl">
@@ -404,58 +449,59 @@ function OrderQuickLinkGroupsDialog({
           <h2 className="text-base font-semibold text-ink" id="quick-link-order-title">
             整理网页导航
           </h2>
-          <p className="mt-0.5 text-xs text-slate-500">域名入口用上下移动，子网站用手柄拖动</p>
+          <p className="mt-0.5 text-xs text-slate-500">管理域名入口、首选链接与子网站信息</p>
         </div>
         <CloseButton onClick={onClose} />
       </div>
       <div className="custom-scrollbar mt-4 grid max-h-[62vh] gap-3 overflow-y-auto pr-1">
-        {groups.map((group, index) => (
-          <div className="rounded-lg border border-line bg-surface-muted p-2" key={group.id}>
-            <div className="flex items-center gap-3">
-              <img alt="" className="h-9 w-9 rounded-xl object-cover" src={getQuickLinkIconSrc(group)} />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold text-ink">{group.displayName}</p>
-                <p className="truncate text-xs text-muted">{group.domain}</p>
+        {groups.map((group) => {
+          const groupIndicatorClass =
+            groupDropTarget?.groupId === group.id && groupDropTarget.placement === "before"
+              ? "before:absolute before:left-2 before:right-2 before:top-0 before:h-0.5 before:rounded-full before:bg-moss"
+              : groupDropTarget?.groupId === group.id && groupDropTarget.placement === "after"
+                ? "after:absolute after:bottom-0 after:left-2 after:right-2 after:h-0.5 after:rounded-full after:bg-moss"
+                : "";
+
+          return (
+            <div className={`relative rounded-lg border border-line bg-surface-muted p-2 transition ${groupIndicatorClass} ${draggingGroupId === group.id ? "opacity-60" : ""}`} key={group.id}>
+              <div className="flex items-center gap-3" onDragOver={(event) => onGroupDragOver(event, group)} onDrop={(event) => onGroupDrop(event, group)}>
+                <button
+                  aria-label={`拖动域名 ${group.displayName}`}
+                  className="inline-flex h-8 w-8 cursor-grab items-center justify-center rounded-md text-action-muted active:cursor-grabbing"
+                  draggable
+                  onDragEnd={onGroupDragEnd}
+                  onDragStart={(event) => onGroupDragStart(event, group.id)}
+                  type="button"
+                >
+                  <GripVertical aria-hidden="true" size={15} />
+                </button>
+                <img alt="" className="h-9 w-9 rounded-xl object-cover" src={getQuickLinkIconSrc(group)} />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold text-ink">{group.displayName}</p>
+                  <p className="truncate text-xs text-muted">{group.domain}</p>
+                </div>
               </div>
-              <button
-                aria-label={`上移 ${group.displayName}`}
-                className="flex h-8 w-8 items-center justify-center rounded-md border border-line bg-surface text-muted transition hover:text-moss disabled:opacity-35"
-                disabled={index === 0}
-                onClick={() => void onMoveGroup(group.id, -1)}
-                type="button"
-              >
-                <ArrowUp aria-hidden="true" size={15} />
-              </button>
-              <button
-                aria-label={`下移 ${group.displayName}`}
-                className="flex h-8 w-8 items-center justify-center rounded-md border border-line bg-surface text-muted transition hover:text-moss disabled:opacity-35"
-                disabled={index === groups.length - 1}
-                onClick={() => void onMoveGroup(group.id, 1)}
-                type="button"
-              >
-                <ArrowDown aria-hidden="true" size={15} />
-              </button>
+              <div className="mt-2 grid gap-1">
+                {group.links.map((link) => (
+                  <QuickLinkOrderRow
+                    dragging={draggingLinkId === link.id}
+                    dropPlacement={linkDropTarget?.linkId === link.id ? linkDropTarget.placement : null}
+                    group={group}
+                    key={link.id}
+                    link={link}
+                    onDelete={onDeleteLink}
+                    onDragEnd={onLinkDragEnd}
+                    onDragOver={onLinkDragOver}
+                    onDragStart={onLinkDragStart}
+                    onDrop={onLinkDrop}
+                    onSetDefault={onSetDefaultLink}
+                    onUpdate={onUpdateLink}
+                  />
+                ))}
+              </div>
             </div>
-            <div className="mt-2 grid gap-1">
-              {group.links.map((link) => (
-                <QuickLinkOrderRow
-                  dragging={draggingLinkId === link.id}
-                  dropPlacement={linkDropTarget?.linkId === link.id ? linkDropTarget.placement : null}
-                  group={group}
-                  key={link.id}
-                  link={link}
-                  onDelete={onDeleteLink}
-                  onDragEnd={onLinkDragEnd}
-                  onDragOver={onLinkDragOver}
-                  onDragStart={onLinkDragStart}
-                  onDrop={onLinkDrop}
-                  onSetDefault={onSetDefaultLink}
-                  onUpdate={onUpdateLink}
-                />
-              ))}
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </DialogFrame>
   );
@@ -488,6 +534,7 @@ function QuickLinkOrderRow({
 }) {
   const [title, setTitle] = useState(link.title);
   const [url, setUrl] = useState(link.url);
+  const skipNextSaveRef = useRef(false);
   const isDefault = group.defaultLinkId === link.id;
 
   useEffect(() => {
@@ -510,13 +557,54 @@ function QuickLinkOrderRow({
     }
   }
 
+  function saveIfChanged(nextTitle = title, nextUrl = url) {
+    if (skipNextSaveRef.current) {
+      skipNextSaveRef.current = false;
+      return;
+    }
+    const normalizedTitle = nextTitle.trim();
+    const normalizedUrl = nextUrl.trim();
+    if (!normalizedTitle || !normalizedUrl) {
+      setTitle(link.title);
+      setUrl(link.url);
+      return;
+    }
+    if (normalizedTitle === link.title && normalizedUrl === link.url) return;
+    onUpdate(link, normalizedTitle, normalizedUrl);
+  }
+
+  function handleEditKeyDown(event: KeyboardEvent<HTMLInputElement>) {
+    if (event.key === "Enter") {
+      event.currentTarget.blur();
+    } else if (event.key === "Escape") {
+      skipNextSaveRef.current = true;
+      setTitle(link.title);
+      setUrl(link.url);
+      event.currentTarget.blur();
+    }
+  }
+
+  const defaultStateClass = isDefault ? "border-moss/30 bg-moss/10 ring-1 ring-moss/15" : "bg-surface";
+
   return (
     <div
-      className={`relative rounded-md bg-surface px-2 py-2 text-xs transition ${indicatorClass} ${dragging ? "opacity-60" : ""}`}
+      className={`relative rounded-md border border-transparent px-2 py-2 text-xs transition ${defaultStateClass} ${indicatorClass} ${dragging ? "opacity-60" : ""}`}
       onDragOver={(event) => onDragOver(event, link)}
       onDrop={(event) => onDrop(event, group, link)}
     >
-      <div className="grid min-w-0 grid-cols-[auto_minmax(6rem,0.75fr)_minmax(12rem,1.4fr)_auto] items-center gap-2">
+      <div className="grid min-w-0 grid-cols-[auto_auto_minmax(6rem,0.75fr)_minmax(12rem,1.4fr)_auto] items-center gap-2">
+        <button
+          aria-label={isDefault ? `当前首选 ${getQuickLinkTitle(link)}` : `设为首选 ${getQuickLinkTitle(link)}`}
+          className={`inline-flex h-7 w-7 items-center justify-center rounded-md border transition ${
+            isDefault ? "border-moss/35 bg-moss/15 text-moss" : "border-line text-action-muted hover:border-moss/30 hover:text-moss"
+          }`}
+          disabled={isDefault}
+          onClick={() => onSetDefault(link.id)}
+          title={isDefault ? "当前首选" : "设为首选"}
+          type="button"
+        >
+          {isDefault ? <CircleDot aria-hidden="true" size={14} /> : <Circle aria-hidden="true" size={14} />}
+        </button>
         <button
           aria-label={`拖动子网站 ${getQuickLinkTitle(link)}`}
           className="inline-flex h-7 w-7 cursor-grab items-center justify-center rounded-md text-action-muted active:cursor-grabbing"
@@ -531,15 +619,18 @@ function QuickLinkOrderRow({
           <input
             aria-label={`子网站名称 ${getQuickLinkTitle(link)}`}
             className="min-w-0 flex-1 rounded-md border border-line bg-field px-2 py-1.5 text-xs font-semibold text-ink outline-none focus:border-moss focus:ring-2 focus:ring-moss/20"
+            onBlur={() => saveIfChanged()}
             onChange={(event) => setTitle(event.target.value)}
+            onKeyDown={handleEditKeyDown}
             value={title}
           />
-          {isDefault ? <Star aria-hidden="true" className="shrink-0 text-moss" size={13} /> : null}
         </div>
         <input
           aria-label={`子网站 URL ${getQuickLinkTitle(link)}`}
           className="min-w-0 rounded-md border border-line bg-field px-2 py-1.5 text-xs text-muted outline-none focus:border-moss focus:ring-2 focus:ring-moss/20"
+          onBlur={() => saveIfChanged()}
           onChange={(event) => setUrl(event.target.value)}
+          onKeyDown={handleEditKeyDown}
           title={link.url}
           value={url}
         />
@@ -554,29 +645,13 @@ function QuickLinkOrderRow({
             <Copy aria-hidden="true" size={12} />
           </button>
           <button
-            aria-label={`保存子网站 ${getQuickLinkTitle(link)}`}
-            className="rounded-md border border-line px-2 py-1 text-[11px] font-semibold text-muted transition hover:text-moss"
-            onClick={() => onUpdate(link, title, url)}
-            type="button"
-          >
-            保存
-          </button>
-          <button
-            aria-label={`设为默认 ${getQuickLinkTitle(link)}`}
-            className="rounded-md border border-line px-2 py-1 text-[11px] font-semibold text-muted transition hover:text-moss disabled:opacity-35"
-            disabled={isDefault}
-            onClick={() => onSetDefault(link.id)}
-            type="button"
-          >
-            默认
-          </button>
-          <button
             aria-label={`删除子网站 ${getQuickLinkTitle(link)}`}
-            className="rounded-md border border-danger px-2 py-1 text-[11px] font-semibold text-danger-text transition hover:bg-danger-soft"
+            className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-line text-action-muted transition hover:border-danger hover:bg-danger-soft hover:text-danger-text"
             onClick={() => onDelete(link)}
+            title="删除"
             type="button"
           >
-            删除
+            <Trash2 aria-hidden="true" size={12} />
           </button>
         </div>
       </div>
