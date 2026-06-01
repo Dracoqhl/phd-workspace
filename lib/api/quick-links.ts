@@ -3,7 +3,7 @@ import { isIP } from "node:net";
 import { getDatabase, isDatabaseConfigured } from "@/lib/db/database";
 import { createSqliteRepositories } from "@/lib/db/repositories";
 import { ensureDatabaseSchema } from "@/lib/db/schema";
-import { limitQuickLinkName, parseQuickLinkUrl } from "@/lib/domain/quick-links";
+import { limitQuickLinkName, limitQuickLinkTitle, parseQuickLinkUrl } from "@/lib/domain/quick-links";
 import type { AuthContext } from "@/lib/api/auth";
 import type { CreateQuickLinkInput, UpdateQuickLinkGroupInput, UpdateQuickLinkInput } from "@/types/quick-link";
 
@@ -37,7 +37,7 @@ export function parseCreateQuickLinkInput(body: Record<string, unknown>): Create
   if (typeof body.url !== "string" || !parseQuickLinkUrl(body.url)) return null;
   if ("title" in body && typeof body.title !== "string") return null;
 
-  const title = typeof body.title === "string" ? limitQuickLinkName(body.title) : undefined;
+  const title = typeof body.title === "string" ? limitQuickLinkTitle(body.title) : undefined;
   return { url: body.url, ...(title ? { title } : {}) };
 }
 
@@ -60,7 +60,7 @@ export function parseUpdateQuickLinkInput(body: Record<string, unknown>): Update
 
   if ("title" in body) {
     if (typeof body.title !== "string") return null;
-    const title = limitQuickLinkName(body.title);
+    const title = limitQuickLinkTitle(body.title);
     if (!title) return null;
     input.title = title;
   }
@@ -94,7 +94,7 @@ async function fetchPageTitle(value: string): Promise<string | null> {
     if (contentType && !contentType.includes("text/html") && !contentType.includes("application/xhtml+xml")) return null;
 
     const html = await response.text();
-    return limitQuickLinkName(extractPageTitle(html)) || null;
+    return limitQuickLinkTitle(extractPageTitle(html)) || null;
   } catch {
     return null;
   } finally {
@@ -104,9 +104,10 @@ async function fetchPageTitle(value: string): Promise<string | null> {
 
 function extractPageTitle(html: string): string {
   return (
-    getMetaContent(html, ["og:title"]) ??
-    getMetaContent(html, ["twitter:title"]) ??
-    decodeHtmlEntities(html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] ?? "").trim()
+    decodeHtmlEntities(html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] ?? "").trim() ||
+    getMetaContent(html, ["og:title"]) ||
+    getMetaContent(html, ["twitter:title"]) ||
+    ""
   );
 }
 

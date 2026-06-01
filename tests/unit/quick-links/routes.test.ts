@@ -75,10 +75,10 @@ describe("quick link routes", () => {
     expect(secondGroups[0].defaultLinkId).toBe(firstGroups[0].defaultLinkId);
   });
 
-  it("uses page metadata as the default title when no title is provided", async () => {
+  it("uses browser-like page titles as the default title when no title is provided", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       if (String(input) === "https://example.com/work") {
-        return new Response('<html><head><meta property="og:title" content="Example Work"></head></html>', {
+        return new Response('<html><head><meta property="og:title" content="Open Graph Title"><title>目标检测之Neck选择-知乎</title></head></html>', {
           headers: { "Content-Type": "text/html; charset=utf-8" }
         });
       }
@@ -89,7 +89,7 @@ describe("quick link routes", () => {
     const groups = await createQuickLinkGroups(userCookie, { url: "https://example.com/work" });
 
     expect(groups[0].links[0]).toMatchObject({
-      title: "Example Wo",
+      title: "目标检测之Neck选择-知乎",
       url: "https://example.com/work"
     });
     expect(fetchMock).toHaveBeenCalledWith("https://example.com/work", expect.any(Object));
@@ -143,7 +143,7 @@ describe("quick link routes", () => {
     );
     userGroups = await readGroups(movedResponse);
     expect(userGroups.map((group) => group.domain)).toEqual(["github.com"]);
-    expect(userGroups[0].links.map((link) => link.title)).toEqual(["GitHub", "文档资料很"]);
+    expect(userGroups[0].links.map((link) => link.title)).toEqual(["GitHub", "文档资料很长"]);
 
     const adminListResponse = await listQuickLinks(authRequest(adminCookie, `${baseUrl}/api/quick-links`));
     await expect(adminListResponse.json()).resolves.toEqual({ groups: adminGroups });

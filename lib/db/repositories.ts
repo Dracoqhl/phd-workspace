@@ -9,7 +9,7 @@ import type { QuickNote, UpdateQuickNoteInput } from "@/types/note";
 import type { CreateQuickLinkInput, QuickLink, QuickLinkGroup, UpdateQuickLinkGroupInput, UpdateQuickLinkInput } from "@/types/quick-link";
 import type { CreateTaskInput, Task, UpdateTaskInput } from "@/types/task";
 import type { TrashEntry } from "@/types/trash";
-import { limitQuickLinkName, parseQuickLinkUrl } from "@/lib/domain/quick-links";
+import { limitQuickLinkName, limitQuickLinkTitle, parseQuickLinkUrl } from "@/lib/domain/quick-links";
 
 export function createSqliteRepositories(db: SqliteDatabase, userId: string) {
   const trash = new SqliteTrashRepository(db, userId);
@@ -571,7 +571,7 @@ class SqliteQuickLinkRepository {
       const link: QuickLink = {
         id: randomUUID(),
         groupId: group.id,
-        title: limitQuickLinkName(input.title ?? "") || group.displayName,
+        title: limitQuickLinkTitle(input.title ?? "") || group.displayName,
         url: parsed.url,
         sortOrder: this.nextLinkSortOrder(group.id),
         createdAt: now,
@@ -644,7 +644,7 @@ class SqliteQuickLinkRepository {
       }
 
       const nextUrl = parsed?.url ?? existing.url;
-      const nextTitle = input.title ? limitQuickLinkName(input.title) : existing.title;
+      const nextTitle = input.title ? limitQuickLinkTitle(input.title) : existing.title;
       this.db
         .prepare(
           `UPDATE quick_links

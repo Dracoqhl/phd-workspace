@@ -1,4 +1,5 @@
 export const QUICK_LINK_NAME_MAX_WEIGHT = 10;
+export const QUICK_LINK_TITLE_MAX_WEIGHT = 60;
 
 const COMMON_SECOND_LEVEL_SUFFIXES = new Set(["co", "com", "net", "org", "edu", "gov", "ac"]);
 
@@ -44,17 +45,32 @@ export function parseQuickLinkUrl(value: string): ParsedQuickLinkUrl | null {
 }
 
 export function limitQuickLinkName(value: string): string {
+  return limitQuickLinkText(value, QUICK_LINK_NAME_MAX_WEIGHT);
+}
+
+export function limitQuickLinkTitle(value: string): string {
+  return limitQuickLinkText(normalizeQuickLinkTitle(value), QUICK_LINK_TITLE_MAX_WEIGHT);
+}
+
+function limitQuickLinkText(value: string, maxWeight: number): string {
   let weight = 0;
   let result = "";
 
   for (const char of value.trim()) {
     const charWeight = /[\u4e00-\u9fff]/.test(char) ? 2 : 1;
-    if (weight + charWeight > QUICK_LINK_NAME_MAX_WEIGHT) break;
+    if (weight + charWeight > maxWeight) break;
     weight += charWeight;
     result += char;
   }
 
   return result;
+}
+
+function normalizeQuickLinkTitle(value: string): string {
+  return value
+    .replace(/\s+/g, " ")
+    .replace(/\s*[-|_—–]\s*/g, "-")
+    .trim();
 }
 
 export function buildGoogleFaviconUrl(domain: string): string {
