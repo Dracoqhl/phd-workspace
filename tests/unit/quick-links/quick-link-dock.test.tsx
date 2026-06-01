@@ -187,7 +187,7 @@ describe("QuickLinkDock", () => {
     fireEvent.dragStart(screen.getByRole("button", { name: "拖动域名 bilibili" }), { dataTransfer });
     const targetGroupRow = screen.getByRole("button", { name: "拖动域名 notion" }).closest("div")!;
     fireEvent.dragOver(targetGroupRow, { clientY: 100, dataTransfer });
-    fireEvent.drop(targetGroupRow, { clientY: 100, dataTransfer });
+    fireEvent.drop(targetGroupRow.parentElement!, { clientY: 100, dataTransfer });
 
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(
@@ -202,7 +202,7 @@ describe("QuickLinkDock", () => {
     fireEvent.dragStart(screen.getByRole("button", { name: "拖动子网站 视频" }), { dataTransfer });
     const targetLinkRow = screen.getByRole("button", { name: "拖动子网站 空间" }).closest("div")!;
     fireEvent.dragOver(targetLinkRow, { clientY: 100, dataTransfer });
-    fireEvent.drop(targetLinkRow, { clientY: 100, dataTransfer });
+    fireEvent.drop(targetLinkRow.parentElement!, { clientY: 100, dataTransfer });
 
     await waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith(

@@ -297,6 +297,7 @@ export function QuickLinkDock() {
           }}
           onGroupDrop={(event, targetGroup) => {
             event.preventDefault();
+            if (!draggingGroupId) return;
             const draggedGroupId = event.dataTransfer.getData("text/plain") || draggingGroupId;
             const placement = groupDropTarget?.groupId === targetGroup.id ? groupDropTarget.placement : getDropPlacement(event.currentTarget, event.clientY);
             setDraggingGroupId(null);
@@ -323,11 +324,23 @@ export function QuickLinkDock() {
           }}
           onLinkDrop={(event, group, targetLink) => {
             event.preventDefault();
+            event.stopPropagation();
             const draggedLinkId = event.dataTransfer.getData("text/plain") || draggingLinkId;
             const placement = linkDropTarget?.linkId === targetLink.id ? linkDropTarget.placement : getDropPlacement(event.currentTarget, event.clientY);
             setDraggingLinkId(null);
             setLinkDropTarget(null);
             if (draggedLinkId) void reorderLinks(group.id, draggedLinkId, targetLink.id, placement);
+          }}
+          onLinkListDrop={(event, group) => {
+            event.preventDefault();
+            event.stopPropagation();
+            if (!draggingLinkId || !linkDropTarget) return;
+            const targetLink = group.links.find((link) => link.id === linkDropTarget.linkId);
+            if (!targetLink) return;
+            const draggedLinkId = event.dataTransfer.getData("text/plain") || draggingLinkId;
+            setDraggingLinkId(null);
+            setLinkDropTarget(null);
+            if (draggedLinkId) void reorderLinks(group.id, draggedLinkId, targetLink.id, linkDropTarget.placement);
           }}
           onSetDefaultLink={(linkId) => void setDefaultLink(linkId)}
           onUpdateLink={(link, title, url) => void updateLink(link, title, url)}
@@ -437,6 +450,7 @@ function OrderQuickLinkGroupsDialog({
   onLinkDragOver,
   onLinkDragStart,
   onLinkDrop,
+  onLinkListDrop,
   onSetDefaultLink,
   onUpdateLink
 }: {
@@ -455,6 +469,7 @@ function OrderQuickLinkGroupsDialog({
   onLinkDragOver: (event: DragEvent<HTMLDivElement>, targetLink: QuickLink) => void;
   onLinkDragStart: (event: DragEvent<HTMLButtonElement>, linkId: string) => void;
   onLinkDrop: (event: DragEvent<HTMLDivElement>, group: QuickLinkGroup, targetLink: QuickLink) => void;
+  onLinkListDrop: (event: DragEvent<HTMLDivElement>, group: QuickLinkGroup) => void;
   onSetDefaultLink: (linkId: string) => void;
   onUpdateLink: (link: QuickLink, title: string, url: string) => void;
 }) {
@@ -479,8 +494,13 @@ function OrderQuickLinkGroupsDialog({
                 : "";
 
           return (
-            <div className={`relative rounded-lg border border-line bg-surface-muted p-2 transition ${groupIndicatorClass} ${draggingGroupId === group.id ? "opacity-60" : ""}`} key={group.id}>
-              <div className="flex items-center gap-3" onDragOver={(event) => onGroupDragOver(event, group)} onDrop={(event) => onGroupDrop(event, group)}>
+            <div
+              className={`relative rounded-lg border border-line bg-surface-muted p-2 transition ${groupIndicatorClass} ${draggingGroupId === group.id ? "opacity-60" : ""}`}
+              key={group.id}
+              onDragOver={(event) => onGroupDragOver(event, group)}
+              onDrop={(event) => onGroupDrop(event, group)}
+            >
+              <div className="flex items-center gap-3">
                 <button
                   aria-label={`拖动域名 ${group.displayName}`}
                   className="inline-flex h-8 w-8 cursor-grab items-center justify-center rounded-md text-action-muted active:cursor-grabbing"
@@ -497,7 +517,15 @@ function OrderQuickLinkGroupsDialog({
                   <p className="truncate text-xs text-muted">{group.domain}</p>
                 </div>
               </div>
-              <div className="mt-2 grid gap-1">
+              <div
+                className="mt-2 grid gap-1"
+                onDragOver={(event) => {
+                  if (draggingLinkId && linkDropTarget && group.links.some((link) => link.id === linkDropTarget.linkId)) {
+                    event.preventDefault();
+                  }
+                }}
+                onDrop={(event) => onLinkListDrop(event, group)}
+              >
                 {group.links.map((link) => (
                   <QuickLinkOrderRow
                     dragging={draggingLinkId === link.id}
