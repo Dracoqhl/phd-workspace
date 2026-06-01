@@ -182,6 +182,7 @@ describe("QuickLinkDock", () => {
     expect(screen.queryByText("/video/BV1")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "复制子网站 视频" }));
     await waitFor(() => expect(writeText).toHaveBeenCalledWith("https://www.bilibili.com/video/BV1"));
+    expect(await screen.findByRole("button", { name: "已复制子网站 视频" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "下移 bilibili" })).not.toBeInTheDocument();
     fireEvent.dragStart(screen.getByRole("button", { name: "拖动域名 bilibili" }), { dataTransfer });
     const targetGroupRow = screen.getByRole("button", { name: "拖动域名 notion" }).closest("div")!;
@@ -228,6 +229,7 @@ describe("QuickLinkDock", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: "设为首选 个人空间" }));
+    expect(screen.getByRole("button", { name: "当前首选 个人空间" })).toBeInTheDocument();
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith("/api/quick-links/link_space/default", { method: "POST" }));
     expect(await screen.findByRole("button", { name: "当前首选 个人空间" })).toBeInTheDocument();
 

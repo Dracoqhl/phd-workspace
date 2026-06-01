@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, Circle, CircleDot, Copy, ExternalLink, GripVertical, MoreHorizontal, Plus, Settings2, Star, Trash2 } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Circle, CircleDot, Copy, ExternalLink, GripVertical, MoreHorizontal, Plus, Settings2, Star, Trash2 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { DragEvent, KeyboardEvent } from "react";
@@ -121,10 +121,26 @@ export function QuickLinkDock() {
   }
 
   async function setDefaultLink(linkId: string) {
-    const response = await fetch(`/api/quick-links/${linkId}/default`, { method: "POST" });
-    const payload = (await response.json()) as Partial<QuickLinkResponse>;
-    if (response.ok && payload.groups) {
-      setGroups(payload.groups);
+    const previousGroups = groups;
+    let targetGroupId: string | null = null;
+    const nextGroups = groups.map((group) => {
+      if (!group.links.some((link) => link.id === linkId)) return group;
+      targetGroupId = group.id;
+      return { ...group, defaultLinkId: linkId };
+    });
+    if (!targetGroupId) return;
+
+    setGroups(nextGroups);
+    try {
+      const response = await fetch(`/api/quick-links/${linkId}/default`, { method: "POST" });
+      const payload = (await response.json()) as Partial<QuickLinkResponse>;
+      if (response.ok && payload.groups) {
+        setGroups(payload.groups);
+      } else {
+        setGroups(previousGroups);
+      }
+    } catch {
+      setGroups(previousGroups);
     }
   }
 
@@ -534,6 +550,7 @@ function QuickLinkOrderRow({
 }) {
   const [title, setTitle] = useState(link.title);
   const [url, setUrl] = useState(link.url);
+  const [copied, setCopied] = useState(false);
   const skipNextSaveRef = useRef(false);
   const isDefault = group.defaultLinkId === link.id;
 
@@ -552,6 +569,8 @@ function QuickLinkOrderRow({
   async function copyUrl() {
     try {
       await navigator.clipboard?.writeText(link.url);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1400);
     } catch {
       // Clipboard permissions are browser-dependent; failing silently keeps editing uninterrupted.
     }
@@ -636,13 +655,15 @@ function QuickLinkOrderRow({
         />
         <div className="flex shrink-0 items-center gap-1">
           <button
-            aria-label={`复制子网站 ${getQuickLinkTitle(link)}`}
-            className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-line text-muted transition hover:text-moss"
+            aria-label={copied ? `已复制子网站 ${getQuickLinkTitle(link)}` : `复制子网站 ${getQuickLinkTitle(link)}`}
+            className={`inline-flex h-7 w-7 items-center justify-center rounded-md border transition ${
+              copied ? "border-moss/35 bg-moss/15 text-moss" : "border-line text-muted hover:text-moss"
+            }`}
             onClick={() => void copyUrl()}
-            title="复制 URL"
+            title={copied ? "已复制" : "复制 URL"}
             type="button"
           >
-            <Copy aria-hidden="true" size={12} />
+            {copied ? <Check aria-hidden="true" size={13} /> : <Copy aria-hidden="true" size={12} />}
           </button>
           <button
             aria-label={`删除子网站 ${getQuickLinkTitle(link)}`}
