@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, ExternalLink, GripVertical, MoreHorizontal, Plus, Settings2, Star, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, Copy, ExternalLink, GripVertical, MoreHorizontal, Plus, Settings2, Star, Trash2 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import type { DragEvent } from "react";
@@ -398,7 +398,7 @@ function OrderQuickLinkGroupsDialog({
   onMoveGroup: (groupId: string, direction: -1 | 1) => Promise<void>;
 }) {
   return (
-    <DialogFrame labelledBy="quick-link-order-title">
+    <DialogFrame labelledBy="quick-link-order-title" maxWidth="max-w-3xl">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="text-base font-semibold text-ink" id="quick-link-order-title">
@@ -502,13 +502,21 @@ function QuickLinkOrderRow({
         ? "after:absolute after:bottom-0 after:left-2 after:right-2 after:h-0.5 after:rounded-full after:bg-moss"
         : "";
 
+  async function copyUrl() {
+    try {
+      await navigator.clipboard?.writeText(link.url);
+    } catch {
+      // Clipboard permissions are browser-dependent; failing silently keeps editing uninterrupted.
+    }
+  }
+
   return (
     <div
-      className={`relative grid gap-2 rounded-md bg-surface px-2 py-2 text-xs transition ${indicatorClass} ${dragging ? "opacity-60" : ""}`}
+      className={`relative rounded-md bg-surface px-2 py-2 text-xs transition ${indicatorClass} ${dragging ? "opacity-60" : ""}`}
       onDragOver={(event) => onDragOver(event, link)}
       onDrop={(event) => onDrop(event, group, link)}
     >
-      <div className="flex items-center gap-2">
+      <div className="grid min-w-0 grid-cols-[auto_minmax(6rem,0.75fr)_minmax(12rem,1.4fr)_auto] items-center gap-2">
         <button
           aria-label={`拖动子网站 ${getQuickLinkTitle(link)}`}
           className="inline-flex h-7 w-7 cursor-grab items-center justify-center rounded-md text-action-muted active:cursor-grabbing"
@@ -519,28 +527,32 @@ function QuickLinkOrderRow({
         >
           <GripVertical aria-hidden="true" size={13} />
         </button>
-        <input
-          aria-label={`子网站名称 ${getQuickLinkTitle(link)}`}
-          className="min-w-0 flex-1 rounded-md border border-line bg-field px-2 py-1.5 text-xs font-semibold text-ink outline-none focus:border-moss focus:ring-2 focus:ring-moss/20"
-          onChange={(event) => setTitle(event.target.value)}
-          value={title}
-        />
-        {isDefault ? <Star aria-hidden="true" className="shrink-0 text-moss" size={13} /> : null}
-      </div>
-      <div className="flex items-center gap-2 pl-9">
+        <div className="flex min-w-0 items-center gap-1">
+          <input
+            aria-label={`子网站名称 ${getQuickLinkTitle(link)}`}
+            className="min-w-0 flex-1 rounded-md border border-line bg-field px-2 py-1.5 text-xs font-semibold text-ink outline-none focus:border-moss focus:ring-2 focus:ring-moss/20"
+            onChange={(event) => setTitle(event.target.value)}
+            value={title}
+          />
+          {isDefault ? <Star aria-hidden="true" className="shrink-0 text-moss" size={13} /> : null}
+        </div>
         <input
           aria-label={`子网站 URL ${getQuickLinkTitle(link)}`}
-          className="min-w-0 flex-1 rounded-md border border-line bg-field px-2 py-1.5 text-xs text-muted outline-none focus:border-moss focus:ring-2 focus:ring-moss/20"
+          className="min-w-0 rounded-md border border-line bg-field px-2 py-1.5 text-xs text-muted outline-none focus:border-moss focus:ring-2 focus:ring-moss/20"
           onChange={(event) => setUrl(event.target.value)}
           title={link.url}
           value={url}
         />
-      </div>
-      <div className="flex items-center justify-between gap-2 pl-9">
-        <span className="min-w-0 truncate text-[11px] text-muted" title={link.url}>
-          {getQuickLinkUrlLabel(link.url)}
-        </span>
         <div className="flex shrink-0 items-center gap-1">
+          <button
+            aria-label={`复制子网站 ${getQuickLinkTitle(link)}`}
+            className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-line text-muted transition hover:text-moss"
+            onClick={() => void copyUrl()}
+            title="复制 URL"
+            type="button"
+          >
+            <Copy aria-hidden="true" size={12} />
+          </button>
           <button
             aria-label={`保存子网站 ${getQuickLinkTitle(link)}`}
             className="rounded-md border border-line px-2 py-1 text-[11px] font-semibold text-muted transition hover:text-moss"
@@ -861,13 +873,13 @@ function DeleteConfirmDialog({
   );
 }
 
-function DialogFrame({ children, labelledBy }: { children: ReactNode; labelledBy: string }) {
+function DialogFrame({ children, labelledBy, maxWidth = "max-w-lg" }: { children: ReactNode; labelledBy: string; maxWidth?: string }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/30 px-4 py-6">
       <section
         aria-labelledby={labelledBy}
         aria-modal="true"
-        className="w-full max-w-lg rounded-lg border border-slate-200 bg-white p-4 shadow-xl"
+        className={`w-full ${maxWidth} rounded-lg border border-slate-200 bg-white p-4 shadow-xl`}
         role="dialog"
       >
         {children}

@@ -144,6 +144,11 @@ describe("QuickLinkDock", () => {
   });
 
   it("reorders groups through the organize dialog without dragging logos", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(window.navigator, "clipboard", {
+      configurable: true,
+      value: { writeText }
+    });
     const reorderedGroups = [secondGroup, firstGroup];
     const linksReorderedGroup = { ...firstGroup, links: [firstGroup.links[1], firstGroup.links[0]] };
     const titleEditedGroup = { ...linksReorderedGroup, links: [{ ...firstGroup.links[1], title: "个人空间" }, firstGroup.links[0]] };
@@ -168,6 +173,9 @@ describe("QuickLinkDock", () => {
     const logoButton = await screen.findByRole("button", { name: "打开 bilibili" });
     expect(logoButton).not.toHaveAttribute("draggable");
     fireEvent.click(screen.getByRole("button", { name: "整理网页导航顺序" }));
+    expect(screen.queryByText("/video/BV1")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "复制子网站 视频" }));
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith("https://www.bilibili.com/video/BV1"));
     fireEvent.click(screen.getByRole("button", { name: "下移 bilibili" }));
 
     await waitFor(() =>

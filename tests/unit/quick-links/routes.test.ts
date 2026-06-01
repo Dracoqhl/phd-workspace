@@ -75,6 +75,26 @@ describe("quick link routes", () => {
     expect(secondGroups[0].defaultLinkId).toBe(firstGroups[0].defaultLinkId);
   });
 
+  it("uses page metadata as the default title when no title is provided", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input) === "https://example.com/work") {
+        return new Response('<html><head><meta property="og:title" content="Example Work"></head></html>', {
+          headers: { "Content-Type": "text/html; charset=utf-8" }
+        });
+      }
+      throw new Error(`Unexpected metadata request ${String(input)}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const groups = await createQuickLinkGroups(userCookie, { url: "https://example.com/work" });
+
+    expect(groups[0].links[0]).toMatchObject({
+      title: "Example Wo",
+      url: "https://example.com/work"
+    });
+    expect(fetchMock).toHaveBeenCalledWith("https://example.com/work", expect.any(Object));
+  });
+
   it("updates display names, sets defaults, and deletes links with fallback defaults", async () => {
     let groups = await createQuickLinkGroups(userCookie, { url: "https://www.xiaohongshu.com/explore/1", title: "收藏" });
     groups = await createQuickLinkGroups(userCookie, { url: "https://www.xiaohongshu.com/user/profile", title: "主页" });

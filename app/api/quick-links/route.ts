@@ -4,7 +4,8 @@ import {
   INVALID_QUICK_LINK_PAYLOAD,
   parseCreateQuickLinkInput,
   quickLinksConfigErrorResponse,
-  readJsonObject
+  readJsonObject,
+  resolveCreateQuickLinkTitle
 } from "@/lib/api/quick-links";
 
 export async function GET(request: Request): Promise<Response> {
@@ -31,7 +32,7 @@ export async function POST(request: Request): Promise<Response> {
   const repos = getRepositoriesOrResponse(auth);
   if (repos instanceof Response) return repos;
 
-  const groups = await repos.quickLinks.createLink(input);
+  const groups = await repos.quickLinks.createLink(await resolveCreateQuickLinkTitle(input));
   return Response.json({ groups }, { status: 201 });
 }
 
