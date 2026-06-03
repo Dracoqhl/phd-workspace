@@ -162,6 +162,35 @@ describe("care routes", () => {
     });
   });
 
+  it("generates today's care content from streaming Responses output for gpt-5 models", async () => {
+    vi.stubEnv("AI_API_KEY", "secret-key");
+    vi.stubEnv("AI_MODEL", "gpt-5.5");
+    vi.stubEnv("AI_BASE_URL", "https://example.test/v1/");
+    const fetchMock = vi.fn().mockResolvedValue(createTextStreamResponse(JSON.stringify(["慢慢来，先完成一个小步骤。"])));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await generateCare(
+      authRequest(`${baseUrl}/api/care/generate`, {
+        method: "POST",
+        body: JSON.stringify({ preferenceText: "温和一点" })
+      })
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      care: {
+        content: "慢慢来，先完成一个小步骤。",
+        source: "ai_generated"
+      }
+    });
+    expect(fetchMock).toHaveBeenCalledWith("https://example.test/v1/responses", expect.any(Object));
+    const [, init] = fetchMock.mock.calls[0];
+    const body = JSON.parse(init.body as string) as { instructions: string; input: Array<{ content: Array<{ text: string }> }>; stream: boolean };
+    expect(body.instructions).toContain("daily care quotes");
+    expect(body.input[0].content[0].text).toContain("Generate");
+    expect(body.stream).toBe(true);
+  });
+
   it("stores a per-user quote batch and regenerates it only when the preference changes", async () => {
     vi.stubEnv("DATABASE_PATH", join(tempDir!, "workspace.sqlite"));
     vi.stubEnv("ADMIN_EMAIL", "admin@example.com");
@@ -315,6 +344,20 @@ function jsonRequest(url: string, body: unknown): Request {
     },
     body: JSON.stringify(body)
   });
+}
+
+function createTextStreamResponse(text: string): Response {
+  const event = [
+    "event: response.output_text.delta",
+    `data: ${JSON.stringify({ type: "response.output_text.delta", delta: text })}`,
+    "",
+    "event: response.completed",
+    `data: ${JSON.stringify({ type: "response.completed", response: { status: "completed" } })}`,
+    "",
+    ""
+  ].join("\n");
+
+  return new Response(event, { headers: { "Content-Type": "text/event-stream" } });
 }
 
 function getSessionCookie(response: Response): string {

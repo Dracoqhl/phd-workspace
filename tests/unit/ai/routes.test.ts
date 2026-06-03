@@ -69,7 +69,7 @@ describe("AI test route", () => {
     vi.stubEnv("AI_API_KEY", "secret-key");
     vi.stubEnv("AI_MODEL", "test-model");
     vi.stubEnv("AI_BASE_URL", "https://example.test/v1/");
-    const fetchMock = vi.fn().mockResolvedValue(Response.json({ id: "chatcmpl_test" }));
+    const fetchMock = vi.fn().mockResolvedValue(Response.json({ choices: [{ message: { content: "ok" } }] }));
     vi.stubGlobal("fetch", fetchMock);
 
     const response = await testAi(authRequest(`${baseUrl}/api/ai/test`, { method: "POST" }));
@@ -89,6 +89,35 @@ describe("AI test route", () => {
           messages: [{ role: "user", content: "Reply with ok." }],
           max_tokens: 8,
           temperature: 0
+        })
+      })
+    );
+  });
+
+  it("calls a streaming Responses endpoint for gpt-5 models", async () => {
+    vi.stubEnv("AI_API_KEY", "secret-key");
+    vi.stubEnv("AI_MODEL", "gpt-5.5");
+    vi.stubEnv("AI_BASE_URL", "https://example.test/v1/");
+    const fetchMock = vi.fn().mockResolvedValue(createTextStreamResponse("ok"));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await testAi(authRequest(`${baseUrl}/api/ai/test`, { method: "POST" }));
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ ok: true, model: "gpt-5.5" });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://example.test/v1/responses",
+      expect.objectContaining({
+        method: "POST",
+        headers: {
+          Authorization: "Bearer secret-key",
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          model: "gpt-5.5",
+          input: [{ role: "user", content: [{ type: "input_text", text: "Reply with ok." }] }],
+          max_output_tokens: 8,
+          stream: true
         })
       })
     );
@@ -226,6 +255,32 @@ describe("AI chat route", () => {
     expect(serializedMessages).toContain("Drink water");
     expect(serializedMessages).toContain("Finish one paragraph");
     expect(serializedMessages).toContain("帮我安排一下今天");
+  });
+
+  it("reads assistant replies from streaming Responses output for gpt-5 models", async () => {
+    dataDir = await mkdtemp(join(tmpdir(), "phd-ai-chat-"));
+    vi.stubEnv("DATA_DIR", dataDir);
+    vi.stubEnv("AI_API_KEY", "secret-key");
+    vi.stubEnv("AI_MODEL", "gpt-5.5");
+    vi.stubEnv("AI_BASE_URL", "https://example.test/v1/");
+    const fetchMock = vi.fn().mockResolvedValue(createTextStreamResponse("先处理最重要的一项任务。"));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const response = await chat(
+      authRequest(`${baseUrl}/api/ai/chat`, {
+        method: "POST",
+        body: JSON.stringify({ message: "帮我安排一下今天" })
+      })
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ ok: true, reply: "先处理最重要的一项任务。" });
+    expect(fetchMock).toHaveBeenCalledWith("https://example.test/v1/responses", expect.any(Object));
+    const [, init] = fetchMock.mock.calls[0];
+    const body = JSON.parse(init.body as string) as { instructions: string; input: Array<{ role: string; content: Array<{ text: string }> }>; stream: boolean };
+    expect(body.instructions).toContain("You are the AI assistant inside a personal workspace app");
+    expect(body.input.map((message) => message.content.map((part) => part.text).join("\n")).join("\n")).toContain("帮我安排一下今天");
+    expect(body.stream).toBe(true);
   });
 
   it("replaces unsafe model output and drops proposals", async () => {
@@ -862,6 +917,20 @@ function jsonRequest(url: string, body: unknown): Request {
     },
     body: JSON.stringify(body)
   });
+}
+
+function createTextStreamResponse(text: string): Response {
+  const event = [
+    "event: response.output_text.delta",
+    `data: ${JSON.stringify({ type: "response.output_text.delta", delta: text })}`,
+    "",
+    "event: response.completed",
+    `data: ${JSON.stringify({ type: "response.completed", response: { status: "completed" } })}`,
+    "",
+    ""
+  ].join("\n");
+
+  return new Response(event, { headers: { "Content-Type": "text/event-stream" } });
 }
 
 async function loginAndGetCookie(email: string, password: string): Promise<string> {

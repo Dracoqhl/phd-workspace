@@ -1,4 +1,5 @@
 import type { AiConfig } from "@/lib/ai/config";
+import { generateAiText } from "@/lib/ai/client";
 
 export interface AiTestResult {
   ok: boolean;
@@ -8,25 +9,13 @@ export interface AiTestResult {
 
 export async function testAiConnection(config: AiConfig): Promise<AiTestResult> {
   try {
-    const response = await fetch(`${config.baseUrl}/chat/completions`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${config.apiKey}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model: config.model,
-        messages: [{ role: "user", content: "Reply with ok." }],
-        max_tokens: 8,
-        temperature: 0
-      })
+    const content = await generateAiText(config, {
+      messages: [{ role: "user", content: "Reply with ok." }],
+      maxTokens: 8,
+      temperature: 0
     });
 
-    if (!response.ok) {
-      return { ok: false, error: "AI test failed" };
-    }
-
-    return { ok: true, model: config.model };
+    return content ? { ok: true, model: config.model } : { ok: false, error: "AI test failed" };
   } catch {
     return { ok: false, error: "AI test failed" };
   }
