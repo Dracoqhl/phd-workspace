@@ -9,7 +9,7 @@ import type { QuickNote, UpdateQuickNoteInput } from "@/types/note";
 import type { CreateQuickLinkInput, QuickLink, QuickLinkGroup, UpdateQuickLinkGroupInput, UpdateQuickLinkInput } from "@/types/quick-link";
 import type { CreateTaskInput, Task, UpdateTaskInput } from "@/types/task";
 import type { TrashEntry } from "@/types/trash";
-import { limitQuickLinkName, limitQuickLinkTitle, parseQuickLinkUrl } from "@/lib/domain/quick-links";
+import { buildGoogleFaviconUrl, limitQuickLinkName, limitQuickLinkTitle, parseQuickLinkUrl } from "@/lib/domain/quick-links";
 
 export function createSqliteRepositories(db: SqliteDatabase, userId: string) {
   const trash = new SqliteTrashRepository(db, userId);
@@ -591,14 +591,16 @@ class SqliteQuickLinkRepository {
   }
 
   async updateGroup(groupId: string, input: UpdateQuickLinkGroupInput): Promise<QuickLinkGroup[] | null> {
-    if (!this.getGroupSync(groupId)) return null;
+    const group = this.getGroupSync(groupId);
+    if (!group) return null;
 
-    const displayName = input.displayName ? limitQuickLinkName(input.displayName) : "";
+    const displayName = input.displayName === undefined ? group.displayName : limitQuickLinkName(input.displayName);
     if (!displayName) throw new Error("Invalid quick link group name");
+    const iconUrl = input.iconUrl === undefined ? group.iconUrl : input.iconUrl || buildGoogleFaviconUrl(group.domain);
 
     this.db
-      .prepare("UPDATE quick_link_groups SET display_name = ?, updated_at = ? WHERE id = ? AND user_id = ?")
-      .run(displayName, new Date().toISOString(), groupId, this.userId);
+      .prepare("UPDATE quick_link_groups SET display_name = ?, icon_url = ?, updated_at = ? WHERE id = ? AND user_id = ?")
+      .run(displayName, iconUrl, new Date().toISOString(), groupId, this.userId);
     return this.listGroupsSync();
   }
 

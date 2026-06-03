@@ -127,6 +127,35 @@ describe("quick link routes", () => {
     expect(groups[0].defaultLinkId).toBe(defaultLink.id);
   });
 
+  it("updates and resets a custom quick link group logo", async () => {
+    const groups = await createQuickLinkGroups(userCookie, { url: "https://www.xiaohongshu.com/explore/1", title: "收藏" });
+    const group = groups[0];
+    const customIcon = "data:image/png;base64,aWNvbg==";
+
+    const customResponse = await updateQuickLinkGroup(
+      authRequest(userCookie, `${baseUrl}/api/quick-links/groups/${group.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ iconUrl: customIcon })
+      }),
+      { params: { id: group.id } }
+    );
+    let updatedGroups = await readGroups(customResponse);
+    expect(updatedGroups[0]).toMatchObject({
+      displayName: group.displayName,
+      iconUrl: customIcon
+    });
+
+    const resetResponse = await updateQuickLinkGroup(
+      authRequest(userCookie, `${baseUrl}/api/quick-links/groups/${group.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({ iconUrl: "" })
+      }),
+      { params: { id: group.id } }
+    );
+    updatedGroups = await readGroups(resetResponse);
+    expect(updatedGroups[0].iconUrl).toBe("https://www.google.com/s2/favicons?domain=xiaohongshu.com&sz=128");
+  });
+
   it("moves edited links to the matching domain group and isolates users", async () => {
     const adminGroups = await createQuickLinkGroups(adminCookie, { url: "https://example.com/admin", title: "Admin" });
     let userGroups = await createQuickLinkGroups(userCookie, { url: "https://example.com/user", title: "User" });

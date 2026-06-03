@@ -27,6 +27,7 @@ export interface CreateQuickLinkInput {
 
 export interface UpdateQuickLinkGroupInput {
   displayName?: string;
+  iconUrl?: string;
 }
 
 export interface UpdateQuickLinkInput {

@@ -9,6 +9,8 @@ import type { CreateQuickLinkInput, UpdateQuickLinkGroupInput, UpdateQuickLinkIn
 
 export const INVALID_QUICK_LINK_PAYLOAD = "Invalid quick link payload";
 export const QUICK_LINKS_CONFIG_ERROR = "Quick links require database mode";
+const CUSTOM_QUICK_LINK_ICON_MAX_LENGTH = 700_000;
+const CUSTOM_QUICK_LINK_ICON_PATTERN = /^data:image\/(?:png|jpe?g|webp|svg\+xml);base64,[a-z0-9+/=]+$/i;
 
 export function quickLinksConfigErrorResponse(): Response {
   return Response.json({ error: QUICK_LINKS_CONFIG_ERROR }, { status: 404 });
@@ -49,10 +51,23 @@ export async function resolveCreateQuickLinkTitle(input: CreateQuickLinkInput): 
 }
 
 export function parseUpdateQuickLinkGroupInput(body: Record<string, unknown>): UpdateQuickLinkGroupInput | null {
-  if (typeof body.displayName !== "string") return null;
-  const displayName = limitQuickLinkName(body.displayName);
-  if (!displayName) return null;
-  return { displayName };
+  const input: UpdateQuickLinkGroupInput = {};
+
+  if ("displayName" in body) {
+    if (typeof body.displayName !== "string") return null;
+    const displayName = limitQuickLinkName(body.displayName);
+    if (!displayName) return null;
+    input.displayName = displayName;
+  }
+
+  if ("iconUrl" in body) {
+    if (typeof body.iconUrl !== "string") return null;
+    const iconUrl = body.iconUrl.trim();
+    if (iconUrl && (iconUrl.length > CUSTOM_QUICK_LINK_ICON_MAX_LENGTH || !CUSTOM_QUICK_LINK_ICON_PATTERN.test(iconUrl))) return null;
+    input.iconUrl = iconUrl;
+  }
+
+  return Object.keys(input).length > 0 ? input : null;
 }
 
 export function parseUpdateQuickLinkInput(body: Record<string, unknown>): UpdateQuickLinkInput | null {

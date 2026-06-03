@@ -143,6 +143,41 @@ describe("QuickLinkDock", () => {
     expect(fetchMock).toHaveBeenCalledWith("/api/quick-links/link_space", { method: "DELETE" });
   });
 
+  it("uploads a custom logo and shows title-fetch guidance in settings", async () => {
+    const customIcon = "data:image/png;base64,Y3VzdG9t";
+    const groupWithCustomIcon = { ...firstGroup, iconUrl: customIcon };
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url === "/api/quick-links" && !init) return Response.json({ groups: [firstGroup] });
+      if (url === "/api/quick-links/groups/group_bilibili" && init?.method === "PATCH") {
+        return Response.json({ groups: [groupWithCustomIcon] });
+      }
+      throw new Error(`Unexpected request ${url} ${String(init?.method ?? "GET")}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    render(<QuickLinkDock />);
+
+    fireEvent.click(await screen.findByRole("button", { name: "管理 bilibili" }));
+    expect(screen.getByText(/当前部分网页标题无法稳定自动抓取/)).toBeInTheDocument();
+
+    const upload = screen.getByLabelText("上传自定义 Logo");
+    const file = new File(["custom"], "logo.png", { type: "image/png" });
+    fireEvent.change(upload, { target: { files: [file] } });
+
+    await waitFor(() =>
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/quick-links/groups/group_bilibili",
+        expect.objectContaining({
+          method: "PATCH",
+          body: expect.stringContaining("data:image/png;base64")
+        })
+      )
+    );
+    expect(await screen.findByRole("button", { name: "打开 bilibili" })).toBeInTheDocument();
+    expect(document.querySelector("img")).toHaveAttribute("src", customIcon);
+  });
+
   it("reorders groups through the organize dialog without dragging logos", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(window.navigator, "clipboard", {
@@ -179,6 +214,7 @@ describe("QuickLinkDock", () => {
     const logoButton = await screen.findByRole("button", { name: "打开 bilibili" });
     expect(logoButton).not.toHaveAttribute("draggable");
     fireEvent.click(screen.getByRole("button", { name: "整理网页导航顺序" }));
+    expect(screen.getByText(/后续会上线浏览器插件/)).toBeInTheDocument();
     expect(screen.queryByText("/video/BV1")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "复制子网站 视频" }));
     await waitFor(() => expect(writeText).toHaveBeenCalledWith("https://www.bilibili.com/video/BV1"));

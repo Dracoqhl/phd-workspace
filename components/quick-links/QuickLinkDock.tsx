@@ -1,9 +1,25 @@
 "use client";
 
-import { Check, ChevronLeft, ChevronRight, Circle, CircleDot, Copy, ExternalLink, GripVertical, MoreHorizontal, Plus, Settings2, Star, Trash2 } from "lucide-react";
+import {
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Circle,
+  CircleDot,
+  Copy,
+  ExternalLink,
+  GripVertical,
+  ImagePlus,
+  MoreHorizontal,
+  Plus,
+  RotateCcw,
+  Settings2,
+  Star,
+  Trash2
+} from "lucide-react";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { DragEvent, KeyboardEvent } from "react";
+import type { ChangeEvent, DragEvent, KeyboardEvent } from "react";
 
 import type { QuickLink, QuickLinkGroup } from "@/types/quick-link";
 
@@ -13,6 +29,12 @@ interface QuickLinkResponse {
 
 const DELETE_SKIP_STORAGE_KEY = "phd-workspace-quick-link-delete-skip-date";
 const MAX_VISIBLE_GROUPS = 8;
+const CUSTOM_ICON_MAX_BYTES = 512 * 1024;
+const CUSTOM_ICON_TYPES = new Set(["image/png", "image/jpeg", "image/jpg", "image/webp", "image/svg+xml"]);
+const QUICK_LINK_TITLE_GUIDANCE =
+  "部分网站会阻止服务器读取页面标题，子网页名称可能只能显示为域名或路径。现在可以在这里手动改成更好识别的名称；后续会上线浏览器插件，从你已打开的页面直接带回标题和简短说明。";
+const QUICK_LINK_GROUP_GUIDANCE =
+  "当前部分网页标题无法稳定自动抓取，建议手动补充子网页名称。后续浏览器插件会从已打开页面带回标题和简介，让导航内容更容易识别。";
 
 export function QuickLinkDock() {
   const [groups, setGroups] = useState<QuickLinkGroup[]>([]);
@@ -35,7 +57,7 @@ export function QuickLinkDock() {
         const response = await fetch("/api/quick-links");
         if (!response.ok) return;
         const payload = (await response.json()) as QuickLinkResponse;
-        if (active) setGroups(payload.groups);
+        if (active) applyGroups(payload.groups);
       } finally {
         if (active) setLoading(false);
       }
@@ -50,6 +72,17 @@ export function QuickLinkDock() {
   const managedGroup = groups.find((group) => group.id === managedGroupId) ?? null;
   const hasLoop = groups.length > MAX_VISIBLE_GROUPS;
   const visibleGroups = useMemo(() => getVisibleGroups(groups, dockStartIndex), [groups, dockStartIndex]);
+
+  function applyGroups(nextGroups: QuickLinkGroup[]) {
+    setGroups(nextGroups);
+    setFailedIconIds((current) => {
+      const next = new Set(current);
+      nextGroups.forEach((group) => {
+        if (isCustomQuickLinkIcon(group.iconUrl)) next.delete(group.id);
+      });
+      return next;
+    });
+  }
 
   useEffect(() => {
     if (groups.length === 0) {
@@ -88,7 +121,7 @@ export function QuickLinkDock() {
     });
     const payload = (await response.json()) as Partial<QuickLinkResponse>;
     if (response.ok && payload.groups) {
-      setGroups(payload.groups);
+      applyGroups(payload.groups);
     }
   }
 
@@ -116,7 +149,7 @@ export function QuickLinkDock() {
     });
     const payload = (await response.json()) as Partial<QuickLinkResponse>;
     if (response.ok && payload.groups) {
-      setGroups(payload.groups);
+      applyGroups(payload.groups);
     }
   }
 
@@ -135,7 +168,7 @@ export function QuickLinkDock() {
       const response = await fetch(`/api/quick-links/${linkId}/default`, { method: "POST" });
       const payload = (await response.json()) as Partial<QuickLinkResponse>;
       if (response.ok && payload.groups) {
-        setGroups(payload.groups);
+        applyGroups(payload.groups);
       } else {
         setGroups(previousGroups);
       }
@@ -149,7 +182,7 @@ export function QuickLinkDock() {
       const response = await fetch(`/api/quick-links/${link.id}`, { method: "DELETE" });
       const payload = (await response.json()) as Partial<QuickLinkResponse>;
       if (response.ok && payload.groups) {
-        setGroups(payload.groups);
+        applyGroups(payload.groups);
       }
     });
   }
@@ -185,7 +218,7 @@ export function QuickLinkDock() {
     });
     const payload = (await response.json()) as Partial<QuickLinkResponse>;
     if (response.ok && payload.groups) {
-      setGroups(payload.groups);
+      applyGroups(payload.groups);
     }
   }
 
@@ -195,7 +228,7 @@ export function QuickLinkDock() {
         <div className="flex justify-center py-1">
           <AddQuickLinkButton onClick={() => setAddOpen(true)} />
         </div>
-        {addOpen ? <AddQuickLinkDialog onClose={() => setAddOpen(false)} onGroupsChange={setGroups} /> : null}
+        {addOpen ? <AddQuickLinkDialog onClose={() => setAddOpen(false)} onGroupsChange={applyGroups} /> : null}
         {pendingDelete ? <DeleteConfirmDialog onClose={() => setPendingDelete(null)} pendingDelete={pendingDelete} /> : null}
       </div>
     );
@@ -267,7 +300,7 @@ export function QuickLinkDock() {
         {groups.length > 0 ? <OrderQuickLinksButton onClick={() => setOrderOpen(true)} /> : null}
       </div>
 
-      {addOpen ? <AddQuickLinkDialog onClose={() => setAddOpen(false)} onGroupsChange={setGroups} /> : null}
+      {addOpen ? <AddQuickLinkDialog onClose={() => setAddOpen(false)} onGroupsChange={applyGroups} /> : null}
       {orderOpen ? (
         <OrderQuickLinkGroupsDialog
           draggingGroupId={draggingGroupId}
@@ -351,7 +384,7 @@ export function QuickLinkDock() {
           group={managedGroup}
           onClose={() => setManagedGroupId(null)}
           onGroupsChange={(nextGroups) => {
-            setGroups(nextGroups);
+            applyGroups(nextGroups);
             if (!nextGroups.some((group) => group.id === managedGroup.id)) {
               setManagedGroupId(null);
             }
@@ -412,7 +445,27 @@ function AddQuickLinkButton({ onClick }: { onClick: () => void }) {
 }
 
 function getQuickLinkIconSrc(group: QuickLinkGroup): string {
+  if (isCustomQuickLinkIcon(group.iconUrl)) return group.iconUrl;
   return `/api/quick-links/icon?domain=${encodeURIComponent(group.domain)}`;
+}
+
+function isCustomQuickLinkIcon(iconUrl: string): boolean {
+  return iconUrl.trim().toLowerCase().startsWith("data:image/");
+}
+
+function readImageFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener("load", () => {
+      if (typeof reader.result === "string") {
+        resolve(reader.result);
+      } else {
+        reject(new Error("Invalid image data"));
+      }
+    });
+    reader.addEventListener("error", () => reject(reader.error ?? new Error("Failed to read image")));
+    reader.readAsDataURL(file);
+  });
 }
 
 function getQuickLinkTitle(link: QuickLink): string {
@@ -480,7 +533,7 @@ function OrderQuickLinkGroupsDialog({
           <h2 className="text-base font-semibold text-ink" id="quick-link-order-title">
             整理网页导航
           </h2>
-          <p className="mt-0.5 text-xs text-slate-500">管理域名入口、首选链接与子网站信息</p>
+          <p className="mt-1 max-w-2xl text-xs leading-5 text-slate-500">{QUICK_LINK_TITLE_GUIDANCE}</p>
         </div>
         <CloseButton onClick={onClose} />
       </div>
@@ -792,6 +845,9 @@ function ManageQuickLinkGroupDialog({
   onRequestDelete: (message: string, action: () => Promise<void>) => Promise<void>;
 }) {
   const [displayName, setDisplayName] = useState(group.displayName);
+  const [iconError, setIconError] = useState<string | null>(null);
+  const [iconSaving, setIconSaving] = useState(false);
+  const usesCustomIcon = isCustomQuickLinkIcon(group.iconUrl);
 
   useEffect(() => {
     setDisplayName(group.displayName);
@@ -805,6 +861,47 @@ function ManageQuickLinkGroupDialog({
     });
     const payload = (await response.json()) as QuickLinkResponse;
     if (response.ok) onGroupsChange(payload.groups);
+  }
+
+  async function updateGroupIcon(iconUrl: string) {
+    setIconSaving(true);
+    setIconError(null);
+    try {
+      const response = await fetch(`/api/quick-links/groups/${group.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ iconUrl })
+      });
+      const payload = (await response.json()) as Partial<QuickLinkResponse> & { error?: string };
+      if (!response.ok || !payload.groups) throw new Error(payload.error ?? "Logo 保存失败");
+      onGroupsChange(payload.groups);
+    } catch (caught) {
+      setIconError(caught instanceof Error ? caught.message : "Logo 保存失败");
+    } finally {
+      setIconSaving(false);
+    }
+  }
+
+  async function handleIconUpload(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0] ?? null;
+    event.target.value = "";
+    if (!file) return;
+
+    if (!CUSTOM_ICON_TYPES.has(file.type)) {
+      setIconError("请上传 PNG、JPG、WebP 或 SVG 图片。");
+      return;
+    }
+    if (file.size > CUSTOM_ICON_MAX_BYTES) {
+      setIconError("Logo 图片不能超过 512KB。");
+      return;
+    }
+
+    try {
+      const dataUrl = await readImageFileAsDataUrl(file);
+      await updateGroupIcon(dataUrl);
+    } catch {
+      setIconError("Logo 读取失败，请换一张图片。");
+    }
   }
 
   async function deleteGroup() {
@@ -822,11 +919,33 @@ function ManageQuickLinkGroupDialog({
           <h2 className="text-base font-semibold text-ink" id="quick-link-manage-title">
             {group.domain}
           </h2>
-          <p className="mt-0.5 text-xs text-slate-500">点击 Logo 会打开默认链接</p>
+          <p className="mt-1 max-w-xl text-xs leading-5 text-slate-500">{QUICK_LINK_GROUP_GUIDANCE}</p>
         </div>
         <CloseButton onClick={onClose} />
       </div>
       <div className="mt-4 grid gap-2">
+        <div className="flex items-center gap-3 rounded-lg border border-line bg-surface-muted p-2">
+          <img alt="" className="h-12 w-12 rounded-2xl bg-surface object-cover ring-1 ring-line" src={getQuickLinkIconSrc(group)} />
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-semibold text-slate-600">自定义 Logo</p>
+            <p className="mt-0.5 text-xs text-muted">{usesCustomIcon ? "正在使用手动上传的图片。" : "未上传时自动尝试读取网站图标。"}</p>
+          </div>
+          <label className="inline-flex h-8 cursor-pointer items-center gap-1 rounded-md border border-line bg-surface px-2.5 text-xs font-semibold text-slate-600 transition hover:border-moss/35 hover:text-moss">
+            <ImagePlus aria-hidden="true" size={13} />
+            上传
+            <input accept="image/png,image/jpeg,image/webp,image/svg+xml" aria-label="上传自定义 Logo" className="sr-only" onChange={(event) => void handleIconUpload(event)} type="file" />
+          </label>
+          <button
+            className="inline-flex h-8 items-center gap-1 rounded-md border border-line bg-surface px-2.5 text-xs font-semibold text-slate-600 transition hover:border-moss/35 hover:text-moss disabled:opacity-50"
+            disabled={!usesCustomIcon || iconSaving}
+            onClick={() => void updateGroupIcon("")}
+            type="button"
+          >
+            <RotateCcw aria-hidden="true" size={13} />
+            自动获取
+          </button>
+        </div>
+        {iconError ? <p className="text-xs text-danger-text">{iconError}</p> : null}
         <label className="grid gap-1 text-xs font-semibold text-slate-600">
           Logo 名称
           <div className="flex gap-2">
